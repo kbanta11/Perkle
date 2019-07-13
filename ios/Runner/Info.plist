@@ -41,5 +41,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSMicrophoneUsageDescription</key>
+    <string>This app uses your microphone to record your posts.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+    	<string>audio</string>
+    </array>
 </dict>
 </plist>

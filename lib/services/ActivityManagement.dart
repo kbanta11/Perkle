@@ -1,12 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_sound/android_encoder.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'UserManagement.dart';
 
 class ActivityManager {
+  FlutterSound soundManager = new FlutterSound();
+  StreamSubscription<RecordStatus> recordingSubscription;
+
   bool isLoggedIn() {
     if (FirebaseAuth.instance.currentUser() != null) {
       return true;
@@ -27,6 +36,18 @@ class ActivityManager {
           return user.uid;
         });
         print(userId);
+        DateTime date = postData['date'];
+
+
+        //Upload file to firebase storage -- need to serialize date into filename
+        File audioFile = File(postData['localRecordingLocation']);
+        String filename = postData['dateString'].toString().replaceAll(new RegExp(r' '), '_');
+        print(filename);
+        final StorageReference fsRef = FirebaseStorage.instance.ref().child(userId).child('$filename');
+        final StorageUploadTask uploadTask = fsRef.putFile(audioFile);
+        String fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+        String fileUrlString = fileUrl.toString();
+
         Map<String, dynamic> userTimelines = new Map<String, dynamic>.from(await UserManagement().getUserData().then((DocumentReference userDoc) async {
           print('user doc in add post: $userDoc');
           return await userDoc.get().then((DocumentSnapshot userSnap){
@@ -51,7 +72,9 @@ class ActivityManager {
           'userUID':  userId,
           'postTitle': postData['postTitle'],
           'postValue': postData['postValue'],
-          'datePosted': DateTime.now(),
+          'datePosted': postData['date'],
+          'dateString': postData['dateString'],
+          'audioFileLocation': fileUrlString,
           'listenCount': 0,
           'timelines': userTimelines.keys.toList(),
         }).then((doc) async {
@@ -66,6 +89,58 @@ class ActivityManager {
     } else {
       Navigator.of(context).pushReplacementNamed('/landingpage');
     }
+  }
+
+  Future<String> startRecordNewPost() async {
+    try {
+      if(recordingSubscription == null) {
+        final appDataDir = await getApplicationDocumentsDirectory();
+        String localPath = appDataDir.path;
+        print('Local Path: $localPath');
+       // String length
+        String newPostPath = await soundManager.startRecorder('$localPath/tempAudio', androidEncoder: AndroidEncoder.AMR_WB);
+        print('starting Recorded at: $newPostPath');
+        recordingSubscription = soundManager.onRecorderStateChanged.listen((e) {
+          String date = DateFormat('hh:mm:ss:SS', 'en_US').format(
+              DateTime.fromMillisecondsSinceEpoch(e.currentPosition.toInt()));
+          print(date);
+        });
+        return newPostPath;
+      }
+      return null;
+    } catch (e) {
+      print('Start recorder error: $e');
+      return null;
+    }
+  }
+
+  Future<String> stopRecordNewPost(String postPath) async {
+    try {
+      String result = await soundManager.stopRecorder();
+      print('recorder stopped: $result');
+
+      if(recordingSubscription != null) {
+        recordingSubscription.cancel();
+        recordingSubscription = null;
+      }
+      return postPath;
+    } catch (e) {
+      print('error stopping recorder: $e');
+    }
+    return null;
+  }
+
+  playRecording(String fileUrl) async {
+    //final directory = await getApplicationDocumentsDirectory();
+    //String localPath = directory.path;
+    print('Playing file from: $fileUrl');
+    String path = await soundManager.startPlayer(fileUrl);
+    print('playing recording: $path');
+  }
+
+  stopPlaying() async {
+    String result = await soundManager.stopPlayer();
+    print('recording stopped: $result');
   }
 
   Future<void> followUser(String newFollowUID) async {
@@ -215,24 +290,28 @@ class ActivityManager {
 }
 
 // Add Post dialog
-Future<void> addPostDialog(BuildContext context) async {
+Future<void> addPostDialog(BuildContext context, DateTime date, String recordingLocation) async {
   showDialog(
       context: context,
       builder: (BuildContext context) {
-        String _postVal;
+        print('starting set date format');
+        String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(date);
+        print(dateString);
+        String _postDescription;
         String _postTitle;
 
         return SimpleDialog(
             contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
-            title: Center(child: Text('Add Post',
+            title: Center(child: Text('Add New Post',
               style: TextStyle(color: Colors.deepPurple)
             )),
             children: <Widget>[
+              Text('Post Title (optional)'),
               Container(
                 width: 700.0,
                 child: TextField(
                   decoration: InputDecoration(
-                    hintText: 'Post Title'
+                    hintText: dateString,
                   ),
                   onChanged: (value) {
                     _postTitle = value;
@@ -240,20 +319,24 @@ Future<void> addPostDialog(BuildContext context) async {
                 )
               ),
               SizedBox(height: 20.0),
+              Text('Post Description (optional)'),
               Container(
                 width: 700.0,
                 child: TextField(
                   decoration: InputDecoration(
-                      hintText: 'Add New Post',
+                      hintText: 'A short description of this post...',
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.multiline,
                   maxLines: 5,
                   onChanged: (value) {
-                    _postVal = value;
+                    _postDescription = value;
                   },
                 ),
               ),
+              /*
+              Placeholder for adding field for capturing streams/tags for the post as well as public/private
+               */
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
@@ -268,33 +351,21 @@ Future<void> addPostDialog(BuildContext context) async {
                       child: Text('Add Post'),
                       textColor: Colors.deepPurple,
                       onPressed: () async {
-                        if(_postVal == null || _postVal == ''){
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: Text('Your Post is Empty!'),
-                                content: const Text('You haven\'t entered anything in your post! Tell the world what\'s on your mind!'),
-                                actions: <Widget>[
-                                  FlatButton(
-                                    child: Text('Ok'),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    }
-                                  ),
-                                ]
-                              );
-                            }
-                          );
-                        } else {
                           print({"postTitle": _postTitle,
-                            "postValue": _postVal,
+                            "postValue": _postDescription,
+                            "localRecordingLocation": recordingLocation,
+                            "date": date,
+                            "dateString": dateString,
+                            "listens": 0,
                           });
                           ActivityManager().addPost(context, {"postTitle": _postTitle,
-                            "postValue": _postVal,
+                            "postValue": _postDescription,
+                            "localRecordingLocation": recordingLocation,
+                            "date": date,
+                            "dateString": dateString,
+                            "listens": 0,
                           });
                         }
-                      }
                   )
                 ],
               ),

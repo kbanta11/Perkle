@@ -20,8 +20,13 @@ dependencies:
 
   cloud_firestore: 0.9.13+1
   firebase_auth: 0.8.4+5
+  firebase_core:
+  firebase_database:
+  firebase_storage:
   google_sign_in:
   intl:
+  flutter_sound: 1.4.1
+  path_provider:
 
   flutter:
     sdk: flutter

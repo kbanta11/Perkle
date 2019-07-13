@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:intl/intl.dart';
 
 import 'services/UserManagement.dart';
@@ -17,6 +19,9 @@ class UserInfoSection extends StatefulWidget {
 }
 
 class _UserInfoSectionState extends State<UserInfoSection> {
+  ActivityManager activityManager = new ActivityManager();
+  bool _isRecording = false;
+  String _postAudioPath;
 
   Future<bool> _isCurrentUser(String userId) async {
     return await FirebaseAuth.instance.currentUser().then((user) {
@@ -44,15 +49,37 @@ class _UserInfoSectionState extends State<UserInfoSection> {
                 child: Icon(Icons.add),
                 heroTag: null,
                 onPressed: () async {
-                  addPostDialog(context);
+                  //addPostDialog(context);
                 },
               ),
               SizedBox(width: 5.0),
-              FloatingActionButton(
-                backgroundColor: Colors.deepPurple,
-                child: Icon(Icons.mic),
-                heroTag: null,
-              )
+              Column(
+                children: <Widget>[
+                  FloatingActionButton(
+                      backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
+                      child: Icon(Icons.mic),
+                      heroTag: null,
+                      onPressed: () async {
+                        if(_isRecording) {
+                          String recordingLocation = await activityManager.stopRecordNewPost(_postAudioPath);
+                          setState(() {
+                            _isRecording = !_isRecording;
+                          });
+                          print('getting date');
+                          DateTime date = new DateTime.now();
+                          print('date before dialog: $date');
+                          await addPostDialog(context, date, recordingLocation);
+                        } else {
+                          String postPath = await activityManager.startRecordNewPost();
+                          setState(() {
+                            _isRecording = !_isRecording;
+                            _postAudioPath = postPath;
+                          });
+                        }
+                      }
+                  ),
+                ]
+              ),
             ]
         );
       }
@@ -322,6 +349,7 @@ class TimelineSection extends StatefulWidget {
 }
 
 class _TimelineSectionState extends State<TimelineSection> {
+  ActivityManager activityManager = new ActivityManager();
   String timelineId;
   String userId;
 
@@ -382,14 +410,25 @@ class _TimelineSectionState extends State<TimelineSection> {
                             } else {
                               title = document.data['postTitle'].toString();
                             }
+                            String postAudioUrl = document.data['audioFileLocation'].toString();
+                            print(postAudioUrl);
                             return Column(
-                                children: <Widget>[
-                                  ListTile(
-                                    title: Text(title),
-                                  ),
-                                  Divider(height: 5.0),
-                                ]
-                            );
+                                        children: <Widget>[
+                                        ListTile(
+                                          title: Text(title),
+                                          trailing:  FloatingActionButton(
+                                            backgroundColor: postAudioUrl != null && postAudioUrl != 'null' ? Colors.deepPurple : Colors.grey,
+                                            child: Icon(Icons.play_circle_outline),
+                                            heroTag: null,
+                                            onPressed: () async {
+                                              if (postAudioUrl != null && postAudioUrl != 'null')
+                                                activityManager.playRecording(postAudioUrl);
+                                            },
+                                          ),
+                                        ),
+                                        Divider(height: 5.0),
+                                       ]
+                                      );
                           }).toList()
                       );
                   }
