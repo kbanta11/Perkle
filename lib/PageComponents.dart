@@ -352,6 +352,8 @@ class _TimelineSectionState extends State<TimelineSection> {
   ActivityManager activityManager = new ActivityManager();
   String timelineId;
   String userId;
+  bool _isPlaying = false;
+  String _playingPostId;
 
   Future<Query> setStream() async {
     String timelineId = widget.idMap['timelineId'];
@@ -412,17 +414,46 @@ class _TimelineSectionState extends State<TimelineSection> {
                             }
                             String postAudioUrl = document.data['audioFileLocation'].toString();
                             print(postAudioUrl);
+                            String postId = document.documentID;
+                            Color bgColor = Colors.deepPurple;
+                            if(_playingPostId == postId)
+                              bgColor = Colors.red;
+                            if(postAudioUrl == null || postAudioUrl == 'null')
+                              bgColor = Colors.grey;
+
                             return Column(
                                         children: <Widget>[
                                         ListTile(
                                           title: Text(title),
                                           trailing:  FloatingActionButton(
-                                            backgroundColor: postAudioUrl != null && postAudioUrl != 'null' ? Colors.deepPurple : Colors.grey,
-                                            child: Icon(Icons.play_circle_outline),
+                                            backgroundColor: bgColor,
+                                            child: _playingPostId == postId ? Icon(Icons.stop) : Icon(Icons.play_circle_outline),
                                             heroTag: null,
                                             onPressed: () async {
-                                              if (postAudioUrl != null && postAudioUrl != 'null')
-                                                activityManager.playRecording(postAudioUrl);
+                                              if(_isPlaying) {
+                                                activityManager.stopPlaying();
+                                                bool isPlaying = false;
+                                                String playingPostId;
+
+                                                if(_playingPostId != postId){
+                                                  activityManager.playRecording(postAudioUrl);
+                                                  isPlaying = true;
+                                                  playingPostId = postId;
+                                                }
+                                                setState(() {
+                                                  _isPlaying = isPlaying;
+                                                  _playingPostId = playingPostId;
+                                                });
+                                              } else {
+                                                if (postAudioUrl != null && postAudioUrl != 'null') {
+                                                  activityManager.playRecording(
+                                                      postAudioUrl);
+                                                  setState(() {
+                                                    _isPlaying = true;
+                                                    _playingPostId = postId;
+                                                  });
+                                                }
+                                              }
                                             },
                                           ),
                                         ),

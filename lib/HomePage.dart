@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'PageComponents.dart';
+import 'ProfilePage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -17,7 +18,13 @@ class _HomePageState extends State<HomePage> {
   DocumentReference userDoc;
   int _selectedIndex = 0;
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
+    String uid = await _getUID();
+    if(index == 3) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => ProfilePage(userId: uid),
+      ));
+    }
     setState(() {
       _selectedIndex = index;
     });
