@@ -22,6 +22,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
   ActivityManager activityManager = new ActivityManager();
   bool _isRecording = false;
   String _postAudioPath;
+  DateTime _startRecordDate;
 
   Future<bool> _isCurrentUser(String userId) async {
     return await FirebaseAuth.instance.currentUser().then((user) {
@@ -61,19 +62,26 @@ class _UserInfoSectionState extends State<UserInfoSection> {
                       heroTag: null,
                       onPressed: () async {
                         if(_isRecording) {
-                          String recordingLocation = await activityManager.stopRecordNewPost(_postAudioPath);
+                          List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+                          String recordingLocation = stopRecordVals[0];
+                          int secondsLength = stopRecordVals[1];
+
+                          print('$recordingLocation -/- Length: $secondsLength');
                           setState(() {
                             _isRecording = !_isRecording;
                           });
                           print('getting date');
                           DateTime date = new DateTime.now();
                           print('date before dialog: $date');
-                          await addPostDialog(context, date, recordingLocation);
+                          await addPostDialog(context, date, recordingLocation, secondsLength);
                         } else {
-                          String postPath = await activityManager.startRecordNewPost();
+                          List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
+                          String postPath = startRecordVals[0];
+                          DateTime startDate = startRecordVals[1];
                           setState(() {
                             _isRecording = !_isRecording;
                             _postAudioPath = postPath;
+                            _startRecordDate = startDate;
                           });
                         }
                       }
@@ -425,36 +433,40 @@ class _TimelineSectionState extends State<TimelineSection> {
                                         children: <Widget>[
                                         ListTile(
                                           title: Text(title),
-                                          trailing:  FloatingActionButton(
-                                            backgroundColor: bgColor,
-                                            child: _playingPostId == postId ? Icon(Icons.stop) : Icon(Icons.play_circle_outline),
-                                            heroTag: null,
-                                            onPressed: () async {
-                                              if(_isPlaying) {
-                                                activityManager.stopPlaying();
-                                                bool isPlaying = false;
-                                                String playingPostId;
+                                          trailing:  SizedBox(
+                                            width: 35.0,
+                                            height: 35.0,
+                                            child: FloatingActionButton(
+                                              backgroundColor: bgColor,
+                                              child: _playingPostId == postId ? Icon(Icons.stop) : Icon(Icons.play_arrow),
+                                              heroTag: null,
+                                              onPressed: () async {
+                                                if(_isPlaying) {
+                                                  activityManager.stopPlaying();
+                                                  bool isPlaying = false;
+                                                  String playingPostId;
 
-                                                if(_playingPostId != postId){
-                                                  activityManager.playRecording(postAudioUrl);
-                                                  isPlaying = true;
-                                                  playingPostId = postId;
-                                                }
-                                                setState(() {
-                                                  _isPlaying = isPlaying;
-                                                  _playingPostId = playingPostId;
-                                                });
-                                              } else {
-                                                if (postAudioUrl != null && postAudioUrl != 'null') {
-                                                  activityManager.playRecording(
-                                                      postAudioUrl);
+                                                  if(_playingPostId != postId){
+                                                    activityManager.playRecording(postAudioUrl);
+                                                    isPlaying = true;
+                                                    playingPostId = postId;
+                                                  }
                                                   setState(() {
-                                                    _isPlaying = true;
-                                                    _playingPostId = postId;
+                                                    _isPlaying = isPlaying;
+                                                    _playingPostId = playingPostId;
                                                   });
+                                                } else {
+                                                  if (postAudioUrl != null && postAudioUrl != 'null') {
+                                                    activityManager.playRecording(
+                                                        postAudioUrl);
+                                                    setState(() {
+                                                      _isPlaying = true;
+                                                      _playingPostId = postId;
+                                                    });
+                                                  }
                                                 }
-                                              }
-                                            },
+                                              },
+                                            ),
                                           ),
                                         ),
                                         Divider(height: 5.0),

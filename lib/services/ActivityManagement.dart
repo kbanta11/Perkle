@@ -76,6 +76,8 @@ class ActivityManager {
           'dateString': postData['dateString'],
           'audioFileLocation': fileUrlString,
           'listenCount': 0,
+          'secondsLength': postData['secondsLength'],
+          'streamList': postData['streamList'],
           'timelines': userTimelines.keys.toList(),
         }).then((doc) async {
           print('adding post to user');
@@ -91,7 +93,7 @@ class ActivityManager {
     }
   }
 
-  Future<String> startRecordNewPost() async {
+  Future<List<dynamic>> startRecordNewPost() async {
     try {
       if(recordingSubscription == null) {
         final appDataDir = await getApplicationDocumentsDirectory();
@@ -100,12 +102,13 @@ class ActivityManager {
        // String length
         String newPostPath = await soundManager.startRecorder('$localPath/tempAudio', androidEncoder: AndroidEncoder.AMR_WB);
         print('starting Recorded at: $newPostPath');
+        DateTime startRecordDateTime = DateTime.now();
         recordingSubscription = soundManager.onRecorderStateChanged.listen((e) {
           String date = DateFormat('hh:mm:ss:SS', 'en_US').format(
               DateTime.fromMillisecondsSinceEpoch(e.currentPosition.toInt()));
           print(date);
         });
-        return newPostPath;
+        return [newPostPath, startRecordDateTime];
       }
       return null;
     } catch (e) {
@@ -114,16 +117,22 @@ class ActivityManager {
     }
   }
 
-  Future<String> stopRecordNewPost(String postPath) async {
+  Future<List<dynamic>> stopRecordNewPost(String postPath, DateTime startDateTime) async {
     try {
       String result = await soundManager.stopRecorder();
       print('recorder stopped: $result');
 
+      DateTime endRecordDateTime = DateTime.now();
+      Duration recordingTime = endRecordDateTime.difference(startDateTime);
+
+      int secondsLength = recordingTime.inSeconds;
+      print('$startDateTime - $endRecordDateTime');
+      print(secondsLength);
       if(recordingSubscription != null) {
         recordingSubscription.cancel();
         recordingSubscription = null;
       }
-      return postPath;
+      return [postPath, secondsLength];
     } catch (e) {
       print('error stopping recorder: $e');
     }
@@ -289,8 +298,18 @@ class ActivityManager {
   }
 }
 
+List<String> processTagString(String postTags) {
+  if(postTags != null) {
+    String strippedSpaces = postTags.replaceAll(new RegExp(r' '), '');
+    List<String> tagList = strippedSpaces.split("#");
+    tagList.removeWhere((item) => item == '');
+    return tagList;
+  }
+  return null;
+}
+
 // Add Post dialog
-Future<void> addPostDialog(BuildContext context, DateTime date, String recordingLocation) async {
+Future<void> addPostDialog(BuildContext context, DateTime date, String recordingLocation, int secondsLength) async {
   showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -299,6 +318,7 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
         print(dateString);
         String _postDescription;
         String _postTitle;
+        String _postTags;
 
         return SimpleDialog(
             contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
@@ -334,6 +354,22 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                   },
                 ),
               ),
+              SizedBox(height: 20.0),
+              Text('Stream Tags (separated by \'#\')'),
+              Container(
+                width: 700.0,
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: '#TagYourTopics',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.multiline,
+                  maxLines: 5,
+                  onChanged: (value) {
+                    _postTags = value;
+                  },
+                ),
+              ),
               /*
               Placeholder for adding field for capturing streams/tags for the post as well as public/private
                */
@@ -351,12 +387,35 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                       child: Text('Add Post'),
                       textColor: Colors.deepPurple,
                       onPressed: () async {
+                        int numTags = '#'.allMatches(_postTags).length;
+                        if(numTags > 15){
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('Too Many Stream Tags!'),
+                                content: const Text('The limit for the number of stream tags on a post is 15.'),
+                                actions: <Widget>[
+                                  FlatButton(
+                                    child: Text('Ok'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        } else {
+                          List<String> tagList = processTagString(_postTags);
                           print({"postTitle": _postTitle,
                             "postValue": _postDescription,
                             "localRecordingLocation": recordingLocation,
                             "date": date,
                             "dateString": dateString,
                             "listens": 0,
+                            "secondsLength": secondsLength,
+                            "streamList": tagList,
                           });
                           ActivityManager().addPost(context, {"postTitle": _postTitle,
                             "postValue": _postDescription,
@@ -364,7 +423,10 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                             "date": date,
                             "dateString": dateString,
                             "listens": 0,
+                            "secondsLength": secondsLength,
+                            "streamList": tagList,
                           });
+                        }
                         }
                   )
                 ],
