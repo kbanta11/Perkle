@@ -14,6 +14,14 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
+  DocumentReference userDoc;
+
+  @override
+  void initState() {
+    userDoc = await UserManagement().getUserData();
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,7 +72,7 @@ class _SearchPageState extends State<SearchPage> {
                             icon: Icon(Icons.person_add),
                             color: Colors.deepPurple,
                             onPressed: () {
-                              print('adding ${document['username']} as friend');
+                              print('now following ${document['username']}');
                             }
                           ),
                           onTap: () {
