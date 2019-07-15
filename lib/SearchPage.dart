@@ -18,7 +18,6 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   void initState() {
-    userDoc = await UserManagement().getUserData();
     super.initState();
   }
 
@@ -51,45 +50,62 @@ class _SearchPageState extends State<SearchPage> {
         ]
       ), //AppBar
       body: Container(
-        child: StreamBuilder<QuerySnapshot>(
-          stream: Firestore.instance.collection('users').snapshots(),
-          builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-            if(snapshot.hasError){
-              return Text('Error: ${snapshot.error}');
-            }
-            switch (snapshot.connectionState) {
-              case ConnectionState.waiting:
-                return Text('Loading Users...');
-              default:
-                return ListView(
-                  children: snapshot.data.documents.map((document) {
-                    return Column(
-                      children: <Widget>[
-                        ListTile(
-                          leading: CircleAvatar(),
-                          title: Text(document['username']),
-                          trailing: IconButton(
-                            icon: Icon(Icons.person_add),
-                            color: Colors.deepPurple,
-                            onPressed: () {
-                              print('now following ${document['username']}');
-                            }
-                          ),
-                          onTap: () {
-                            print('go to user profile: ${document['uid']}');
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (context) => ProfilePage(userId: document['uid']),
-                            ));
-                          }
-                        ),
-                        Divider(height: 5.0),
-                      ]
-                    );
-                  }).toList(),
-                );
-            }
+        child: FutureBuilder<List<dynamic>>(
+          future: UserManagement().getUserData().then((DocumentReference ref) {
+            return ref.get().then((DocumentSnapshot snapshot) {
+              return [snapshot.reference.documentID.toString(), snapshot];
+            });
+          }),
+          builder: (BuildContext context, AsyncSnapshot<List<dynamic>> snapshot) {
+            String userId = snapshot.data[0];
+            DocumentSnapshot userDataSnap = snapshot.data[1];
+            Map<dynamic, dynamic> followingList = userDataSnap.data['following'];
+            return StreamBuilder<QuerySnapshot>(
+                stream: Firestore.instance.collection('users').snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<QuerySnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+                  switch (snapshot.connectionState) {
+                    case ConnectionState.waiting:
+                      return Text('Loading Users...');
+                    default:
+                      return ListView(
+                        children: snapshot.data.documents.map((document) {
+                          return Column(
+                              children: <Widget>[
+                                ListTile(
+                                    leading: CircleAvatar(),
+                                    title: Text(document['username']),
+                                    trailing: IconButton(
+                                        icon: Icon(Icons.person_add),
+                                        color: Colors.deepPurple,
+                                        onPressed: () {
+                                          print(
+                                              'now following ${document['username']}');
+                                        }
+                                    ),
+                                    onTap: () {
+                                      print(
+                                          'go to user profile: ${document['uid']}');
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (context) =>
+                                            ProfilePage(
+                                                userId: document['uid']),
+                                      ));
+                                    }
+                                ),
+                                Divider(height: 5.0),
+                              ]
+                          );
+                        }).toList(),
+                      );
+                  }
+                }
+            );
           }
-        ),
+        )
       ),
     );
   }
