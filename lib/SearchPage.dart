@@ -50,62 +50,82 @@ class _SearchPageState extends State<SearchPage> {
         ]
       ), //AppBar
       body: Container(
-        child: FutureBuilder<List<dynamic>>(
-          future: UserManagement().getUserData().then((DocumentReference ref) {
-            return ref.get().then((DocumentSnapshot snapshot) {
-              return [snapshot.reference.documentID.toString(), snapshot];
-            });
-          }),
-          builder: (BuildContext context, AsyncSnapshot<List<dynamic>> snapshot) {
-            String userId = snapshot.data[0];
-            DocumentSnapshot userDataSnap = snapshot.data[1];
-            Map<dynamic, dynamic> followingList = userDataSnap.data['following'];
-            return StreamBuilder<QuerySnapshot>(
-                stream: Firestore.instance.collection('users').snapshots(),
-                builder: (BuildContext context,
-                    AsyncSnapshot<QuerySnapshot> snapshot) {
-                  if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  }
-                  switch (snapshot.connectionState) {
-                    case ConnectionState.waiting:
-                      return Text('Loading Users...');
-                    default:
-                      return ListView(
-                        children: snapshot.data.documents.map((document) {
-                          return Column(
-                              children: <Widget>[
-                                ListTile(
-                                    leading: CircleAvatar(),
-                                    title: Text(document['username']),
-                                    trailing: IconButton(
-                                        icon: Icon(Icons.person_add),
-                                        color: Colors.deepPurple,
-                                        onPressed: () {
+        child: FutureBuilder(
+          future: UserManagement().getUserData(),
+          builder: (BuildContext context, AsyncSnapshot<DocumentReference> snapshot) {
+            return StreamBuilder(
+                stream: snapshot.data.snapshots(),
+                builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+              if(snapshot.hasData){
+                String userId = snapshot.data.reference.documentID;
+                Map<dynamic, dynamic> followingList = snapshot.data.data['following'];
+                return StreamBuilder<QuerySnapshot>(
+                    stream: Firestore.instance.collection('users').snapshots(),
+                    builder: (BuildContext context,
+                        AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      }
+                      switch (snapshot.connectionState) {
+                        case ConnectionState.waiting:
+                          return Text('Loading Users...');
+                        default:
+                          return ListView(
+                            children: snapshot.data.documents.map((document) {
+                              String thisUserId = document.reference.documentID;
+                              bool showAdd = true;
+                              if(userId == thisUserId || followingList.containsKey(thisUserId))
+                                showAdd = false;
+
+                              Widget followButton = IconButton(
+                                  icon: Icon(Icons.person_add),
+                                  color: Colors.deepPurple,
+                                  onPressed: () {
+                                    ActivityManager().followUser(document.reference.documentID);
+                                    print('now following ${document['username']}');
+                                  }
+                              );
+                              return Column(
+                                  children: <Widget>[
+                                    ListTile(
+                                        leading: CircleAvatar(),
+                                        title: Text(document['username']),
+                                        trailing: showAdd ? followButton : null,
+                                        onTap: () {
                                           print(
-                                              'now following ${document['username']}');
+                                              'go to user profile: ${document['uid']}');
+                                          Navigator.push(context, MaterialPageRoute(
+                                            builder: (context) =>
+                                                ProfilePage(
+                                                    userId: document['uid']),
+                                          ));
                                         }
                                     ),
-                                    onTap: () {
-                                      print(
-                                          'go to user profile: ${document['uid']}');
-                                      Navigator.push(context, MaterialPageRoute(
-                                        builder: (context) =>
-                                            ProfilePage(
-                                                userId: document['uid']),
-                                      ));
-                                    }
-                                ),
-                                Divider(height: 5.0),
-                              ]
+                                    Divider(height: 5.0),
+                                  ]
+                              );
+                            }).toList(),
                           );
-                        }).toList(),
-                      );
-                  }
-                }
+                      }
+                    }
+                );
+              } else {
+                return Stack(
+                  children: <Widget>[
+                    Opacity(
+                      opacity: 0.3,
+                      child: ModalBarrier(dismissible: false, color: Colors.grey),
+                    ),
+                    Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ],
+                );
+              }
+            }
             );
           }
-        )
+        ),
       ),
     );
   }
