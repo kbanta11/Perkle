@@ -93,6 +93,119 @@ class ActivityManager {
     }
   }
 
+  Future<void> sendDirectPostDialog(String recipientUserId, String recipientUsername, BuildContext context) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        print('Sending to $recipientUserId');
+        return DirectMessageDialog(recipientUserId: recipientUserId, recipientUsername: recipientUsername);
+      }
+    );
+  }
+
+  Future<void> sendDirectPost(String recipientUserId, String messageTitle, String audioPath, int secondsLength) async {
+    if(isLoggedIn()) {
+        WriteBatch batch = Firestore.instance.batch();
+
+        //Create document for new post
+        DocumentReference directPostRef = Firestore.instance.collection('/directposts').document();
+        String directPostDocId = directPostRef.documentID;
+
+        //Get posting user id and username
+        DocumentReference currentUserDoc = await UserManagement().getUserData();
+        String currentUserUID = currentUserDoc.documentID;
+        String currentUsername = await currentUserDoc.get().then((DocumentSnapshot snapshot) async {
+          return snapshot.data['username'].toString();
+        });
+
+        //Get recipient user doc
+        DocumentReference recipientDocRef = Firestore.instance.collection('/users').document(recipientUserId);
+        print('Recipient User Doc: $recipientDocRef');
+        String recipientUsername = await recipientDocRef.get().then((DocumentSnapshot snapshot) {
+          return snapshot.data['username'].toString();
+        });
+
+        //Get audio file
+        File audioFile = File(audioPath);
+        DateTime date = DateTime.now();
+        String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(date).toString();
+        //Upload audio file
+        final StorageReference storageRef = FirebaseStorage.instance.ref().child(currentUserUID).child('direct-posts').child(dateString);
+        final StorageUploadTask uploadTask = storageRef.putFile(audioFile);
+        String fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+        String fileUrlString = fileUrl.toString();
+
+        //Check if conversation exists
+        bool conversationExists = false;
+        String conversationId;
+        Map<String, dynamic> conversationMap = await currentUserDoc.get().then((DocumentSnapshot snapshot) {
+          return snapshot.data['directConversationMap'] == null ? null : Map<String, dynamic>.from(snapshot.data['directConversationMap']);
+        });
+        if(conversationMap != null){
+          conversationExists = conversationMap.containsKey(recipientUserId);
+          if(conversationExists)
+            conversationId = conversationMap[recipientUserId]['conversationId'];
+        }
+
+        if(conversationExists) {
+          DocumentReference conversationRef = Firestore.instance.collection('/conversations').document(conversationId);
+          Map<String, dynamic> postMap = await conversationRef.get().then((DocumentSnapshot snapshot) {
+            return Map<String, dynamic>.from(snapshot.data['postMap']);
+          });
+
+          postMap.addAll({directPostDocId: currentUserUID});
+          batch.updateData(conversationRef, {'postMap': postMap});
+        } else {
+          //Create new conversation document and update data
+          DocumentReference newConversationRef = Firestore.instance.collection('/conversations').document();
+          conversationId = newConversationRef.documentID;
+          Map<String, dynamic> conversationMembers = {currentUserUID: currentUsername, recipientUserId:  recipientUsername};
+          Map<String, dynamic> postMap = {directPostDocId: currentUserUID};
+          batch.setData(newConversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap});
+
+          //Add a new conversation to the sending user doc conversationMap - store number of unread posts and other user name
+          Map<String, dynamic> senderConversationMap = await currentUserDoc.get().then((DocumentSnapshot snapshot) {
+            return snapshot.data['directConversationMap'] == null ? null : Map<String, dynamic>.from(snapshot.data['directConversationMap']);
+          });
+
+          Map<String, dynamic> sendConvoData = {'conversationId': conversationId, 'targetUsername': recipientUsername, 'unreadPosts': 0};
+
+          if(senderConversationMap != null)
+            senderConversationMap.addAll({recipientUserId: sendConvoData});
+          else
+            senderConversationMap = {recipientUserId: sendConvoData};
+
+          batch.updateData(currentUserDoc, {'directConversationMap': senderConversationMap});
+
+          //Add a new conversation to the recieving user doc conversationMap - store number of unread posts and other user name
+          Map<String, dynamic> recipientConversationMap = await recipientDocRef.get().then((DocumentSnapshot snapshot) {
+            return snapshot.data['directConversationMap'] == null ? null : Map<String, dynamic>.from(snapshot.data['directConversationMap']);
+          });
+
+          Map<String, dynamic> recConvoData = {'conversationId': conversationId, 'targetUsername': currentUsername, 'unreadPosts': 1};
+
+          if(recipientConversationMap != null)
+            recipientConversationMap.addAll({currentUserUID: recConvoData});
+          else
+            recipientConversationMap = {currentUserUID: recConvoData};
+
+          batch.updateData(recipientDocRef, {'directConversationMap': recipientConversationMap});
+        }
+
+        //Add data to new direct post document (message title, file url, length, date, sender, recipient, conversationId)
+        Map<String, dynamic> newPostData = {'senderUID': currentUserUID, 'senderUsername': currentUsername,
+          'recipientUID': recipientUserId, 'recipientUsername': recipientUsername, 'messageTitle': messageTitle,
+          'secondsLength': secondsLength, 'audioFileLocation': fileUrlString, 'conversationId': conversationId,
+          'datePosted': date
+        };
+
+        batch.setData(directPostRef, newPostData);
+
+        batch.commit();
+    }
+    print('Sending $messageTitle to $recipientUserId with file $audioPath that is $secondsLength seconds long');
+  }
+
   Future<List<dynamic>> startRecordNewPost() async {
     try {
       if(recordingSubscription == null) {
@@ -435,4 +548,104 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
         );
       }
   );
+}
+
+class DirectMessageDialog extends StatefulWidget {
+  final String recipientUserId;
+  final String recipientUsername;
+
+  DirectMessageDialog({Key key, @required this.recipientUserId, this.recipientUsername}) : super(key: key);
+
+  @override
+  _DirectMessageDialogState createState() => _DirectMessageDialogState();
+}
+
+class _DirectMessageDialogState extends State<DirectMessageDialog> {
+  String _messageTitle;
+  bool _isRecording = false;
+  String _postAudioPath;
+  DateTime _startRecordDate;
+  int _secondsLength;
+  ActivityManager activityManager = new ActivityManager();
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
+      title: Center(child: Text('Direct Messaging ${widget.recipientUsername}',
+          style: TextStyle(color: Colors.deepPurple),
+        textAlign: TextAlign.center,
+      )),
+      children: <Widget>[
+        Text('Message Title', style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)),
+        Container(
+            width: 700.0,
+            child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Message Title (Optional)',
+                ),
+                onChanged: (value) {
+                  _messageTitle = value;
+                }
+            )
+        ),
+        SizedBox(height: 20.0),
+        FloatingActionButton(
+            backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
+            child: Icon(Icons.mic),
+            heroTag: null,
+            onPressed: () async {
+              if(_isRecording) {
+                List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+                String recordingLocation = stopRecordVals[0];
+                int secondsLength = stopRecordVals[1];
+
+                print('$recordingLocation -/- Length: $secondsLength');
+                setState(() {
+                  _isRecording = !_isRecording;
+                  _secondsLength = secondsLength;
+                });
+                print('getting date');
+                DateTime date = new DateTime.now();
+                print('date before dialog: $date');
+                //await addPostDialog(context, date, recordingLocation, secondsLength);
+              } else {
+                List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
+                String postPath = startRecordVals[0];
+                DateTime startDate = startRecordVals[1];
+                setState(() {
+                  _isRecording = !_isRecording;
+                  _postAudioPath = postPath;
+                  _startRecordDate = startDate;
+                });
+              }
+            }
+        ),
+        SizedBox(height: 10.0),
+        Center(
+          child: _postAudioPath == null ? Text('Audio Recording Missing',
+            style: TextStyle(color: Colors.red),
+          ) : null,
+        ),
+        SizedBox(height: 10.0),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            FlatButton(
+              child: Text('Cancel'),
+            ),
+            FlatButton(
+              child: Text('Send'),
+              onPressed: () async {
+                if(_postAudioPath != null && _secondsLength != null){
+                  await activityManager.sendDirectPost(widget.recipientUserId, _messageTitle, _postAudioPath, _secondsLength);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ]
+        ),
+      ],
+    );
+  }
 }

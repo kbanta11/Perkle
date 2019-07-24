@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'PageComponents.dart';
 import 'ProfilePage.dart';
+import 'ListPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -23,6 +24,11 @@ class _HomePageState extends State<HomePage> {
     if(index == 3) {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) => ProfilePage(userId: uid),
+      ));
+    }
+    if(index == 2) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => ListPage(type: 'conversation'),
       ));
     }
     setState(() {
@@ -120,30 +126,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
 
-      bottomNavigationBar: BottomNavigationBar(
-        items: <BottomNavigationBarItem> [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            title: Text('Home'),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.playlist_play),
-            title: Text('Playlists'),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            title: Text('Groups'),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            title: Text('Profile'),
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        fixedColor: Colors.deepPurple,
-        type: BottomNavigationBarType.fixed,
-      ),
+      bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
     );
   }
 }

@@ -7,6 +7,7 @@ import 'services/ActivityManagement.dart';
 
 import 'PageComponents.dart';
 import 'HomePage.dart';
+import 'ListPage.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
@@ -25,6 +26,11 @@ class _ProfilePageState extends State<ProfilePage> {
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) => HomePage(),
+      ));
+    }
+    if(index == 2) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => ListPage(type: 'conversation'),
       ));
     }
     setState(() {
@@ -95,30 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
 
-        bottomNavigationBar: BottomNavigationBar(
-          items: <BottomNavigationBarItem> [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              title: Text('Home'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.playlist_play),
-              title: Text('Playlists'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.group),
-              title: Text('Groups'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_circle),
-              title: Text('Profile'),
-            ),
-          ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          fixedColor: Colors.deepPurple,
-          type: BottomNavigationBarType.fixed,
-        ),
+        bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
       );
   }
 }

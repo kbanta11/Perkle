@@ -392,3 +392,12 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
     );
   }
 }
+
+class ConversationListObject {
+  String targetUid;
+  String targetUsername;
+  String conversationId;
+  int unreadPosts;
+
+  ConversationListObject(String this.targetUid, String this.targetUsername, String this.conversationId, int this.unreadPosts);
+}

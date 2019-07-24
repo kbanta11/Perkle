@@ -42,7 +42,19 @@ class _UserInfoSectionState extends State<UserInfoSection> {
       initialData: false,
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
         if(!snapshot.data)
-          return Container();
+          return Center(
+            child: FloatingActionButton(
+              backgroundColor: Colors.deepPurple,
+              child: Icon(Icons.mail_outline),
+              heroTag: null,
+              onPressed: () async {
+                await Firestore.instance.collection('users').document(widget.userId).get().then((DocumentSnapshot snapshot) async {
+                  String username = snapshot.data['username'].toString();
+                  await activityManager.sendDirectPostDialog(widget.userId, username, context);
+                });
+              },
+            )
+          );
         return Row(
             children: <Widget> [
               FloatingActionButton(
@@ -481,4 +493,33 @@ class _TimelineSectionState extends State<TimelineSection> {
         ),
     );
   }
+}
+
+
+//Bottom Navigation Bar
+Widget bottomNavBar(Function tapFunc, int selectedIndex) {
+  return BottomNavigationBar(
+    items: <BottomNavigationBarItem> [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.home),
+        title: Text('Home'),
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.surround_sound),
+        title: Text('Discover'),
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.mail_outline),
+        title: Text('Messages'),
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.account_circle),
+        title: Text('Profile'),
+      ),
+    ],
+    currentIndex: selectedIndex,
+    onTap: tapFunc,
+    fixedColor: Colors.deepPurple,
+    type: BottomNavigationBarType.fixed,
+  );
 }
