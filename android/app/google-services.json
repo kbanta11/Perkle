@@ -10,7 +10,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:713143327472:android:6f04ac22fd9ce928",
         "android_client_info": {
-          "package_name": "com.test.flutter_blog_app"
+          "package_name": "com.test.perklapp"
         }
       },
       "oauth_client": [
@@ -18,7 +18,7 @@
           "client_id": "713143327472-6dnckfphu0jmsqj8jbaij08htmoma52b.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.test.flutter_blog_app",
+            "package_name": "com.test.perklapp",
             "certificate_hash": "d7e78943e6535a6bd89460f17437432c2445d9ac"
           }
         },
