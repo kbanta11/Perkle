@@ -18,68 +18,83 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context){
     return new Scaffold (
-      body: Center(
-        child: Container(
-          padding: EdgeInsets.all(25.0),
-          child: SingleChildScrollView(
-              child:Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Image.asset('assets/images/logo.png'),
-                  TextField(
-                      decoration: InputDecoration(hintText: 'Email'),
-                      onChanged: (value) {
-                        setState((){
-                          _email = value;
-                        });
-                      }
-                  ),
-                  SizedBox(height: 15.0),
-                  TextField(
-                    decoration: InputDecoration(hintText: 'Password'),
-                    onChanged: (value) {
-                      setState((){
-                        _password = value;
-                      });
-                    },
-                    obscureText: true,
-                  ),
-                  SizedBox(height: 20.0),
-                  RaisedButton(
-                    child: Text('Login'),
-                    color: Colors.deepPurple,
-                    textColor: Colors.white,
-                    elevation: 7.0,
-                    onPressed: () {
-                      FirebaseAuth.instance.signInWithEmailAndPassword(
-                          email: _email,
-                          password: _password
-                      ).then((FirebaseUser user) {
-                        Navigator.of(context).pushReplacementNamed('/homepage');
-                      })
-                          .catchError((e) {
-                        print(e);
-                      });
-                    },
-                  ),
-                  SizedBox(height: 10.0),
-                  _GoogleSignInSection(),
-                  Text('Don\'t have an account?'),
-                  SizedBox(height: 10.0),
-                  RaisedButton(
-                    child: Text('Sign Up'),
-                    color: Colors.deepPurple,
-                    textColor: Colors.white,
-                    elevation: 7.0,
-                    onPressed: (){
-                      Navigator.of(context).pushNamed('/signup');
-                    },
-                  ),
-                ],
-              )
-          )
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+            fit: BoxFit.cover,
+          ),
         ),
-      )
+        child:       Center(
+          child: Container(
+              padding: EdgeInsets.all(25.0),
+              child: SingleChildScrollView(
+                  child:Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Image.asset('assets/images/logo.png'),
+                      SizedBox(height: 50.0),
+                      TextField(
+                          decoration: InputDecoration(hintText: 'Email Address'),
+                          onChanged: (value) {
+                            setState((){
+                              _email = value;
+                            });
+                          }
+                      ),
+                      SizedBox(height: 15.0),
+                      TextField(
+                        decoration: InputDecoration(hintText: 'Password'),
+                        onChanged: (value) {
+                          setState((){
+                            _password = value;
+                          });
+                        },
+                        obscureText: true,
+                      ),
+                      SizedBox(height: 20.0),
+                      RaisedButton(
+                        child: Text('Login'),
+                        color: Colors.deepPurple,
+                        textColor: Colors.white,
+                        elevation: 7.0,
+                        onPressed: () {
+                          FirebaseAuth.instance.signInWithEmailAndPassword(
+                              email: _email,
+                              password: _password
+                          ).then((AuthResult authResult) {
+                            Navigator.of(context).pushReplacementNamed('/homepage');
+                          })
+                              .catchError((e) {
+                            print(e);
+                          });
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: new BorderRadius.circular(25.0),
+                        ),
+                      ),
+                      _GoogleSignInSection(),
+                      SizedBox(height: 100.0),
+                      Text('Don\'t have an account?'),
+                      SizedBox(height: 10.0),
+                      RaisedButton(
+                        child: Text('Sign Up'),
+                        color: Colors.deepPurple,
+                        textColor: Colors.white,
+                        elevation: 7.0,
+                        onPressed: (){
+                          Navigator.of(context).pushNamed('/signup');
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: new BorderRadius.circular(25.0),
+                        ),
+                      ),
+                    ],
+                  )
+              )
+          ),
+        )
+      ),
     );
   }
 }
@@ -101,12 +116,35 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           alignment: Alignment.center,
           child: RaisedButton(
-            color: Colors.deepPurple,
-            textColor: Colors.white,
+            color: Colors.white,
+            textColor: Colors.deepPurple,
             onPressed: () async {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return Container(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+              );
               _signInWithGoogle();
             },
-            child: const Text('Sign in with Google'),
+            child: Container(
+              width: 200.0,
+              child: Center(
+                child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Image.asset("assets/images/drawable-xxxhdpi/google-logo.png", height: 45.0, width: 45.0),
+                      Text('Sign in with Google'),
+                    ]
+                ),
+              ),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: new BorderRadius.circular(25.0),
+            ),
           ),
         ),
       ],
@@ -124,7 +162,8 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
-    final FirebaseUser user = await FirebaseAuth.instance.signInWithCredential(credential);
+    final AuthResult authResult = await FirebaseAuth.instance.signInWithCredential(credential);
+    final FirebaseUser user = authResult.user;
     assert(user.email != null);
     assert(user.displayName != null);
     assert(!user.isAnonymous);

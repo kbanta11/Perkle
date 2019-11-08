@@ -26,14 +26,20 @@ class ActivityManager {
 
   addPost(BuildContext context, Map<String, dynamic> postData) async {
     if (isLoggedIn()) {
-
+      print('Starting post add');
       await Firestore.instance.runTransaction((Transaction transaction) async {
+        print('awaiting post add...');
         DocumentReference ref = Firestore.instance.collection('/posts').document();
         print('Doc Ref add post: $ref');
         String docId = ref.documentID;
         print(docId);
         String userId = await FirebaseAuth.instance.currentUser().then((user) {
           return user.uid;
+        });
+        String username = await UserManagement().getUserData().then((DocumentReference ref) async {
+          return await ref.get().then((DocumentSnapshot snapshot) {
+            return snapshot.data['username'];
+          });
         });
         print(userId);
         DateTime date = postData['date'];
@@ -70,6 +76,7 @@ class ActivityManager {
 
         await transaction.set(ref, {
           'userUID':  userId,
+          'username': username,
           'postTitle': postData['postTitle'],
           'postValue': postData['postValue'],
           'datePosted': postData['date'],
@@ -88,6 +95,7 @@ class ActivityManager {
           print(e);
         });
       });
+      print('add finished');
     } else {
       Navigator.of(context).pushReplacementNamed('/landingpage');
     }
@@ -211,9 +219,11 @@ class ActivityManager {
       if(recordingSubscription == null) {
         final appDataDir = await getApplicationDocumentsDirectory();
         String localPath = appDataDir.path;
-        print('Local Path: $localPath');
+        String extension = Platform.isIOS ? '.m4a' : '.mp4';
+        String filePath = '$localPath/tempAudio$extension';
+        print('File Path: $filePath');
        // String length
-        String newPostPath = await soundManager.startRecorder('$localPath/tempAudio', androidEncoder: AndroidEncoder.AMR_WB);
+        String newPostPath = await soundManager.startRecorder('tempAudio$extension', androidEncoder: Platform.isIOS ? null : AndroidEncoder.AMR_WB);
         print('starting Recorded at: $newPostPath');
         DateTime startRecordDateTime = DateTime.now();
         recordingSubscription = soundManager.onRecorderStateChanged.listen((e) {
@@ -500,14 +510,22 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                       child: Text('Add Post'),
                       textColor: Colors.deepPurple,
                       onPressed: () async {
-                        int numTags = '#'.allMatches(_postTags).length;
-                        if(numTags > 15){
+                        String postError;
+                        String postErrorTitle;
+                        if(_postTags != null){
+                          int numTags = '#'.allMatches(_postTags).length;
+                          if(numTags > 15) {
+                            postError = 'The limit for the number of stream tags on a post is 15.';
+                            postErrorTitle = 'Too Many Stream Tags!';
+                          }
+                        }
+                        if(postError != null){
                           showDialog(
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                title: Text('Too Many Stream Tags!'),
-                                content: const Text('The limit for the number of stream tags on a post is 15.'),
+                                title: Text(postErrorTitle),
+                                content: Text(postError),
                                 actions: <Widget>[
                                   FlatButton(
                                     child: Text('Ok'),
@@ -529,8 +547,9 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                             "listens": 0,
                             "secondsLength": secondsLength,
                             "streamList": tagList,
+                            "test": "tester",
                           });
-                          ActivityManager().addPost(context, {"postTitle": _postTitle,
+                          await ActivityManager().addPost(context, {"postTitle": _postTitle,
                             "postValue": _postDescription,
                             "localRecordingLocation": recordingLocation,
                             "date": date,
@@ -539,8 +558,9 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                             "secondsLength": secondsLength,
                             "streamList": tagList,
                           });
+                          print('Post added');
                         }
-                        }
+                      }
                   )
                 ],
               ),

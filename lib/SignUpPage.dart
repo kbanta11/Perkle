@@ -22,79 +22,90 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context){
     return new Scaffold (
         appBar: AppBar(),
-        body: Center(
-          child: Container(
-              padding: EdgeInsets.all(25.0),
-              child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Image.asset('assets/images/logo.png'),
-                      TextField(
-                          decoration: InputDecoration(
-                            hintText: 'Username',
-                            errorText: _validateUsernameError,
-                            errorMaxLines: 3,
-                          ),
-                          onChanged: (value) {
-                            setState((){
-                              _username = value;
-                              _validateUsernameError = validateUsername(_username);
-                            });
-                          }
-                      ),
-                      SizedBox(height: 10.0),
-                      TextField(
-                          decoration: InputDecoration(hintText: 'Email'),
-                          onChanged: (value) {
-                            setState((){
-                              _email = value;
-                            });
-                          }
-                      ),
-                      SizedBox(height: 15.0),
-                      TextField(
-                        decoration: InputDecoration(hintText: 'Password'),
-                        onChanged: (value) {
-                          setState((){
-                            _password = value;
-                          });
-                        },
-                        obscureText: true,
-                      ),
-                      SizedBox(height: 20.0),
-                      RaisedButton(
-                        child: Text('Sign Up'),
-                        color: Colors.deepPurple,
-                        textColor: Colors.white,
-                        elevation: 7.0,
-                        onPressed: () async {
-                          _usernameTaken = await UserManagement().usernameExists(_username);
-                          if(_username == null){
-                            missingUsername(context);
-                          } else if (_usernameTaken) {
-                            usernameInUse(context);
-                          } else if (_validateUsernameError != null) {
-                            usernameError(context);
-                          } else {
-                            FirebaseAuth.instance.createUserWithEmailAndPassword(
-                                email: _email,
-                                password: _password
-                            ).then((signedInUser) {
-                              UserManagement().storeNewUser(signedInUser, context, username: _username);
-                            }).catchError((e) {
-                              print(e);
-                            });
-                          }
-                        },
-                      ),
-                      SizedBox(height: 10.0),
-                      _GoogleSignUpSection()
-                    ],
-                  )
-              )
+        body: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+              fit: BoxFit.cover,
+            ),
           ),
-        )
+          child: Center(
+            child: Container(
+                padding: EdgeInsets.all(25.0),
+                child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Image.asset('assets/images/logo.png'),
+                        SizedBox(height: 50.0),
+                        TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Username',
+                              errorText: _validateUsernameError,
+                              errorMaxLines: 3,
+                            ),
+                            onChanged: (value) {
+                              setState((){
+                                _username = value;
+                                _validateUsernameError = validateUsername(_username);
+                              });
+                            }
+                        ),
+                        SizedBox(height: 10.0),
+                        TextField(
+                            decoration: InputDecoration(hintText: 'Email'),
+                            onChanged: (value) {
+                              setState((){
+                                _email = value;
+                              });
+                            }
+                        ),
+                        SizedBox(height: 15.0),
+                        TextField(
+                          decoration: InputDecoration(hintText: 'Password'),
+                          onChanged: (value) {
+                            setState((){
+                              _password = value;
+                            });
+                          },
+                          obscureText: true,
+                        ),
+                        SizedBox(height: 20.0),
+                        RaisedButton(
+                          child: Text('Sign Up'),
+                          color: Colors.deepPurple,
+                          textColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: new BorderRadius.circular(25.0),
+                          ),
+                          elevation: 7.0,
+                          onPressed: () async {
+                            _usernameTaken = await UserManagement().usernameExists(_username);
+                            if(_username == null){
+                              missingUsername(context);
+                            } else if (_usernameTaken) {
+                              usernameInUse(context);
+                            } else if (_validateUsernameError != null) {
+                              usernameError(context);
+                            } else {
+                              FirebaseAuth.instance.createUserWithEmailAndPassword(
+                                  email: _email,
+                                  password: _password
+                              ).then((signedInUser) {
+                                UserManagement().storeNewUser(signedInUser, context, username: _username);
+                              }).catchError((e) {
+                                print(e);
+                              });
+                            }
+                          },
+                        ),
+                        _GoogleSignUpSection()
+                      ],
+                    )
+                )
+            ),
+          ),
+        ),
     );
   }
 }
@@ -123,12 +134,27 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           alignment: Alignment.center,
           child: RaisedButton(
-            color: Colors.deepPurple,
-            textColor: Colors.white,
-            onPressed: () {
+            color: Colors.white,
+            textColor: Colors.deepPurple,
+            onPressed: () async {
               _signUpWithGoogle();
             },
-            child: const Text('Sign Up with Google'),
+            child: Container(
+              width: 200.0,
+              child: Center(
+                child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Image.asset("assets/images/drawable-xxxhdpi/google-logo.png", height: 45.0, width: 45.0),
+                      Text('Sign in with Google'),
+                    ]
+                ),
+              ),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: new BorderRadius.circular(25.0),
+            ),
           ),
         ),
       ],
@@ -145,8 +171,9 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
-    final FirebaseUser user = await FirebaseAuth.instance.signInWithCredential(
+    final AuthResult authResult = await FirebaseAuth.instance.signInWithCredential(
         credential);
+    final FirebaseUser user = authResult.user;
     assert(user.email != null);
     assert(user.displayName != null);
     assert(!user.isAnonymous);

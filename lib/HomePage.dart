@@ -65,16 +65,79 @@ class _HomePageState extends State<HomePage> {
 
     return new Scaffold(
       appBar: new AppBar(
-        title: new Text('Perkle'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.search),
-          onPressed: () {
-            Navigator.of(context).pushNamed('/searchpage');
-          },
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            FutureBuilder(
+                future: FirebaseAuth.instance.currentUser(),
+                builder: (context, snapshot) {
+                  if(snapshot.hasData){
+                    String _userId = snapshot.data.uid;
+                    return StreamBuilder(
+                        stream: Firestore.instance.collection('users').document(_userId).snapshots(),
+                        builder: (context, snapshot) {
+                          if(snapshot.hasData) {
+                            String profilePicUrl = snapshot.data['profilePicUrl'];
+                            if(profilePicUrl != null)
+                              return Container(
+                                height: 40.0,
+                                width: 40.0,
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    image: DecorationImage(
+                                      fit: BoxFit.cover,
+                                      image: NetworkImage(profilePicUrl.toString()),
+                                    )
+                                ),
+                              );
+                          }
+                          return Container(
+                            height: 40.0,
+                            width: 40.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              // image: DecorationImage()
+                            ),
+                          );
+                        }
+                    );
+                  }
+                  return Container(
+                    height: 40.0,
+                    width: 40.0,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      // image: DecorationImage()
+                    ),
+                  );
+                }
+            ),
+            IconButton(
+              icon: Icon(Icons.search),
+              iconSize: 40.0,
+              onPressed: () {
+                Navigator.of(context).pushNamed('/searchpage');
+              },
+            ),
+            Expanded(
+              child: Center(child: new Text('Perkle')),
+            ),
+          ]
         ),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        titleSpacing: 5.0,
         actions: <Widget>[
-          new FlatButton(
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Colors.white),
+            iconSize: 40.0,
+          ),
+          RecordButton(),
+          /*new FlatButton(
               child: Text('Logout'),
               textColor: Colors.white,
               onPressed: () {
@@ -85,8 +148,8 @@ class _HomePageState extends State<HomePage> {
                   print(e);
                 });
               }
-          ),
-        ]
+          ),*/
+        ],
       ),
       body: Container(
           child: new Padding(
@@ -94,6 +157,7 @@ class _HomePageState extends State<HomePage> {
             child: new Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
+                /*
                 FutureBuilder(
                     future: _getUID(),
                     builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
@@ -104,6 +168,7 @@ class _HomePageState extends State<HomePage> {
                 Divider(
                   height: 10.0
                 ),
+                */
                 Expanded(
                   child:  Container(
                     child: FutureBuilder(

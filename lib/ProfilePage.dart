@@ -54,41 +54,105 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
       return Scaffold(
         appBar: new AppBar(
-            title: FutureBuilder(
-              future: _getUsername(userId),
-              builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-                switch (snapshot.connectionState) {
-                  case ConnectionState.done:
-                    if(snapshot.hasError)
-                      return null;
-                    return Text(snapshot.data);
-                  default:
-                    return Text('Loading...');
-                }
-              }),
-            centerTitle: true,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back),
-              color: Colors.white,
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            actions: <Widget>[
-              FlatButton(
-                  child: Text('Logout'),
-                  textColor: Colors.white,
-                  onPressed: () {
-                    FirebaseAuth.instance.signOut().then((value) {
-                      Navigator.of(context).pushReplacementNamed('/landingpage');
-                    })
-                        .catchError((e) {
-                      print(e);
-                    });
+          title: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                FutureBuilder(
+                  future: FirebaseAuth.instance.currentUser(),
+                  builder: (context, snapshot) {
+                    if(snapshot.hasData){
+                      String _userId = snapshot.data.uid;
+                      return StreamBuilder(
+                          stream: Firestore.instance.collection('users').document(_userId).snapshots(),
+                          builder: (context, snapshot) {
+                            if(snapshot.hasData) {
+                              String profilePicUrl = snapshot.data['profilePicUrl'];
+                            if(profilePicUrl != null)
+                              return Container(
+                                height: 40.0,
+                                width: 40.0,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                  image: DecorationImage(
+                                    fit: BoxFit.cover,
+                                    image: NetworkImage(profilePicUrl.toString()),
+                                  )
+                                ),
+                              );
+                            }
+                            return Container(
+                            height: 40.0,
+                            width: 40.0,
+                            decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            // image: DecorationImage()
+                            ),
+                            );
+                          }
+                      );
+                    }
+                    return Container(
+                      height: 40.0,
+                      width: 40.0,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        // image: DecorationImage()
+                      ),
+                    );
                   }
-              ),
-            ]
-        ), //AppBar
+                ),
+                IconButton(
+                  icon: Icon(Icons.search),
+                  iconSize: 40.0,
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/searchpage');
+                  },
+                ),
+                Expanded(
+                  child: Center(
+                      child: FutureBuilder(
+                          future: _getUsername(userId),
+                          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+                            switch (snapshot.connectionState) {
+                              case ConnectionState.done:
+                                if(snapshot.hasError)
+                                  return null;
+                                return Text(snapshot.data);
+                              default:
+                                return Text('Loading...');
+                            }
+                          }),
+                  ),
+                ),
+              ]
+          ),
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+          titleSpacing: 5.0,
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.add_circle_outline, color: Colors.white),
+              iconSize: 40.0,
+            ),
+            RecordButton(),
+            /*new FlatButton(
+              child: Text('Logout'),
+              textColor: Colors.white,
+              onPressed: () {
+                FirebaseAuth.instance.signOut().then((value) {
+                  Navigator.of(context).pushReplacementNamed('/landingpage');
+                })
+                    .catchError((e) {
+                  print(e);
+                });
+              }
+          ),*/
+          ],
+        ),
         body: Container(
           child: Column(
             children: <Widget>[

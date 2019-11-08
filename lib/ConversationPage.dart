@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
 import 'services/UserManagement.dart';
@@ -47,34 +48,115 @@ class _ConversationPageState extends State<ConversationPage> {
     });
   }
 
+  Future<String> _getUsername(String uid) async {
+    return await Firestore.instance.collection('/users').document(uid).get().then((snapshot) async {
+      return snapshot.data['username'].toString();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     print('Conversation with ${widget.targetUID}');
     return Scaffold(
       appBar: new AppBar(
-          title: Text(widget.targetUsername),
-          centerTitle: true,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            color: Colors.white,
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          actions: <Widget>[
-            FlatButton(
-                child: Text('Logout'),
-                textColor: Colors.white,
+        title: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              FutureBuilder(
+                  future: FirebaseAuth.instance.currentUser(),
+                  builder: (context, snapshot) {
+                    if(snapshot.hasData){
+                      String _userId = snapshot.data.uid;
+                      return StreamBuilder(
+                          stream: Firestore.instance.collection('users').document(_userId).snapshots(),
+                          builder: (context, snapshot) {
+                            if(snapshot.hasData) {
+                              String profilePicUrl = snapshot.data['profilePicUrl'];
+                              if(profilePicUrl != null)
+                                return Container(
+                                  height: 40.0,
+                                  width: 40.0,
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                      image: DecorationImage(
+                                        fit: BoxFit.cover,
+                                        image: NetworkImage(profilePicUrl.toString()),
+                                      )
+                                  ),
+                                );
+                            }
+                            return Container(
+                              height: 40.0,
+                              width: 40.0,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                // image: DecorationImage()
+                              ),
+                            );
+                          }
+                      );
+                    }
+                    return Container(
+                      height: 40.0,
+                      width: 40.0,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        // image: DecorationImage()
+                      ),
+                    );
+                  }
+              ),
+              IconButton(
+                icon: Icon(Icons.search),
+                iconSize: 40.0,
                 onPressed: () {
-                  FirebaseAuth.instance.signOut().then((value) {
-                    Navigator.of(context).pushReplacementNamed('/landingpage');
-                  })
-                      .catchError((e) {
-                    print(e);
-                  });
-                }
-            ),
-          ]
+                  Navigator.of(context).pushNamed('/searchpage');
+                },
+              ),
+              Expanded(
+                child: Center(
+                  child: FutureBuilder(
+                      future: _getUsername(widget.targetUID),
+                      builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+                        switch (snapshot.connectionState) {
+                          case ConnectionState.done:
+                            if(snapshot.hasError)
+                              return null;
+                            return Text(snapshot.data);
+                          default:
+                            return Text('Loading...');
+                        }
+                      }),
+                ),
+              ),
+            ]
+        ),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        titleSpacing: 5.0,
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Colors.white),
+            iconSize: 40.0,
+          ),
+          RecordButton(),
+          /*new FlatButton(
+              child: Text('Logout'),
+              textColor: Colors.white,
+              onPressed: () {
+                FirebaseAuth.instance.signOut().then((value) {
+                  Navigator.of(context).pushReplacementNamed('/landingpage');
+                })
+                    .catchError((e) {
+                  print(e);
+                });
+              }
+          ),*/
+        ],
       ),
       body: Container(
         child: StreamBuilder(
@@ -127,14 +209,6 @@ class _ConversationPageState extends State<ConversationPage> {
                     )
                   );
 
-                  Widget messageText = Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        messageTitle != null ? Text(messageTitle) : Text(dateString),
-                        Text(sender),
-                      ]
-                  );
-
                   return Column(
                     children: <Widget>[
                       FutureBuilder(
@@ -145,13 +219,85 @@ class _ConversationPageState extends State<ConversationPage> {
                         }),
                         builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
                           if(snapshot.hasData) {
-                            return ListTile(
-                              leading: docSnap.data['senderUID'] == snapshot.data.reference.documentID
-                                  ? playButton
-                                  : messageText,
-                              trailing: docSnap.data['senderUID'] == snapshot.data.reference.documentID
-                                  ? messageText
-                                  : playButton,
+                            Widget messageText = Column(
+                                crossAxisAlignment: docSnap.data['senderUID'] == snapshot.data.reference.documentID ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  messageTitle != null ? Text(messageTitle) : Text(dateString),
+                                  Text('@$sender'),
+                                ]
+                            );
+                            if(docSnap.data['senderUID'] == snapshot.data.reference.documentID)
+                              return Padding(
+                                padding: EdgeInsets.fromLTRB(0.0, 5.0, 0.0, 5.0),
+                                child: ListTile(
+                                  leading: playButton,
+                                  title: messageText,
+                                  trailing: StreamBuilder(
+                                    stream: Firestore.instance.collection('users').document(docSnap.data['senderUID']).snapshots(),
+                                    builder: (context, snapshot) {
+                                      if(snapshot.hasData){
+                                        String profilePicUrl = snapshot.data['profilePicUrl'];
+                                        if(profilePicUrl != null)
+                                          return Container(
+                                              height: 50.0,
+                                              width: 50.0,
+                                              decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.deepPurple,
+                                                  image: DecorationImage(
+                                                      fit: BoxFit.cover,
+                                                      image: NetworkImage(profilePicUrl.toString())
+                                                  )
+                                              )
+                                          );
+                                      }
+                                      return Container(
+                                          height: 40.0,
+                                          width: 40.0,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.deepPurple,
+                                          )
+                                      );
+                                    }
+                                ),
+                                )
+                              );
+                            return Padding(
+                              padding: EdgeInsets.fromLTRB(0.0, 5.0, 0.0, 5.0),
+                              child: ListTile(
+                                leading: StreamBuilder(
+                                    stream: Firestore.instance.collection('users').document(docSnap.data['senderUID']).snapshots(),
+                                    builder: (context, snapshot) {
+                                      if(snapshot.hasData){
+                                        String profilePicUrl = snapshot.data['profilePicUrl'];
+                                        if(profilePicUrl != null)
+                                          return Container(
+                                              height: 50.0,
+                                              width: 50.0,
+                                              decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.deepPurple,
+                                                  image: DecorationImage(
+                                                      fit: BoxFit.cover,
+                                                      image: NetworkImage(profilePicUrl.toString())
+                                                  )
+                                              )
+                                          );
+                                      }
+                                      return Container(
+                                          height: 40.0,
+                                          width: 40.0,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.deepPurple,
+                                          )
+                                      );
+                                    }
+                                ),
+                                title: messageText,
+                                trailing: playButton,
+                              )
                             );
                           } else {
                             return Container();

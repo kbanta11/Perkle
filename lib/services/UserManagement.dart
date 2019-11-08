@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 class UserManagement {
   storeNewUser(user, context, {username}){
@@ -87,6 +91,8 @@ class UserManagement {
     print('getting user data document------------------');
     return Firestore.instance.collection('users').document(user.uid);
   }
+
+
 
   Future<bool> userAlreadyCreated () async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser().then((user) {
@@ -389,6 +395,229 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
           ],
         ),
       ],
+    );
+  }
+}
+
+class UploadProfilePic extends StatefulWidget {
+  final File picFile;
+  final String userId;
+
+  UploadProfilePic({Key key, this.picFile, this.userId}) : super(key: key);
+
+  @override
+  _UploadProfilePicState createState() => new _UploadProfilePicState();
+}
+
+class _UploadProfilePicState extends State<UploadProfilePic> {
+  static DateTime date = DateTime.now();
+  StorageUploadTask _uploadTask;
+  String fileUrl;
+  String fileUrlString;
+
+  _startUpload() async {
+
+    final StorageReference storageRef = FirebaseStorage.instance.ref().child(widget.userId).child('profile-pics').child('${date.toString()}-pic.jpg');
+
+    setState(() {
+      _uploadTask = storageRef.putFile(widget.picFile);
+    });
+  }
+
+  updateUserDoc(BuildContext context) async {
+    fileUrl = await (await _uploadTask.onComplete).ref.getDownloadURL();
+    fileUrlString = fileUrl.toString();
+
+    await UserManagement().updateUser(context, {'profilePicUrl': fileUrlString}).then((_) {
+      Navigator.pop(context);
+    });
+
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if(_uploadTask != null) {
+      return StreamBuilder<StorageTaskEvent>(
+        stream: _uploadTask.events,
+        builder: (context, snapshot) {
+          if(!snapshot.hasData)
+            return SizedBox(
+                width: double.infinity,
+                child: Padding(
+                  child: LinearProgressIndicator(value: 0),
+                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
+                )
+            );
+          var event = snapshot.data.snapshot;
+          if(_uploadTask.isComplete){
+            updateUserDoc(context);
+          }
+          double progressPercent = event != null ? event.bytesTransferred / event.totalByteCount : 0;
+          return SizedBox(
+            width: double.infinity,
+            child: Padding(
+              child: LinearProgressIndicator(value: progressPercent),
+              padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
+            )
+          );
+        }
+      );
+    }
+    return SizedBox(
+        width: double.infinity,
+        child: Padding(
+            child: FlatButton(
+                child: Text('Upload Photo'),
+                color: widget.picFile != null ? Colors.deepPurple : Colors.white10,
+                textColor: Colors.white,
+                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                onPressed: () async {
+                  if(widget.picFile != null)
+                    _startUpload();
+                }
+            ),
+            padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 10.0)
+        )
+    );
+  }
+}
+
+class ProfilePicDialog extends StatefulWidget {
+  final String userId;
+
+  ProfilePicDialog({Key key, this.userId}) : super(key: key);
+
+  @override
+  _ProfilePicDialogState createState() => new _ProfilePicDialogState();
+}
+
+class _ProfilePicDialogState extends State<ProfilePicDialog> {
+  File _profilePic;
+
+  Future<void> getImage(ImageSource source) async {
+    File image = await ImagePicker.pickImage(source: source);
+
+    setState(() {
+      _profilePic = image;
+    });
+  }
+
+  Future<void> cropImage() async {
+    File cropped = await ImageCropper.cropImage(
+      sourcePath: _profilePic.path,
+      cropStyle: CropStyle.circle,
+      aspectRatioPresets: [
+        CropAspectRatioPreset.square,
+      ],
+      androidUiSettings: AndroidUiSettings(
+        toolbarWidgetColor: Colors.white,
+        toolbarColor: Colors.deepPurple,
+        statusBarColor: Colors.deepPurple,
+        activeControlsWidgetColor: Colors.deepPurple,
+        activeWidgetColor: Colors.deepPurple,
+      ),
+    );
+
+    setState(() {
+      _profilePic = cropped ?? _profilePic;
+    });
+  }
+
+  Widget image() {
+    if (_profilePic != null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              height: 160,
+              width: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.deepPurpleAccent,
+                image: DecorationImage(
+                  fit: BoxFit.cover,
+                  image: FileImage(_profilePic),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.crop),
+              color: Colors.deepPurple,
+              onPressed: () {
+                cropImage();
+              },
+            ),
+          ]
+      );
+    }
+    return Container();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        backgroundColor: Colors.white30.withOpacity(0.75),
+        body: Container(
+          alignment: Alignment.bottomCenter,
+          child: Column(
+              children: <Widget>[
+                SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                        child: FlatButton(
+                            child: Text('Camera'),
+                            shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                            color: Colors.deepPurple,
+                            textColor: Colors.white,
+                            onPressed:() {
+                              getImage(ImageSource.camera);
+                            }
+                        ),
+                        padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 0.0)
+                    )
+                ),
+                SizedBox(height: 5.0),
+                SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      child: OutlineButton(
+                          child: Text('Gallery'),
+                          shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                          textColor: Colors.deepPurple,
+                          borderSide: BorderSide(
+                            color: Colors.deepPurple,
+                          ),
+                          onPressed:() {
+                            getImage(ImageSource.gallery);
+                          }
+                      ),
+                      padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
+                    )
+                ),
+                Expanded(
+                    child: Center(
+                      child: image(),
+                    ),
+                ),
+                UploadProfilePic(picFile: _profilePic, userId: widget.userId),
+                SizedBox(
+                  width: double.infinity,
+                  child: Padding(
+                    child: FlatButton(
+                      child: Text('Cancel'),
+                      color: Colors.red,
+                      textColor: Colors.white,
+                      shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      }
+                    ),
+                    padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 10.0)
+                  )
+                )
+              ]
+          ),
+        )
     );
   }
 }

@@ -1,13 +1,61 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
+class RecordButton extends StatefulWidget {
+  @override
+  _RecordButtonState createState() => _RecordButtonState();
+}
+
+class _RecordButtonState extends State<RecordButton> {
+  ActivityManager activityManager = new ActivityManager();
+  bool _isRecording = false;
+  String _postAudioPath;
+  DateTime _startRecordDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      iconSize: 40.0,
+      icon: Icon(
+        Icons.mic,
+        color: _isRecording ? Colors.red : Colors.white,
+      ),
+        onPressed: () async {
+          if(_isRecording) {
+            List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+            String recordingLocation = stopRecordVals[0];
+            int secondsLength = stopRecordVals[1];
+
+            print('$recordingLocation -/- Length: $secondsLength');
+            setState(() {
+              _isRecording = !_isRecording;
+            });
+            DateTime date = new DateTime.now();
+            await addPostDialog(context, date, recordingLocation, secondsLength);
+          } else {
+            List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
+            String postPath = startRecordVals[0];
+            DateTime startDate = startRecordVals[1];
+            setState(() {
+              _isRecording = !_isRecording;
+              _postAudioPath = postPath;
+              _startRecordDate = startDate;
+            });
+          }
+        }
+    );
+  }
+}
 
 class UserInfoSection extends StatefulWidget {
   final String userId;
@@ -30,141 +78,187 @@ class _UserInfoSectionState extends State<UserInfoSection> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    Widget floatingRightButtons = FutureBuilder(
-      future: _isCurrentUser(widget.userId),
-      initialData: false,
-      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-        if(!snapshot.data)
-          return Center(
-            child: FloatingActionButton(
-              backgroundColor: Colors.deepPurple,
-              child: Icon(Icons.mail_outline),
-              heroTag: null,
-              onPressed: () async {
-                await Firestore.instance.collection('users').document(widget.userId).get().then((DocumentSnapshot snapshot) async {
-                  String username = snapshot.data['username'].toString();
-                  await activityManager.sendDirectPostDialog(widget.userId, username, context);
-                });
-              },
-            )
-          );
-        return Row(
-            children: <Widget> [
-              FloatingActionButton(
-                backgroundColor: Colors.deepPurple,
-                child: Icon(Icons.add),
-                heroTag: null,
-                onPressed: () async {
-                  //addPostDialog(context);
-                },
-              ),
-              SizedBox(width: 5.0),
-              Column(
-                children: <Widget>[
-                  FloatingActionButton(
-                      backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
-                      child: Icon(Icons.mic),
-                      heroTag: null,
-                      onPressed: () async {
-                        if(_isRecording) {
-                          List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-                          String recordingLocation = stopRecordVals[0];
-                          int secondsLength = stopRecordVals[1];
+    @override
+    void initState() {
+      super.initState();
+    }
 
-                          print('$recordingLocation -/- Length: $secondsLength');
-                          setState(() {
-                            _isRecording = !_isRecording;
+    @override
+    Widget build(BuildContext context) {
+      Widget floatingRightButtons = FutureBuilder(
+          future: _isCurrentUser(widget.userId),
+          initialData: false,
+          builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+            if(!snapshot.data)
+              return Center(
+                  child: Container(
+                      height: 45.0,
+                      width: 45.0,
+                      child: FloatingActionButton(
+                        backgroundColor: Colors.deepPurple,
+                        child: Icon(Icons.mail_outline),
+                        heroTag: null,
+                        onPressed: () async {
+                          await Firestore.instance.collection('users').document(widget.userId).get().then((DocumentSnapshot snapshot) async {
+                            String username = snapshot.data['username'].toString();
+                            await activityManager.sendDirectPostDialog(widget.userId, username, context);
                           });
-                          print('getting date');
-                          DateTime date = new DateTime.now();
-                          print('date before dialog: $date');
-                          await addPostDialog(context, date, recordingLocation, secondsLength);
-                        } else {
-                          List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
-                          String postPath = startRecordVals[0];
-                          DateTime startDate = startRecordVals[1];
-                          setState(() {
-                            _isRecording = !_isRecording;
-                            _postAudioPath = postPath;
-                            _startRecordDate = startDate;
-                          });
+                        },
+                      )
+                  )
+              );
+            return Center(
+                child: Container(
+                    height: 45.0,
+                    width: 45.0,
+                    child: FloatingActionButton(
+                        child: Icon(Icons.edit),
+                        backgroundColor: Colors.deepPurple,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onPressed: () {
+                          showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return UpdateProfileDialog();
+                              });
                         }
-                      }
-                  ),
-                ]
-              ),
-            ]
-        );
-      }
-    );
+                    )
+                )
+            );
+          }
+      );
 
-    return Padding(
-      padding: EdgeInsets.only(top: 10.0, left: 5.0, right: 5.0, bottom: 5.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  CircleAvatar(
-                    backgroundColor: Colors.deepPurple,
-                    child: Icon(
-                      Icons.add_a_photo,
-                      size: 30.0,
-                    ),
-                    radius: 30.0,
-                  ),
-                  SizedBox(width: 5.0),
-                  Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        SizedBox(height: 10.0),
-                        StreamBuilder(
-                            stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
-                            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                              print(snapshot.data.toString());
-                              if (!snapshot.hasData) {
-                                return Text('@',
-                                  style: TextStyle(fontSize: 18.0),
-                                );
-                              }
-
-                              String username = snapshot.data.documents.first.data['username'].toString();
-                              if(username == null || username == 'null')
-                                username = '@';
-
-                              return Text('@$username',
-                                style: TextStyle(
-                                  fontSize: 18.0,
-                                ),
-                              );
-                            }
-                        ),
-                        BioTextSection(userId: widget.userId),
-                      ]
-                  ),
-                ]
+      Widget profileImage = FutureBuilder(
+        future: Firestore.instance.collection('users').document(widget.userId).get(),
+        builder: (context, snapshot) {
+          if(snapshot.hasData) {
+            print('Pic URL: ${snapshot.data['profilePicUrl']}');
+            if(snapshot.data['profilePicUrl'] != null) {
+              String profilePicUrl = snapshot.data['profilePicUrl'].toString();
+              return Container(
+                height: 75.0,
+                width: 75.0,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.deepPurple,
+                    image: DecorationImage(
+                      fit: BoxFit.cover,
+                      image: NetworkImage(profilePicUrl),
+                    )
+                ),
+              );
+            }
+          }
+          return Container(
+            height: 75.0,
+            width: 75.0,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.deepPurple,
             ),
-            floatingRightButtons,
-            ].where((item) => item != null).toList()
-          ),
-        ]
-      )
-    );
+          );
+        }
+      );
+
+      Widget profilePic = FutureBuilder(
+          future: _isCurrentUser(widget.userId),
+          initialData: false,
+          builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+            if(!snapshot.data)
+              return profileImage;
+            return Stack(
+              children: <Widget>[
+                profileImage,
+                Positioned(
+                    bottom: 0.0,
+                    right: 0.0,
+                    child: Container(
+                        height: 20.0,
+                        width: 20.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.deepPurpleAccent),
+                          boxShadow: [BoxShadow(
+                            offset: Offset(-1.0, -1.0),
+                            blurRadius: 2.5,
+                          )],
+                        ),
+                        child: RawMaterialButton(
+                            shape: CircleBorder(),
+                            child: Icon(Icons.add_a_photo,
+                              color: Colors.deepPurpleAccent,
+                              size: 12.5,
+                            ),
+                            fillColor: Colors.white,
+                            onPressed: () async {
+                              await showDialog(
+                               context: context,
+                               builder: (BuildContext context) {
+                                 return ProfilePicDialog(userId: widget.userId);
+                               }
+                              ).then((_) {
+                                setState(() {});
+                              });
+                            }
+                        )
+                    )
+                ),
+              ],
+            );
+          }
+      );
+
+      return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.max,
+          children: <Widget>[
+            Padding(
+                child: profilePic,
+                padding: EdgeInsets.fromLTRB(5.0, 5.0, 0.0, 0.0)
+            ), //Profile Pic with or without add photo if own profile
+            SizedBox(width: 5.0),
+            Expanded(
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    SizedBox(height: 10.0),
+                    StreamBuilder(
+                        stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
+                        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                          print(snapshot.data.toString());
+                          if (!snapshot.hasData) {
+                            return Text('@',
+                              style: TextStyle(fontSize: 18.0),
+                            );
+                          }
+
+                          String username = snapshot.data.documents.first.data['username'].toString();
+                          if(username == null || username == 'null')
+                            username = '@';
+
+                          return Text('@$username',
+                            style: TextStyle(
+                              fontSize: 18.0,
+                            ),
+                          );
+                        }
+                    ),
+                    BioTextSection(userId: widget.userId),
+                  ]
+              ),
+            ),
+            Padding(
+                child: floatingRightButtons,
+                padding: EdgeInsets.fromLTRB(0.0, 5.0, 5.0, 0.0)
+            ),
+          ].where((item) => item != null).toList()
+      );
+    }
   }
-}
 
 // bio text section------------------------------------
 class BioTextSection extends StatefulWidget {
@@ -183,7 +277,7 @@ class _BioTextSectionState extends State<BioTextSection> {
 
   Future<bool> _isCurrentUser(String userId) async {
     return await FirebaseAuth.instance.currentUser().then((user) {
-      print('Passed userId: $userId / Current User UID: ${user.uid}');
+      // print('Passed userId: $userId / Current User UID: ${user.uid}');
       return user.uid.toString() == userId.toString();
     });
   }
@@ -209,26 +303,13 @@ class _BioTextSectionState extends State<BioTextSection> {
       future: _isCurrentUser(widget.userId),
       initialData: false,
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-        print('is current user: ${snapshot.data}');
         if(snapshot.data) {
-          return FlatButton(
-              child: Text('Edit Profile'),
-              padding: EdgeInsets.all(0.0),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              onPressed: () {
-                showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return UpdateProfileDialog();
-                    });
-              }
-          );
+          return Container();
         } else {
-          print('building follow button streambuilder');
           return StreamBuilder(
             stream: Firestore.instance.collection('/users').document(currentUserId).snapshots(),
             builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-              print('$currentUserId ----::---- ${snapshot.data}');
+              // print('$currentUserId ----::---- ${snapshot.data}');
               bool isFollowing = false;
               Map<dynamic, dynamic> following;
               if(snapshot.hasData) {
@@ -238,19 +319,22 @@ class _BioTextSectionState extends State<BioTextSection> {
                   default:
                     following = snapshot.data['following'];
 
-                    print('following list: $following :: page uid: ${widget.userId}');
-                    print(following == null);
+                    // print(following == null);
                     if(following != null) {
-                      print('user has following list');
-                      print('User already followed: ${following.containsKey(widget.userId)}');
+                      // print('user has following list');
+                      // print('User already followed: ${following.containsKey(widget.userId)}');
                       isFollowing = following.containsKey(widget.userId);
                     }
 
                     if(isFollowing){
-                      return FlatButton(
+                      return OutlineButton(
                         child: Text('Unfollow'),
                         padding: EdgeInsets.all(0.0),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                        borderSide: BorderSide(
+                          color: Colors.deepPurple,
+                        ),
+                        textColor: Colors.deepPurple,
                         onPressed: () async {
                           ActivityManager().unfollowUser(widget.userId);
                         },
@@ -259,7 +343,9 @@ class _BioTextSectionState extends State<BioTextSection> {
                       return FlatButton(
                         child: Text('Follow'),
                         padding: EdgeInsets.all(0.0),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                        color: Colors.deepPurple,
+                        textColor: Colors.white,
                         onPressed: () async {
                           ActivityManager().followUser(widget.userId);
                         },
@@ -283,53 +369,17 @@ class _BioTextSectionState extends State<BioTextSection> {
     );
 
     return Container(
-      width: 200.0,
-      alignment: Alignment(-1.0, -1.0),
+      //width: 200.0,
       child: StreamBuilder<QuerySnapshot>(
           stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
           builder: (context, snapshot) {
             String bio = 'Please enter a short biography. Let everyone know who you are and what you enjoy!';
-            String printBio;
             String _bio;
             if(snapshot.hasData)
               _bio = snapshot.data.documents.first.data['bio'].toString();
 
-            Widget showMoreButton = FlatButton(
-              child: Text('Show More'),
-              padding: EdgeInsets.all(0.0),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            );
-
             if(_bio != 'null' && _bio != null) {
               bio = _bio;
-            }
-
-            if(bio.length > 50 && !showMore){
-              printBio = bio.substring(0, 50) + '...';
-              showMoreButton = FlatButton(
-                child: Text('Show More'),
-                padding: EdgeInsets.all(0.0),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                onPressed: () {
-                  setState(() {
-                    showMore = !showMore;
-                  });
-                },
-              );
-            } else {
-              printBio = bio;
-              if(bio.length > 50){
-                showMoreButton = FlatButton(
-                  child: Text('Show Less'),
-                  padding: EdgeInsets.all(0.0),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onPressed: () {
-                    setState(() {
-                      showMore = !showMore;
-                    });
-                  },
-                );
-              }
             }
 
             Widget content = Column(
@@ -337,7 +387,7 @@ class _BioTextSectionState extends State<BioTextSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget> [
                   Text(
-                    printBio,
+                    bio,
                     overflow: TextOverflow.ellipsis,
                     maxLines: 5,
                     textAlign: TextAlign.left,
@@ -345,7 +395,6 @@ class _BioTextSectionState extends State<BioTextSection> {
                   Row(
                       children: <Widget>[
                         leftButton,
-                        showMoreButton,
                       ]
                   )
                 ]
@@ -381,10 +430,10 @@ class _TimelineSectionState extends State<TimelineSection> {
 
     Query ref;
     if(timelineId != null) {
-      print('setting reference to timlineid');
+      // print('setting reference to timlineid');
       ref = Firestore.instance.collection('posts').where('timelines', arrayContains: timelineId).orderBy("datePosted", descending: true);
     } else {
-      print('setting reference to user id');
+      // print('setting reference to user id');
       ref = Firestore.instance.collection('posts').where('userUID', isEqualTo: userId).orderBy("datePosted", descending: true);
     }
     return ref;
@@ -405,11 +454,11 @@ class _TimelineSectionState extends State<TimelineSection> {
             if(snapshot.hasData)
               stream = snapshot.data.snapshots();
             else
-              return Text('User has not posts yet!');
+              return Text('Loading posts...');
             return StreamBuilder(
                 stream: stream,
                 builder: (context, AsyncSnapshot<QuerySnapshot>snapshot) {
-                  print(snapshot.data);
+                  //print(snapshot.data);
                   if(!snapshot.hasData || snapshot.data.documents.length == 0)
                     return Text('Users has no posts');
 
@@ -417,23 +466,37 @@ class _TimelineSectionState extends State<TimelineSection> {
                     case ConnectionState.none:
                       return Text('Connection Lost');
                     case ConnectionState.waiting:
-                      return CircularProgressIndicator();
+                      return Center(
+                          child: Container(
+                            height: 50.0,
+                            width: 50.0,
+                            child: CircularProgressIndicator(),
+                          )
+                        );
                     default:
                       return ListView(
                           scrollDirection: Axis.vertical,
                           shrinkWrap: true,
                           children: snapshot.data.documents.map((document) {
                             String title;
+                            String postDate;
+
+                            Timestamp timestamp = document.data['datePosted'];
+                            DateTime time = DateTime.fromMillisecondsSinceEpoch(timestamp.millisecondsSinceEpoch);
+                            DateFormat dateFormat = new DateFormat('MMMM d, y H:mm');
+                            postDate = dateFormat.format(time);
+
                             if(document.data['postTitle'] == null){
-                              Timestamp timestamp = document.data['datePosted'];
-                              DateTime time = DateTime.fromMillisecondsSinceEpoch(timestamp.millisecondsSinceEpoch);
-                              DateFormat dateFormat = new DateFormat('MMMM d, y H:m:s');
-                              title = dateFormat.format(time);
+                              title = postDate;
+                              postDate = '';
                             } else {
                               title = document.data['postTitle'].toString();
                             }
                             String postAudioUrl = document.data['audioFileLocation'].toString();
-                            print(postAudioUrl);
+                            String username = 'no_username';
+                            if(document.data['username'] != null)
+                              username = document.data['username'].toString();
+                            // print(postAudioUrl);
                             String postId = document.documentID;
                             Color bgColor = Colors.deepPurple;
                             if(_playingPostId == postId)
@@ -441,44 +504,115 @@ class _TimelineSectionState extends State<TimelineSection> {
                             if(postAudioUrl == null || postAudioUrl == 'null')
                               bgColor = Colors.grey;
 
-                            return Column(
-                                        children: <Widget>[
-                                        ListTile(
-                                          title: Text(title),
-                                          trailing:  SizedBox(
-                                            width: 35.0,
-                                            height: 35.0,
-                                            child: FloatingActionButton(
-                                              backgroundColor: bgColor,
-                                              child: _playingPostId == postId ? Icon(Icons.stop) : Icon(Icons.play_arrow),
-                                              heroTag: null,
-                                              onPressed: () async {
-                                                if(_isPlaying) {
-                                                  activityManager.stopPlaying();
-                                                  bool isPlaying = false;
-                                                  String playingPostId;
+                            int postLengthSeconds = document.data['secondsLength'];
+                            String postLength = '--:--';
+                            if(postLengthSeconds != null) {
+                              Duration postDuration = Duration(seconds: postLengthSeconds);
+                              if(postDuration.inHours > 0){
+                                postLength = '${postDuration.inHours}:${postDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${postDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+                              } else {
+                                postLength = '${postDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${postDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+                              }
+                            }
 
-                                                  if(_playingPostId != postId){
-                                                    activityManager.playRecording(postAudioUrl);
-                                                    isPlaying = true;
-                                                    playingPostId = postId;
-                                                  }
-                                                  setState(() {
-                                                    _isPlaying = isPlaying;
-                                                    _playingPostId = playingPostId;
-                                                  });
-                                                } else {
-                                                  if (postAudioUrl != null && postAudioUrl != 'null') {
-                                                    activityManager.playRecording(
-                                                        postAudioUrl);
-                                                    setState(() {
-                                                      _isPlaying = true;
-                                                      _playingPostId = postId;
-                                                    });
-                                                  }
-                                                }
-                                              },
-                                            ),
+                            String userId = document.data['userUID'];
+
+                            return Column(
+                                children: <Widget>[
+                                  ListTile(
+                                    leading: StreamBuilder(
+                                      stream: Firestore.instance.collection('users').document(userId).snapshots(),
+                                      builder: (context, snapshot) {
+                                        if(snapshot.hasData) {
+                                          String picUrl = snapshot.data['profilePicUrl'];
+                                          if(picUrl != null)
+                                            return Container(
+                                                height: 60.0,
+                                                width: 60.0,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.deepPurple,
+                                                  image: DecorationImage(
+                                                    fit: BoxFit.cover,
+                                                    image: NetworkImage(picUrl.toString()),
+                                                  ),
+                                                )
+                                            );
+                                        }
+                                        return Container(
+                                          height: 60.0,
+                                          width: 60.0,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.deepPurple,
+                                          )
+                                      );
+                                  }
+                            ),
+                                          title: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: <Widget>[
+                                                Text('@$username',
+                                                  style: TextStyle(
+                                                    fontSize: 18.0,
+                                                    color: Color(0xFF7B7B7B),
+                                                  ),
+                                                ),
+                                                SizedBox(height: 2.5),
+                                                Text(title,
+                                                  style: TextStyle(
+                                                    fontSize: 18.0,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 2.5),
+                                                Text(postDate,
+                                                  style: TextStyle(
+                                                    fontSize: 14.0,
+                                                    color: Color(0xFF7B7B7B),
+                                                  ),
+                                                ),
+                                              ]
+                                          ),
+                                          trailing:  Column(
+                                            children: <Widget>[
+                                              SizedBox(
+                                                width: 35.0,
+                                                height: 35.0,
+                                                child: FloatingActionButton(
+                                                  backgroundColor: bgColor,
+                                                  child: _playingPostId == postId ? Icon(Icons.stop) : Icon(Icons.play_arrow),
+                                                  heroTag: null,
+                                                  onPressed: () async {
+                                                    if(_isPlaying) {
+                                                      activityManager.stopPlaying();
+                                                      bool isPlaying = false;
+                                                      String playingPostId;
+
+                                                      if(_playingPostId != postId){
+                                                        activityManager.playRecording(postAudioUrl);
+                                                        isPlaying = true;
+                                                        playingPostId = postId;
+                                                      }
+                                                      setState(() {
+                                                        _isPlaying = isPlaying;
+                                                        _playingPostId = playingPostId;
+                                                      });
+                                                    } else {
+                                                      if (postAudioUrl != null && postAudioUrl != 'null') {
+                                                        activityManager.playRecording(
+                                                            postAudioUrl);
+                                                        setState(() {
+                                                          _isPlaying = true;
+                                                          _playingPostId = postId;
+                                                        });
+                                                      }
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                              SizedBox(height: 2.0),
+                                              Text(postLength),
+                                            ]
                                           ),
                                         ),
                                         Divider(height: 5.0),
@@ -494,7 +628,6 @@ class _TimelineSectionState extends State<TimelineSection> {
     );
   }
 }
-
 
 //Bottom Navigation Bar
 Widget bottomNavBar(Function tapFunc, int selectedIndex) {
