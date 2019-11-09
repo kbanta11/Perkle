@@ -5,3 +5,9 @@
 -keep class io.flutter.view.**  { *; }
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
+
+#Those lines was causing the issue:
+
+#-ignorewarnings
+#-keepclassmembers **
+#-keepclasseswithmembers **

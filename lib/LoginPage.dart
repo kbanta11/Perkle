@@ -122,8 +122,12 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
               showDialog(
                 context: context,
                 builder: (context) {
-                  return Container(
-                    child: CircularProgressIndicator(),
+                  return Center(
+                    child: Container(
+                      height: 50.0,
+                      width: 50.0,
+                      child: CircularProgressIndicator(),
+                    )
                   );
                 }
               );

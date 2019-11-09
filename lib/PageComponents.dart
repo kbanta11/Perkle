@@ -81,6 +81,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
 
     @override
     void initState() {
+      Stream picStream = Firestore.instance.collection('users').document(widget.userId).snapshots();
       super.initState();
     }
 
@@ -129,8 +130,8 @@ class _UserInfoSectionState extends State<UserInfoSection> {
           }
       );
 
-      Widget profileImage = FutureBuilder(
-        future: Firestore.instance.collection('users').document(widget.userId).get(),
+      Widget profileImage = StreamBuilder(
+        stream: Firestore.instance.collection('users').document(widget.userId).snapshots(),
         builder: (context, snapshot) {
           if(snapshot.hasData) {
             print('Pic URL: ${snapshot.data['profilePicUrl']}');
@@ -165,8 +166,11 @@ class _UserInfoSectionState extends State<UserInfoSection> {
           future: _isCurrentUser(widget.userId),
           initialData: false,
           builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-            if(!snapshot.data)
+            if(!snapshot.data){
+              print('not logged in user profile pic');
               return profileImage;
+            }
+            print('logged in user profile pic');
             return Stack(
               children: <Widget>[
                 profileImage,
