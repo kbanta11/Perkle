@@ -50,53 +50,7 @@ class _ListPageState extends State<ListPage> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              FutureBuilder(
-                  future: FirebaseAuth.instance.currentUser(),
-                  builder: (context, snapshot) {
-                    if(snapshot.hasData){
-                      String _userId = snapshot.data.uid;
-                      return StreamBuilder(
-                          stream: Firestore.instance.collection('users').document(_userId).snapshots(),
-                          builder: (context, snapshot) {
-                            if(snapshot.hasData) {
-                              String profilePicUrl = snapshot.data['profilePicUrl'];
-                              if(profilePicUrl != null)
-                                return Container(
-                                  height: 40.0,
-                                  width: 40.0,
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white,
-                                      image: DecorationImage(
-                                        fit: BoxFit.cover,
-                                        image: NetworkImage(profilePicUrl.toString()),
-                                      )
-                                  ),
-                                );
-                            }
-                            return Container(
-                              height: 40.0,
-                              width: 40.0,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                                // image: DecorationImage()
-                              ),
-                            );
-                          }
-                      );
-                    }
-                    return Container(
-                      height: 40.0,
-                      width: 40.0,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        // image: DecorationImage()
-                      ),
-                    );
-                  }
-              ),
+              mainPopMenu(context),
               IconButton(
                 icon: Icon(Icons.search),
                 iconSize: 40.0,

@@ -9,11 +9,14 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_sound/android_encoder.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import 'UserManagement.dart';
 
 class ActivityManager {
   FlutterSound soundManager = new FlutterSound();
+  AudioPlayer audioPlayer = new AudioPlayer();
+  AudioPlayer currentlyPlayingPlayer;
   StreamSubscription<RecordStatus> recordingSubscription;
 
   bool isLoggedIn() {
@@ -22,6 +25,10 @@ class ActivityManager {
     } else {
       return false;
     }
+  }
+
+  Stream<PlayStatus> getCurrentPlaying() {
+    return soundManager.onPlayerStateChanged;
   }
 
   addPost(BuildContext context, Map<String, dynamic> postData) async {
@@ -262,16 +269,22 @@ class ActivityManager {
     return null;
   }
 
-  playRecording(String fileUrl) async {
+  playRecording(String fileUrl, AudioPlayer player) async {
     //final directory = await getApplicationDocumentsDirectory();
     //String localPath = directory.path;
     print('Playing file from: $fileUrl');
-    String path = await soundManager.startPlayer(fileUrl);
-    print('playing recording: $path');
+    if(this.currentlyPlayingPlayer != null){
+      AudioPlayer oldPlayer = this.currentlyPlayingPlayer;
+      oldPlayer.stop();
+    }
+    this.currentlyPlayingPlayer = player;
+    int status = await player.play(fileUrl);
+    print('playing recording: $status');
   }
 
-  stopPlaying() async {
-    String result = await soundManager.stopPlayer();
+  stopPlaying(AudioPlayer player) async {
+    int result = await player.stop();
+    this.currentlyPlayingPlayer = null;
     print('recording stopped: $result');
   }
 
@@ -433,16 +446,16 @@ List<String> processTagString(String postTags) {
 
 // Add Post dialog
 Future<void> addPostDialog(BuildContext context, DateTime date, String recordingLocation, int secondsLength) async {
+  print('starting set date format');
+  String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(date);
+  print(dateString);
+  String _postDescription;
+  String _postTitle;
+  String _postTags;
+
   showDialog(
       context: context,
       builder: (BuildContext context) {
-        print('starting set date format');
-        String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(date);
-        print(dateString);
-        String _postDescription;
-        String _postTitle;
-        String _postTags;
-
         return SimpleDialog(
             contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
             title: Center(child: Text('Add New Post',
@@ -457,6 +470,7 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                     hintText: dateString,
                   ),
                   onChanged: (value) {
+                    print(_postTitle);
                     _postTitle = value;
                   }
                 )

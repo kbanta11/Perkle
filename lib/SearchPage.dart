@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'ProfilePage.dart';
+import 'PageComponents.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -25,17 +26,33 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: new AppBar(
-        title: Text('Search Users'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          color: Colors.white,
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+        title: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              mainPopMenu(context),
+              IconButton(
+                icon: Icon(Icons.search),
+                iconSize: 40.0,
+                onPressed: () {
+                  Navigator.of(context).pushNamed('/searchpage');
+                },
+              ),
+              Expanded(
+                child: Center(child: new Text('Perkle')),
+              ),
+            ]
         ),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        titleSpacing: 5.0,
         actions: <Widget>[
-          FlatButton(
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Colors.white),
+            iconSize: 40.0,
+          ),
+          RecordButton(),
+          /*new FlatButton(
               child: Text('Logout'),
               textColor: Colors.white,
               onPressed: () {
@@ -46,8 +63,8 @@ class _SearchPageState extends State<SearchPage> {
                   print(e);
                 });
               }
-          ),
-        ]
+          ),*/
+        ],
       ), //AppBar
       body: Container(
         child: FutureBuilder(

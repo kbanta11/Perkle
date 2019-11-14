@@ -29,6 +29,7 @@ dependencies:
   intl:
   flutter_sound: 1.5.1
   path_provider:
+  audioplayers:
 
   flutter:
     sdk: flutter

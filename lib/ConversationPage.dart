@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -63,53 +64,7 @@ class _ConversationPageState extends State<ConversationPage> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              FutureBuilder(
-                  future: FirebaseAuth.instance.currentUser(),
-                  builder: (context, snapshot) {
-                    if(snapshot.hasData){
-                      String _userId = snapshot.data.uid;
-                      return StreamBuilder(
-                          stream: Firestore.instance.collection('users').document(_userId).snapshots(),
-                          builder: (context, snapshot) {
-                            if(snapshot.hasData) {
-                              String profilePicUrl = snapshot.data['profilePicUrl'];
-                              if(profilePicUrl != null)
-                                return Container(
-                                  height: 40.0,
-                                  width: 40.0,
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white,
-                                      image: DecorationImage(
-                                        fit: BoxFit.cover,
-                                        image: NetworkImage(profilePicUrl.toString()),
-                                      )
-                                  ),
-                                );
-                            }
-                            return Container(
-                              height: 40.0,
-                              width: 40.0,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                                // image: DecorationImage()
-                              ),
-                            );
-                          }
-                      );
-                    }
-                    return Container(
-                      height: 40.0,
-                      width: 40.0,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        // image: DecorationImage()
-                      ),
-                    );
-                  }
-              ),
+              mainPopMenu(context),
               IconButton(
                 icon: Icon(Icons.search),
                 iconSize: 40.0,
@@ -165,47 +120,41 @@ class _ConversationPageState extends State<ConversationPage> {
             if(snapshot.hasData) {
               return ListView(
                 children: snapshot.data.documents.map((DocumentSnapshot docSnap) {
+                  AudioPlayer postPlayer = new AudioPlayer();
                   String sender = docSnap.data['senderUsername'];
                   int secondsLength = docSnap.data['secondsLength'];
                   String messageTitle = docSnap.data['messageTitle'];
                   DateTime datePosted = docSnap.data['datePosted'].toDate();
                   String dateString = DateFormat('MMMM dd, yyyy hh:mm:ss').format(datePosted).toString();
-                  String postId = docSnap.reference.documentID;
                   String postAudioUrl = docSnap.data['audioFileLocation'];
 
                   Widget playButton = SizedBox(
                     height: 35.0,
                     width: 35.0,
-                    child: FloatingActionButton(
-                      backgroundColor: _playingId == docSnap.reference.documentID ? Colors.red : Colors.deepPurple,
-                      child: _playingId == docSnap.reference.documentID ? Icon(Icons.stop) : Icon(Icons.play_arrow),
-                      heroTag: null,
-                      onPressed: () async {
-                        if(_isPlaying) {
-                          _activityManager.stopPlaying();
-                          bool isPlaying = false;
-                          String playingPostId;
+                    child: StreamBuilder(
+                      stream: postPlayer.onPlayerStateChanged,
+                      builder: (BuildContext context, snapshot) {
+                        Color playBtnBG = Colors.deepPurple;
+                        if(snapshot.data == AudioPlayerState.PLAYING)
+                          playBtnBG = Colors.red;
+                        if(postAudioUrl == null || postAudioUrl == 'null')
+                          playBtnBG = Colors.grey;
 
-                          if(_playingId != postId){
-                            _activityManager.playRecording(postAudioUrl);
-                            isPlaying = true;
-                            playingPostId = postId;
-                          }
-                          setState(() {
-                            _isPlaying = isPlaying;
-                            _playingId = playingPostId;
-                          });
-                        } else {
-                          if (postAudioUrl != null && postAudioUrl != 'null') {
-                            _activityManager.playRecording(
-                                postAudioUrl);
-                            setState(() {
-                              _isPlaying = true;
-                              _playingId = postId;
-                            });
-                          }
-                        }
-                      },
+                        return FloatingActionButton(
+                          backgroundColor: playBtnBG,
+                          child: snapshot.data == AudioPlayerState.PLAYING ? Icon(Icons.stop) : Icon(Icons.play_arrow),
+                          heroTag: null,
+                          onPressed: () async {
+                            if(snapshot.data == AudioPlayerState.PLAYING) {
+                              _activityManager.stopPlaying(postPlayer);
+                            } else {
+                              if (postAudioUrl != null && postAudioUrl != 'null') {
+                                _activityManager.playRecording(postAudioUrl, postPlayer);
+                              }
+                            }
+                          },
+                        );
+                      }
                     )
                   );
 
