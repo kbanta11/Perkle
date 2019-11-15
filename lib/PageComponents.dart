@@ -9,6 +9,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
 
+import 'ProfilePage.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
@@ -683,7 +684,14 @@ class _TimelineListItemState extends State<TimelineListItem> {
             if(snapshot.hasData) {
               String picUrl = snapshot.data['profilePicUrl'];
               if(picUrl != null)
-                return Container(
+                return InkWell(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) =>
+                          ProfilePage(userId: userId),
+                    ));
+                  },
+                  child: Container(
                     height: 60.0,
                     width: 60.0,
                     decoration: BoxDecoration(
@@ -693,16 +701,25 @@ class _TimelineListItemState extends State<TimelineListItem> {
                         fit: BoxFit.cover,
                         image: NetworkImage(picUrl.toString()),
                       ),
-                    )
+                    ),
+                  )
                 );
             }
-            return Container(
-                height: 60.0,
-                width: 60.0,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.deepPurple,
-                )
+            return InkWell(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (context) =>
+                      ProfilePage(userId: userId),
+                ));
+              },
+              child: Container(
+                  height: 60.0,
+                  width: 60.0,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.deepPurple,
+                  )
+              )
             );
           }
       ),
@@ -841,6 +858,8 @@ Widget mainPopMenu(BuildContext context) {
     }
   );
 }
+
+
 
 //Bottom Navigation Bar
 Widget bottomNavBar(Function tapFunc, int selectedIndex) {

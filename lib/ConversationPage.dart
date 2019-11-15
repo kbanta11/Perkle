@@ -115,7 +115,7 @@ class _ConversationPageState extends State<ConversationPage> {
       ),
       body: Container(
         child: StreamBuilder(
-          stream: Firestore.instance.collection('directposts').where('conversationId', isEqualTo: widget.conversationId).snapshots(),
+          stream: Firestore.instance.collection('directposts').where('conversationId', isEqualTo: widget.conversationId).orderBy('datePosted', descending: true).snapshots(),
           builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
             if(snapshot.hasData) {
               return ListView(
@@ -187,26 +187,42 @@ class _ConversationPageState extends State<ConversationPage> {
                                       if(snapshot.hasData){
                                         String profilePicUrl = snapshot.data['profilePicUrl'];
                                         if(profilePicUrl != null)
-                                          return Container(
-                                              height: 50.0,
-                                              width: 50.0,
-                                              decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Colors.deepPurple,
-                                                  image: DecorationImage(
-                                                      fit: BoxFit.cover,
-                                                      image: NetworkImage(profilePicUrl.toString())
-                                                  )
-                                              )
+                                          return InkWell(
+                                            onTap: () {
+                                              Navigator.push(context, MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ProfilePage(userId: docSnap.data['senderUID']),
+                                              ));
+                                            },
+                                            child: Container(
+                                                height: 50.0,
+                                                width: 50.0,
+                                                decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.deepPurple,
+                                                    image: DecorationImage(
+                                                        fit: BoxFit.cover,
+                                                        image: NetworkImage(profilePicUrl.toString())
+                                                    )
+                                                )
+                                            )
                                           );
                                       }
-                                      return Container(
-                                          height: 40.0,
-                                          width: 40.0,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.deepPurple,
-                                          )
+                                      return InkWell(
+                                          onTap: () {
+                                            Navigator.push(context, MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ProfilePage(userId: docSnap.data['senderUID']),
+                                            ));
+                                          },
+                                          child: Container(
+                                            height: 40.0,
+                                            width: 40.0,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.deepPurple,
+                                            )
+                                        )
                                       );
                                     }
                                 ),
@@ -221,25 +237,41 @@ class _ConversationPageState extends State<ConversationPage> {
                                       if(snapshot.hasData){
                                         String profilePicUrl = snapshot.data['profilePicUrl'];
                                         if(profilePicUrl != null)
-                                          return Container(
-                                              height: 50.0,
-                                              width: 50.0,
-                                              decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Colors.deepPurple,
-                                                  image: DecorationImage(
-                                                      fit: BoxFit.cover,
-                                                      image: NetworkImage(profilePicUrl.toString())
-                                                  )
-                                              )
+                                          return InkWell(
+                                            onTap: () {
+                                              Navigator.push(context, MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ProfilePage(userId: docSnap.data['senderUID']),
+                                              ));
+                                            },
+                                            child: Container(
+                                                height: 50.0,
+                                                width: 50.0,
+                                                decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.deepPurple,
+                                                    image: DecorationImage(
+                                                        fit: BoxFit.cover,
+                                                        image: NetworkImage(profilePicUrl.toString())
+                                                    )
+                                                )
+                                            )
                                           );
                                       }
-                                      return Container(
-                                          height: 40.0,
-                                          width: 40.0,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.deepPurple,
+                                      return InkWell(
+                                          onTap: () {
+                                            Navigator.push(context, MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ProfilePage(userId: docSnap.data['senderUID']),
+                                            ));
+                                          },
+                                          child: Container(
+                                              height: 40.0,
+                                              width: 40.0,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.deepPurple,
+                                              )
                                           )
                                       );
                                     }
