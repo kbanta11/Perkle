@@ -92,7 +92,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                   email: _email,
                                   password: _password
                               ).then((signedInUser) {
-                                UserManagement().storeNewUser(signedInUser, context, username: _username);
+                                FirebaseUser newUser = signedInUser.user;
+                                UserManagement().storeNewUser(newUser, context, username: _username);
                               }).catchError((e) {
                                 print(e);
                               });

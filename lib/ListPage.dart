@@ -95,11 +95,13 @@ class _ListPageState extends State<ListPage> {
                   stream: futureSnap.data.snapshots(),
                   builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
                     if(snapshot.hasData) {
-                      Map<String, dynamic> conversationMap = Map<String, dynamic>.from(snapshot.data['directConversationMap']);
-                      if(conversationMap == null)
+                      if(snapshot.data['directConversationMap'] == null)
                         return Center(child: Text('You have no conversations!'));
+                      Map<String, dynamic> conversationMap = Map<String, dynamic>.from(snapshot.data['directConversationMap']);
+                      print('Conversation Map 1: $conversationMap');
 
                       List<ConversationListObject> conversationList;
+                      print('Conversation Map: $conversationMap');
                       conversationMap.forEach((key, value) {
                         String _targetUid = key;
                         String _targetUsername = value['targetUsername'];

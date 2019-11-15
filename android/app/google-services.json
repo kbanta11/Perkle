@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "713143327472-j97c42i781ej4riqvjnnfck756lrg3ee.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.test.perklapp",
+            "certificate_hash": "f48251e4b66a537d0c5ffc80432ffe745234e8ab"
+          }
+        },
+        {
           "client_id": "713143327472-k59agjctmhobepvkv0l9ucnprrpiqr28.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -94,6 +94,7 @@ class UserManagement {
 
 
 
+
   Future<bool> userAlreadyCreated () async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser().then((user) {
       return user;

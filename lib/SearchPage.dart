@@ -52,98 +52,122 @@ class _SearchPageState extends State<SearchPage> {
             iconSize: 40.0,
           ),
           RecordButton(),
-          /*new FlatButton(
-              child: Text('Logout'),
-              textColor: Colors.white,
-              onPressed: () {
-                FirebaseAuth.instance.signOut().then((value) {
-                  Navigator.of(context).pushReplacementNamed('/landingpage');
-                })
-                    .catchError((e) {
-                  print(e);
-                });
-              }
-          ),*/
         ],
       ), //AppBar
       body: Container(
-        child: FutureBuilder(
-          future: UserManagement().getUserData(),
-          builder: (BuildContext context, AsyncSnapshot<DocumentReference> snapshot) {
-            return StreamBuilder(
-                stream: snapshot.data.snapshots(),
-                builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-              if(snapshot.hasData){
-                String userId = snapshot.data.reference.documentID;
-                Map<dynamic, dynamic> followingList = snapshot.data.data['following'];
-                return StreamBuilder<QuerySnapshot>(
-                    stream: Firestore.instance.collection('users').snapshots(),
-                    builder: (BuildContext context,
-                        AsyncSnapshot<QuerySnapshot> snapshot) {
-                      if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                      }
-                      switch (snapshot.connectionState) {
-                        case ConnectionState.waiting:
-                          return Text('Loading Users...');
-                        default:
-                          return ListView(
-                            children: snapshot.data.documents.map((document) {
-                              String thisUserId = document.reference.documentID;
-                              bool showAdd = true;
-                              if(userId == thisUserId || followingList.containsKey(thisUserId))
-                                showAdd = false;
-
-                              Widget followButton = IconButton(
-                                  icon: Icon(Icons.person_add),
-                                  color: Colors.deepPurple,
-                                  onPressed: () {
-                                    ActivityManager().followUser(document.reference.documentID);
-                                    print('now following ${document['username']}');
-                                  }
-                              );
-                              return Column(
-                                  children: <Widget>[
-                                    ListTile(
-                                        leading: CircleAvatar(),
-                                        title: Text(document['username']),
-                                        trailing: showAdd ? followButton : null,
-                                        onTap: () {
-                                          print(
-                                              'go to user profile: ${document['uid']}');
-                                          Navigator.push(context, MaterialPageRoute(
-                                            builder: (context) =>
-                                                ProfilePage(
-                                                    userId: document['uid']),
-                                          ));
-                                        }
-                                    ),
-                                    Divider(height: 5.0),
-                                  ]
-                              );
-                            }).toList(),
-                          );
-                      }
-                    }
-                );
-              } else {
-                return Stack(
-                  children: <Widget>[
-                    Opacity(
-                      opacity: 0.3,
-                      child: ModalBarrier(dismissible: false, color: Colors.grey),
-                    ),
-                    Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ],
-                );
-              }
+        child: StreamBuilder<QuerySnapshot>(
+          stream: Firestore.instance.collection('users').snapshots(),
+          builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+            if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
             }
-            );
+            switch (snapshot.connectionState) {
+              case ConnectionState.waiting:
+                return Text('Loading Users...');
+              default:
+                return ListView(
+                  children: snapshot.data.documents.map((document) {
+                    String thisUserId = document.reference.documentID;
+
+                    Widget followButton = IconButton(
+                        icon: Icon(Icons.person_add),
+                        color: Colors.deepPurple,
+                        onPressed: () {
+                          ActivityManager().followUser(document.reference.documentID);
+                          print('now following ${document['username']}');
+                        }
+                    );
+
+                    return Column(
+                        children: <Widget>[
+                          ListTile(
+                              leading: StreamBuilder(
+                                  stream: Firestore.instance.collection('users').document(thisUserId).snapshots(),
+                                  builder: (context, snapshot) {
+                                    if(snapshot.hasData){
+                                      String profilePicUrl = snapshot.data['profilePicUrl'];
+                                      if(profilePicUrl != null)
+                                        return Container(
+                                            height: 50.0,
+                                            width: 50.0,
+                                            decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.deepPurple,
+                                                image: DecorationImage(
+                                                    fit: BoxFit.cover,
+                                                    image: NetworkImage(profilePicUrl.toString())
+                                                )
+                                            )
+                                        );
+                                    }
+                                    return Container(
+                                        height: 50.0,
+                                        width: 50.0,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.deepPurple,
+                                        )
+                                    );
+                                  }
+                              ),
+                              title: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  Expanded(
+                                    child: Text(document['username'])
+                                  ),
+                                  Container(
+                                      height: 40.0,
+                                      width: 40.0,
+                                      child: FutureBuilder(
+                                          future: UserManagement().getUserData(),
+                                          builder: (context, snapshot) {
+                                            if(snapshot.hasData) {
+                                              return StreamBuilder(
+                                                  stream: snapshot.data.snapshots(),
+                                                  builder: (context, snapshot) {
+                                                    if(snapshot.hasData) {
+                                                      bool isFollowing = false;
+                                                      String userId = snapshot.data.reference.documentID;
+                                                      bool isThisUser = userId == thisUserId;
+                                                      if(snapshot.data['following'] != null) {
+                                                        Map<dynamic, dynamic> followingList = snapshot.data['following'];
+                                                        isFollowing = followingList.containsKey(thisUserId);
+                                                      }
+                                                      print('Following: $isFollowing');
+                                                      if(!isThisUser && !isFollowing)
+                                                        return followButton;
+                                                      else
+                                                        return Container();
+                                                    }
+                                                    return Container();
+                                                  }
+                                              );
+                                            }
+                                            return Container();
+                                          })
+                                  )
+                                ]
+                              ),
+                              onTap: () {
+                                print(
+                                    'go to user profile: ${document['uid']}');
+                                Navigator.push(context, MaterialPageRoute(
+                                  builder: (context) =>
+                                      ProfilePage(
+                                          userId: document['uid']),
+                                ));
+                              }
+                          ),
+                          Divider(height: 5.0),
+                        ]
+                    );
+                  }).toList(),
+                );
+            }
           }
         ),
-      ),
+      )
     );
   }
 }
