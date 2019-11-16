@@ -45,140 +45,104 @@ class _ListPageState extends State<ListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: new AppBar(
-        title: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              mainPopMenu(context),
-              IconButton(
-                icon: Icon(Icons.search),
-                iconSize: 40.0,
-                onPressed: () {
-                  Navigator.of(context).pushNamed('/searchpage');
-                },
-              ),
-              Expanded(
-                child: Center(child: new Text('Perkle')),
-              ),
-            ]
-        ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        titleSpacing: 5.0,
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.add_circle_outline, color: Colors.white),
-            iconSize: 40.0,
-          ),
-          RecordButton(),
-          /*new FlatButton(
-              child: Text('Logout'),
-              textColor: Colors.white,
-              onPressed: () {
-                FirebaseAuth.instance.signOut().then((value) {
-                  Navigator.of(context).pushReplacementNamed('/landingpage');
-                })
-                    .catchError((e) {
-                  print(e);
-                });
-              }
-          ),*/
-        ],
-      ),
-      body: Container(
-        child: FutureBuilder(
-          future: UserManagement().getUserData(),
-          builder: (BuildContext context, AsyncSnapshot<DocumentReference> futureSnap) {
-            if(futureSnap.hasData) {
-              return StreamBuilder(
-                  stream: futureSnap.data.snapshots(),
-                  builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-                    if(snapshot.hasData) {
-                      if(snapshot.data['directConversationMap'] == null)
-                        return Center(child: Text('You have no conversations!'));
-                      Map<String, dynamic> conversationMap = Map<String, dynamic>.from(snapshot.data['directConversationMap']);
-                      print('Conversation Map 1: $conversationMap');
+      body: Column(
+        children: <Widget>[
+          topPanel(context),
+          Expanded(
+            child: FutureBuilder(
+              future: UserManagement().getUserData(),
+              builder: (BuildContext context, AsyncSnapshot<DocumentReference> futureSnap) {
+                if(futureSnap.hasData) {
+                  return StreamBuilder(
+                      stream: futureSnap.data.snapshots(),
+                      builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+                        if(snapshot.hasData) {
+                          if(snapshot.data['directConversationMap'] == null)
+                            return Center(child: Text('You have no conversations!'));
+                          Map<String, dynamic> conversationMap = Map<String, dynamic>.from(snapshot.data['directConversationMap']);
+                          print('Conversation Map 1: $conversationMap');
 
-                      List<ConversationListObject> conversationList;
-                      print('Conversation Map: $conversationMap');
-                      conversationMap.forEach((key, value) {
-                        String _targetUid = key;
-                        String _targetUsername = value['targetUsername'];
-                        String _conversationId = value['conversationId'];
-                        int _unreadPosts = value['unreadPosts'];
+                          List<ConversationListObject> conversationList;
+                          print('Conversation Map: $conversationMap');
+                          conversationMap.forEach((key, value) {
+                            String _targetUid = key;
+                            String _targetUsername = value['targetUsername'];
+                            String _conversationId = value['conversationId'];
+                            int _unreadPosts = value['unreadPosts'];
 
-                        conversationList == null ? conversationList = [ConversationListObject(_targetUid, _targetUsername, _conversationId, _unreadPosts)] : conversationList.add(ConversationListObject(_targetUid, _targetUsername, _conversationId, _unreadPosts));
-                      });
-                      return ListView.builder(
-                          itemCount: conversationMap.length,
-                          itemBuilder: (context, index) {
-                            ConversationListObject convoItem = conversationList[index];
-                            print('Conversation Item TargetUID: ${convoItem.targetUid}');
-                            return Column(
-                              children: <Widget>[
-                                Padding(
-                                    padding: EdgeInsets.fromLTRB(0.0, 5.0, 0.0, 5.0),
-                                    child: ListTile(
-                                        leading: StreamBuilder(
-                                            stream: Firestore.instance.collection('users').document(convoItem.targetUid).snapshots(),
-                                            builder: (context, snapshot) {
-                                              if(snapshot.hasData) {
-                                                String picUrl = snapshot.data['profilePicUrl'];
-                                                if(picUrl != null)
+                            conversationList == null ? conversationList = [ConversationListObject(_targetUid, _targetUsername, _conversationId, _unreadPosts)] : conversationList.add(ConversationListObject(_targetUid, _targetUsername, _conversationId, _unreadPosts));
+                          });
+                          return ListView.builder(
+                              itemCount: conversationMap.length,
+                              itemBuilder: (context, index) {
+                                ConversationListObject convoItem = conversationList[index];
+                                print('Conversation Item TargetUID: ${convoItem.targetUid}');
+                                return Column(
+                                  children: <Widget>[
+                                    Padding(
+                                        padding: EdgeInsets.fromLTRB(0.0, 5.0, 0.0, 5.0),
+                                        child: ListTile(
+                                            leading: StreamBuilder(
+                                                stream: Firestore.instance.collection('users').document(convoItem.targetUid).snapshots(),
+                                                builder: (context, snapshot) {
+                                                  if(snapshot.hasData) {
+                                                    String picUrl = snapshot.data['profilePicUrl'];
+                                                    if(picUrl != null)
+                                                      return Container(
+                                                          height: 60.0,
+                                                          width: 60.0,
+                                                          decoration: BoxDecoration(
+                                                            shape: BoxShape.circle,
+                                                            color: Colors.deepPurple,
+                                                            image: DecorationImage(
+                                                              fit: BoxFit.cover,
+                                                              image: NetworkImage(picUrl.toString()),
+                                                            ),
+                                                          )
+                                                      );
+                                                  }
                                                   return Container(
                                                       height: 60.0,
                                                       width: 60.0,
                                                       decoration: BoxDecoration(
                                                         shape: BoxShape.circle,
                                                         color: Colors.deepPurple,
-                                                        image: DecorationImage(
-                                                          fit: BoxFit.cover,
-                                                          image: NetworkImage(picUrl.toString()),
-                                                        ),
                                                       )
                                                   );
-                                              }
-                                              return Container(
-                                                  height: 60.0,
-                                                  width: 60.0,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Colors.deepPurple,
-                                                  )
-                                              );
+                                                }
+                                            ),
+                                            title: Text(convoItem.targetUsername),
+                                            trailing: Text('Unheard Posts: ${convoItem.unreadPosts}'),
+                                            onTap: () {
+                                              print('go to conversation: ${convoItem.targetUsername} (${convoItem.conversationId})');
+                                              Navigator.push(context, MaterialPageRoute(
+                                                builder: (context) => ConversationPage(conversationId: convoItem.conversationId, targetUsername: convoItem.targetUsername, targetUID: convoItem.targetUid),
+                                              ));
                                             }
-                                        ),
-                                        title: Text(convoItem.targetUsername),
-                                        trailing: Text('Unheard Posts: ${convoItem.unreadPosts}'),
-                                        onTap: () {
-                                          print('go to conversation: ${convoItem.targetUsername} (${convoItem.conversationId})');
-                                          Navigator.push(context, MaterialPageRoute(
-                                            builder: (context) => ConversationPage(conversationId: convoItem.conversationId, targetUsername: convoItem.targetUsername, targetUID: convoItem.targetUid),
-                                          ));
-                                        }
-                                    )
-                                ),
-                                Divider(height: 5.0),
-                              ],
-                            );
-                          }
-                      );
-                    }
-                    return Center(
-                      child: Container(
-                        height: 50.0,
-                        width: 50.0,
-                        child: CircularProgressIndicator(),
-                      )
-                    );
-                  }
-              );
-            } else {
-              return Container();
-            }
-          },
-        ),
+                                        )
+                                    ),
+                                    Divider(height: 5.0),
+                                  ],
+                                );
+                              }
+                          );
+                        }
+                        return Center(
+                            child: Container(
+                              height: 50.0,
+                              width: 50.0,
+                              child: CircularProgressIndicator(),
+                            )
+                        );
+                      }
+                  );
+                } else {
+                  return Container();
+                }
+              },
+            ),
+          )
+        ]
       ),
       bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
     );

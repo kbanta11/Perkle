@@ -64,87 +64,34 @@ class _HomePageState extends State<HomePage> {
     }
 
     return new Scaffold(
-      appBar: new AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            mainPopMenu(context),
-            IconButton(
-              icon: Icon(Icons.search),
-              iconSize: 40.0,
-              onPressed: () {
-                Navigator.of(context).pushNamed('/searchpage');
-              },
-            ),
-            Expanded(
-              child: Center(child: new Text('Perkle')),
-            ),
-          ]
-        ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        titleSpacing: 5.0,
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.add_circle_outline, color: Colors.white),
-            iconSize: 40.0,
-          ),
-          RecordButton(),
-          /*new FlatButton(
-              child: Text('Logout'),
-              textColor: Colors.white,
-              onPressed: () {
-                FirebaseAuth.instance.signOut().then((value) {
-                  Navigator.of(context).pushReplacementNamed('/landingpage');
-                })
-                    .catchError((e) {
-                  print(e);
-                });
-              }
-          ),*/
-        ],
-      ),
       body: Container(
-          child: new Padding(
-            padding: EdgeInsets.only(top: 10.0, right: 5.0, left: 5.0, bottom: 5.0),
-            child: new Column(
+          child: new  Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
-                /*
-                FutureBuilder(
-                    future: _getUID(),
-                    builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-                      print('UID in Future Builder: ${snapshot.data}');
-                      return UserInfoSection(userId: snapshot.data);
-                  }
-                ),
-                Divider(
-                  height: 10.0
-                ),
-                */
-                Expanded(
-                  child:  Container(
-                    child: FutureBuilder(
-                      future: UserManagement().getUserData().then((document) {
-                        return document.get().then((snapshot) {
-                          return snapshot.data['mainFeedTimelineId'].toString();
-                        });
-                      }),
-                      builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-                        if(snapshot == null || snapshot.data == 'null')
-                          return Text('Your feed is empty! Start following users to fill your feed.');
-                        print('Setting timeline id: ${snapshot.data}');
-                        return  TimelineSection(idMap: {'timelineId': snapshot.data});
-                      }
-                    ),
-                  )
+                topPanel(context),
+                 Expanded(
+                    child:  Padding(
+                        padding: EdgeInsets.only(top: 5.0, right: 5.0, left: 5.0, bottom: 5.0),
+                        child:Container(
+                          child: new FutureBuilder(
+                                future: UserManagement().getUserData().then((document) {
+                                  return document.get().then((snapshot) {
+                                    return snapshot.data['mainFeedTimelineId'].toString();
+                                  });
+                                }),
+                                builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+                                  if(snapshot == null || snapshot.data == 'null')
+                                    return Text('Your feed is empty! Start following users to fill your feed.');
+                                  print('Setting timeline id: ${snapshot.data}');
+                                  return  TimelineSection(idMap: {'timelineId': snapshot.data});
+                                }
+                              ),
+                      )
+                  ),
                 ),
               ],
-            ),
           ),
         ),
-
       bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
     );
   }

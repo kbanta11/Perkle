@@ -53,65 +53,14 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
       return Scaffold(
-        appBar: new AppBar(
-          title: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                mainPopMenu(context),
-                IconButton(
-                  icon: Icon(Icons.search),
-                  iconSize: 40.0,
-                  onPressed: () {
-                    Navigator.of(context).pushNamed('/searchpage');
-                  },
-                ),
-                Expanded(
-                  child: Center(
-                      child: FutureBuilder(
-                          future: _getUsername(userId),
-                          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-                            switch (snapshot.connectionState) {
-                              case ConnectionState.done:
-                                if(snapshot.hasError)
-                                  return null;
-                                return Text(snapshot.data);
-                              default:
-                                return Text('Loading...');
-                            }
-                          }),
-                  ),
-                ),
-              ]
-          ),
-          centerTitle: true,
-          automaticallyImplyLeading: false,
-          titleSpacing: 5.0,
-          actions: <Widget>[
-            IconButton(
-              icon: Icon(Icons.add_circle_outline, color: Colors.white),
-              iconSize: 40.0,
-            ),
-            RecordButton(),
-            /*new FlatButton(
-              child: Text('Logout'),
-              textColor: Colors.white,
-              onPressed: () {
-                FirebaseAuth.instance.signOut().then((value) {
-                  Navigator.of(context).pushReplacementNamed('/landingpage');
-                })
-                    .catchError((e) {
-                  print(e);
-                });
-              }
-          ),*/
-          ],
-        ),
+
         body: Container(
           child: Column(
             children: <Widget>[
+              topPanel(context),
+              SizedBox(height: 5.0),
               UserInfoSection(userId: userId),
-              Divider(height: 5.0),
+              Divider(height: 1.0),
               Expanded(
                 child: TimelineSection(idMap: {'userId': userId}),
               ),

@@ -97,38 +97,129 @@ class _RecordButtonState extends State<RecordButton> {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      iconSize: 40.0,
-      icon: Icon(
-        Icons.mic,
-        color: _isRecording ? Colors.red : Colors.white,
-      ),
-        onPressed: () async {
-          if(_isRecording) {
-            List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-            String recordingLocation = stopRecordVals[0];
-            int secondsLength = stopRecordVals[1];
+    return Container(
+      height: 75.0,
+      width:75.0,
+      child: FittedBox(
+        child: FloatingActionButton(
+          heroTag: null,
+          shape: CircleBorder(side: BorderSide(color: Colors.red)),
+            child: Icon(
+              Icons.mic,
+              color: _isRecording ? Colors.red : Colors.white,
+            ),
+            backgroundColor:  _isRecording ? Colors.transparent : Colors.red,
+            onPressed: () async {
+              if(_isRecording) {
+                List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+                String recordingLocation = stopRecordVals[0];
+                int secondsLength = stopRecordVals[1];
 
-            print('$recordingLocation -/- Length: $secondsLength');
-            setState(() {
-              _isRecording = !_isRecording;
-            });
-            DateTime date = new DateTime.now();
-            await addPostDialog(context, date, recordingLocation, secondsLength);
-          } else {
-            //await showTimer();
-            List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
-            String postPath = startRecordVals[0];
-            DateTime startDate = startRecordVals[1];
-            setState(() {
-              _isRecording = !_isRecording;
-              _postAudioPath = postPath;
-              _startRecordDate = startDate;
-            });
-          }
-        }
+                print('$recordingLocation -/- Length: $secondsLength');
+                setState(() {
+                  _isRecording = !_isRecording;
+                });
+                DateTime date = new DateTime.now();
+                await addPostDialog(context, date, recordingLocation, secondsLength);
+              } else {
+                //await showTimer();
+                List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
+                String postPath = startRecordVals[0];
+                DateTime startDate = startRecordVals[1];
+                setState(() {
+                  _isRecording = !_isRecording;
+                  _postAudioPath = postPath;
+                  _startRecordDate = startDate;
+                });
+              }
+            }
+        )
+      )
     );
   }
+}
+
+Widget topPanel(BuildContext context) {
+  return Container(
+    height: 250.0,
+    width: MediaQuery.of(context).size.width,
+    decoration: BoxDecoration(
+      color: Colors.deepPurple,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black,
+          offset: Offset(0.0, 5.0),
+          blurRadius: 20.0,
+        )
+      ],
+      borderRadius: BorderRadius.only(bottomLeft: Radius.elliptical(35.0, 25.0), bottomRight: Radius.elliptical(35.0, 25.0)),
+      image: DecorationImage(
+        fit: BoxFit.cover,
+        image: AssetImage('assets/images/mic-stage.jpg'),
+      ),
+    ),
+    child: Column(
+      children: <Widget>[
+        AppBar(
+          backgroundColor: Colors.transparent,
+          title: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                mainPopMenu(context),
+                Expanded(
+                  child: Center(child: new Text('Perkle')),
+                ),
+              ]
+          ),
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+          titleSpacing: 5.0,
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.search),
+              iconSize: 40.0,
+              onPressed: () {
+                Navigator.of(context).pushNamed('/searchpage');
+              },
+            ),
+            /*new FlatButton(
+              child: Text('Logout'),
+              textColor: Colors.white,
+              onPressed: () {
+                FirebaseAuth.instance.signOut().then((value) {
+                  Navigator.of(context).pushReplacementNamed('/landingpage');
+                })
+                    .catchError((e) {
+                  print(e);
+                });
+              }
+          ),*/
+          ],
+        ),
+        SizedBox(height: 15.0),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            Container(
+              height: 75.0,
+              width: 75.0,
+              child: FittedBox(
+                child: FloatingActionButton(
+                  child: Icon(
+                    Icons.cloud_upload,
+                    color: Colors.white,
+                  ),
+                  heroTag: null,
+                )
+              ),
+            ),
+            RecordButton()
+          ]
+        ),
+      ]
+    ),
+  );
 }
 
 class UserInfoSection extends StatefulWidget {
@@ -863,28 +954,41 @@ Widget mainPopMenu(BuildContext context) {
 
 //Bottom Navigation Bar
 Widget bottomNavBar(Function tapFunc, int selectedIndex) {
-  return BottomNavigationBar(
-    items: <BottomNavigationBarItem> [
-      BottomNavigationBarItem(
-        icon: Icon(Icons.home),
-        title: Text('Home'),
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.surround_sound),
-        title: Text('Discover'),
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.mail_outline),
-        title: Text('Messages'),
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.account_circle),
-        title: Text('Profile'),
-      ),
-    ],
-    currentIndex: selectedIndex,
-    onTap: tapFunc,
-    fixedColor: Colors.deepPurple,
-    type: BottomNavigationBarType.fixed,
+  bool _isActive = false;
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.only(topLeft: Radius.elliptical(10, 10), topRight: Radius.elliptical(10, 10)),
+      image: DecorationImage(
+        image: AssetImage('assets/images/mic-stage.jpg'),
+        fit: BoxFit.cover,
+        alignment: Alignment(-.5,-.75)
+      )
+    ),
+    child: BottomNavigationBar(
+      items: <BottomNavigationBarItem> [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          title: Text('Home'),
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.surround_sound),
+          title: Text('Discover'),
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.mail_outline),
+          title: Text('Messages'),
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.account_circle),
+          title: Text('Profile'),
+        ),
+      ],
+      currentIndex: selectedIndex,
+      onTap: tapFunc,
+      fixedColor: Colors.deepPurple,
+      unselectedItemColor: Colors.white,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.transparent,
+    )
   );
 }

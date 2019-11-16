@@ -362,11 +362,12 @@ class ActivityManager {
         print('user has no posts');
       } else {
         snapshot.documents.forEach((DocumentSnapshot postSnapshot) {
-         List<String> newPostTimelines;
+         List<dynamic> newPostTimelines = new List<dynamic>();
          if(postSnapshot.data['timelines'] != null && postSnapshot.data['timelines'].length > 0) {
            print('post has timeline field');
-           List<String> currentPostTimelines = postSnapshot.data['timelines'];
-           newPostTimelines = currentPostTimelines;
+           List<dynamic> currentPostTimelines = postSnapshot.data['timelines'];
+           newPostTimelines.addAll(currentPostTimelines);
+           newPostTimelines.add(currentUserMainFeedTimelineId);
            print('set list to current timeline list');
          }
          else {
@@ -377,7 +378,7 @@ class ActivityManager {
         });
       }
     }).catchError((e) {
-      print('Error adding timeline to posts');
+      print('Error adding timeline to posts: $e');
     });
 
     batch.commit();
