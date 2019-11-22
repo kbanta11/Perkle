@@ -18,6 +18,7 @@ class _HomePageState extends State<HomePage> {
   Future<FirebaseUser> currentUser = FirebaseAuth.instance.currentUser();
   DocumentReference userDoc;
   int _selectedIndex = 0;
+  ActivityManager _activityManager = new ActivityManager();
 
   void _onItemTapped(int index) async {
     String uid = await _getUID();
@@ -65,31 +66,42 @@ class _HomePageState extends State<HomePage> {
 
     return new Scaffold(
       body: Container(
-          child: new  Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                topPanel(context),
-                 Expanded(
+          child: Stack(
+            children: <Widget>[
+              new Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+                  topPanel(context),
+                  Expanded(
                     child:  Padding(
                         padding: EdgeInsets.only(top: 5.0, right: 5.0, left: 5.0, bottom: 5.0),
                         child:Container(
                           child: new FutureBuilder(
-                                future: UserManagement().getUserData().then((document) {
-                                  return document.get().then((snapshot) {
-                                    return snapshot.data['mainFeedTimelineId'].toString();
-                                  });
-                                }),
-                                builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-                                  if(snapshot == null || snapshot.data == 'null')
-                                    return Text('Your feed is empty! Start following users to fill your feed.');
-                                  print('Setting timeline id: ${snapshot.data}');
-                                  return  TimelineSection(idMap: {'timelineId': snapshot.data});
-                                }
-                              ),
-                      )
+                              future: UserManagement().getUserData().then((document) {
+                                return document.get().then((snapshot) {
+                                  return snapshot.data['mainFeedTimelineId'].toString();
+                                });
+                              }),
+                              builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+                                if(snapshot == null || snapshot.data == 'null')
+                                  return Text('Your feed is empty! Start following users to fill your feed.');
+                                print('Setting timeline id: ${snapshot.data}');
+                                return  TimelineSection(idMap: {'timelineId': snapshot.data}, activityManager: _activityManager,);
+                              }
+                          ),
+                        )
+                    ),
                   ),
+                ],
+              ),
+              Positioned.fill(
+                top: 180.0,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: PlaylistControls(activityManager: _activityManager)
                 ),
-              ],
+              ),
+            ],
           ),
         ),
       bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),

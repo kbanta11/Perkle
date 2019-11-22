@@ -168,7 +168,7 @@ Widget topPanel(BuildContext context) {
               children: <Widget>[
                 mainPopMenu(context),
                 Expanded(
-                  child: Center(child: new Text('Perkle')),
+                  child: Center(child: new Text('Perkl')),
                 ),
               ]
           ),
@@ -220,6 +220,60 @@ Widget topPanel(BuildContext context) {
       ]
     ),
   );
+}
+
+class PlaylistControls extends StatefulWidget {
+  ActivityManager activityManager;
+
+  PlaylistControls({Key key, @required this.activityManager}) : super(key: key);
+
+  @override
+  _PlaylistControlsState createState() => new _PlaylistControlsState();
+}
+
+class _PlaylistControlsState extends State<PlaylistControls> {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        InkWell(
+            child: Text('<<', style: TextStyle(color: Colors.white70, fontSize: 60.0),)
+        ),
+        SizedBox(width: 15.0),
+        Container(
+          height: 120.0,
+          width: 120.0,
+          child: StreamBuilder(
+            stream: widget.activityManager.playlistPlaying,
+            builder: (context, snapshot) {
+              if(snapshot.hasData && snapshot.data == true) {
+                return FloatingActionButton(
+                  elevation: 20,
+                  backgroundColor: Colors.deepPurpleAccent,
+                  child: Icon(Icons.pause, color: Colors.white, size: 90.0,),
+                  onPressed: () {
+                    widget.activityManager.pausePlaylist();
+                  },
+                );
+              }
+              return FloatingActionButton(
+                child: Icon(Icons.play_arrow, color: Colors.white, size: 90.0,),
+                onPressed: () {
+                  widget.activityManager.playPlaylist();
+                },
+              );
+            }
+          )
+        ),
+        SizedBox(width: 15.0),
+        InkWell(
+          child: Text('>>', style: TextStyle(color: Colors.white70, fontSize: 60.0),)
+        ),
+      ]
+    );
+  }
 }
 
 class UserInfoSection extends StatefulWidget {
@@ -609,15 +663,15 @@ class _BioTextSectionState extends State<BioTextSection> {
 //  Timeline Component
 class TimelineSection extends StatefulWidget {
   final Map<String, dynamic> idMap;
+  ActivityManager activityManager;
 
-  TimelineSection({Key key, @required this.idMap}) : super(key: key);
+  TimelineSection({Key key, @required this.idMap, this.activityManager}) : super(key: key);
 
   @override
   _TimelineSectionState createState() => _TimelineSectionState();
 }
 
 class _TimelineSectionState extends State<TimelineSection> {
-  ActivityManager activityManager = new ActivityManager();
   String timelineId;
   String userId;
   bool _isPlaying = false;
@@ -659,11 +713,11 @@ class _TimelineSectionState extends State<TimelineSection> {
                 builder: (context, AsyncSnapshot<QuerySnapshot>snapshot) {
                   //print(snapshot.data);
                   if(!snapshot.hasData || snapshot.data.documents.length == 0)
-                    return Text('Users has no posts');
+                    return Center(child: Text('Users has no posts'));
 
                   switch(snapshot.connectionState){
                     case ConnectionState.none:
-                      return Text('Connection Lost');
+                      return Center(child: Text('Connection Lost...'));
                     case ConnectionState.waiting:
                       return Center(
                           child: Container(
@@ -714,6 +768,8 @@ class _TimelineSectionState extends State<TimelineSection> {
                               }
                             }
 
+                            List<dynamic> streamList = document.data['streamList'];
+
                             String userId = document.data['userUID'];
                             Map<String, dynamic> postInfo = {
                               'userId': userId,
@@ -726,8 +782,10 @@ class _TimelineSectionState extends State<TimelineSection> {
                               'postAudioUrl': postAudioUrl,
                               'isPlaying': _isPlaying,
                               'postLengthString': postLength,
-                              'activityManager': activityManager,
+                              'activityManager': widget.activityManager,
+                              'streamList': streamList,
                             };
+
                             return Column(
                                 children: <Widget>[
                                   TimelineListItem(params: postInfo),
@@ -757,6 +815,7 @@ class TimelineListItem extends StatefulWidget {
 class _TimelineListItemState extends State<TimelineListItem> {
   bool _thisPlaying = false;
   AudioPlayer postPlayer = new AudioPlayer();
+  bool _showDetail = false;
 
   @override
   Widget build(BuildContext context) {
@@ -764,9 +823,76 @@ class _TimelineListItemState extends State<TimelineListItem> {
     String username = widget.params['username'];
     String postTitle = widget.params['postTitle'];
     String postDate = widget.params['postDate'];
+    List<dynamic> streamList = widget.params['streamList'];
     String postAudioUrl = widget.params['postAudioUrl'];
     String postLengthString = widget.params['postLengthString'];
     ActivityManager activityManager = widget.params['activityManager'];
+
+    PostAudioPlayer thisPost = activityManager.addPostToPlaylist(postAudioUrl, postPlayer);
+
+    Widget titleWidget = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('@${username}',
+            style: TextStyle(
+              fontSize: 18.0,
+              color: Color(0xFF7B7B7B),
+            ),
+          ),
+          SizedBox(height: 2.5),
+          Text(postTitle,
+            style: TextStyle(
+              fontSize: 18.0,
+            ),
+          ),
+          SizedBox(height: 2.5),
+          Text(postDate,
+            style: TextStyle(
+              fontSize: 14.0,
+              color: Color(0xFF7B7B7B),
+            ),
+          ),
+        ]
+    );
+
+    if(_showDetail) {
+      if(streamList != null) {
+        titleWidget = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('@${username}',
+                style: TextStyle(
+                  fontSize: 18.0,
+                  color: Color(0xFF7B7B7B),
+                ),
+              ),
+              SizedBox(height: 2.5),
+              Text(postTitle,
+                style: TextStyle(
+                  fontSize: 18.0,
+                ),
+              ),
+              SizedBox(height: 2.5),
+              Text(postDate,
+                style: TextStyle(
+                  fontSize: 14.0,
+                  color: Color(0xFF7B7B7B),
+                ),
+              ),
+              Wrap(
+                spacing: 8.0,
+                children: streamList.map((hashtag) => InkWell(
+                    child: Text('#${hashtag.toString()}',
+                        style: TextStyle(
+                          color: Colors.lightBlue,
+                        )
+                    ),
+                  )).toList()
+              ),
+            ]
+        );
+      }
+    }
 
     return ListTile(
       leading: StreamBuilder(
@@ -814,59 +940,59 @@ class _TimelineListItemState extends State<TimelineListItem> {
             );
           }
       ),
-      title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('@${username}',
-              style: TextStyle(
-                fontSize: 18.0,
-                color: Color(0xFF7B7B7B),
-              ),
-            ),
-            SizedBox(height: 2.5),
-            Text(postTitle,
-              style: TextStyle(
-                fontSize: 18.0,
-              ),
-            ),
-            SizedBox(height: 2.5),
-            Text(postDate,
-              style: TextStyle(
-                fontSize: 14.0,
-                color: Color(0xFF7B7B7B),
-              ),
-            ),
-          ]
-      ),
+      title: titleWidget,
       trailing:  Column(
           children: <Widget>[
             SizedBox(
               width: 35.0,
               height: 35.0,
               child: StreamBuilder(
-                stream: postPlayer.onPlayerStateChanged,
-                builder: (BuildContext context, snapshot) {
-                  print('State: ${snapshot.data}');
+                stream: activityManager.playlistPlaying,
+                builder: (context, snapshot) {
+                  bool _playlistPlaying = false;
+                  if(snapshot.hasData)
+                    _playlistPlaying = snapshot.data;
+                  return StreamBuilder(
+                      stream: thisPost.postPlayer.onPlayerStateChanged,
+                      builder: (BuildContext context, snapshot) {
+                        print('State: ${snapshot.data}');
 
-                  Color playBtnBG = Colors.deepPurple;
-                  if(snapshot.data == AudioPlayerState.PLAYING)
-                    playBtnBG = Colors.red;
-                  if(postAudioUrl == null || postAudioUrl == 'null')
-                    playBtnBG = Colors.grey;
-
-                  return FloatingActionButton(
-                    backgroundColor: playBtnBG,
-                    child: snapshot.data == AudioPlayerState.PLAYING ? Icon(Icons.stop) : Icon(Icons.play_arrow),
-                    heroTag: null,
-                    onPressed: () async {
-                      if(snapshot.data == AudioPlayerState.PLAYING) {
-                        activityManager.stopPlaying(postPlayer);
-                      } else {
-                        if (postAudioUrl != null && postAudioUrl != 'null') {
-                          activityManager.playRecording(postAudioUrl, postPlayer);
+                        if(snapshot.data == AudioPlayerState.COMPLETED) {
+                          thisPost.hasPlayed = true;
+                          thisPost.isPlaying = false;
+                          if(_playlistPlaying){
+                            Future.delayed(const Duration(milliseconds: 1500), () {
+                              print('playing next playlist');
+                              print('HasPlayed: ${thisPost.hasPlayed}; IsPlaying: ${thisPost.isPlaying}');
+                              activityManager.playPlaylist();
+                            });
+                          }
                         }
+
+                        Color playBtnBG = Colors.deepPurple;
+                        if(snapshot.data == AudioPlayerState.PLAYING || snapshot.data == AudioPlayerState.PAUSED)
+                          playBtnBG = Colors.red;
+                        if(postAudioUrl == null || postAudioUrl == 'null')
+                          playBtnBG = Colors.grey;
+
+                        return FloatingActionButton(
+                          backgroundColor: playBtnBG,
+                          child: snapshot.data == AudioPlayerState.PLAYING ? Icon(Icons.pause) : Icon(Icons.play_arrow),
+                          heroTag: null,
+                          onPressed: () async {
+                            if(snapshot.data == AudioPlayerState.PLAYING) {
+                              activityManager.pausePlaying();
+                            } else if(snapshot.data == AudioPlayerState.PAUSED) {
+                              activityManager.resumePlaying();
+                            } else {
+                              if (postAudioUrl != null && postAudioUrl != 'null') {
+                                thisPost.isPlaying = true;
+                                activityManager.playRecording(postAudioUrl, postPlayer);
+                              }
+                            }
+                          },
+                        );
                       }
-                    },
                   );
                 }
               ),
@@ -876,7 +1002,9 @@ class _TimelineListItemState extends State<TimelineListItem> {
           ]
       ),
       onTap: () {
-
+        setState((){
+          _showDetail = !_showDetail;
+        });
       },
     );
   }

@@ -15,8 +15,21 @@ class _LoginPageState extends State<LoginPage> {
   String _email;
   String _password;
 
+  _checkLoggedIn() async {
+    FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
+    if(currentUser != null)
+      Navigator.of(context).pushReplacementNamed("/homepage");
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoggedIn();
+  }
+
   @override
   Widget build(BuildContext context){
+
     return new Scaffold (
       body: Container(
         decoration: BoxDecoration(

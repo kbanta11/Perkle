@@ -21,6 +21,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String userId;
   int _selectedIndex = 3;
+  ActivityManager activityManager = new ActivityManager();
 
   void _onItemTapped(int index) async {
     if(index == 0) {
@@ -62,7 +63,7 @@ class _ProfilePageState extends State<ProfilePage> {
               UserInfoSection(userId: userId),
               Divider(height: 1.0),
               Expanded(
-                child: TimelineSection(idMap: {'userId': userId}),
+                child: TimelineSection(idMap: {'userId': userId}, activityManager: activityManager,),
               ),
             ]
           ),

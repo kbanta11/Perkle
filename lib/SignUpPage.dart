@@ -17,6 +17,7 @@ class _SignUpPageState extends State<SignUpPage> {
   String _username;
   bool _usernameTaken;
   String _validateUsernameError;
+  String _emailError;
 
   @override
   Widget build(BuildContext context){
@@ -53,7 +54,9 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                         SizedBox(height: 10.0),
                         TextField(
-                            decoration: InputDecoration(hintText: 'Email'),
+                            decoration: InputDecoration(hintText: 'Email',
+                              errorText: _emailError,
+                            ),
                             onChanged: (value) {
                               setState((){
                                 _email = value;
@@ -95,7 +98,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                 FirebaseUser newUser = signedInUser.user;
                                 UserManagement().storeNewUser(newUser, context, username: _username);
                               }).catchError((e) {
-                                print(e);
+                                print('Error: ${e.code}');
+                                if(e.code == 'ERROR_EMAIL_ALREADY_IN_USE'){
+                                  setState(() {
+                                    _emailError = 'Email already in use!';
+                                  });
+                                }
                               });
                             }
                           },

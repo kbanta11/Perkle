@@ -11,7 +11,7 @@ description: A Flutter social blogging app.
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.0.1
+version: 0.0.4
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
@@ -23,21 +23,28 @@ dependencies:
   firebase_core:
   firebase_database:
   firebase_storage:
+  #firebase_messaging:
   google_sign_in:
   image_picker:
   image_cropper:
   intl:
   flutter_sound: 1.5.1
+  flutter_launcher_icons:
   path_provider:
   audioplayers:
 
   flutter:
     sdk: flutter
 
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/Perkl-Android_Icon.png"
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^0.1.2
+  # cupertino_icons:
 
 dev_dependencies:
   flutter_test:

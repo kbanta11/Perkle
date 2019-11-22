@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
@@ -6,21 +7,25 @@ import 'HomePage.dart';
 import 'SearchPage.dart';
 import 'Dashboard.dart';
 
-void main() {
-  runApp(new BlogApp());
+void main() async {
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  runApp(new MainApp());
 }
 
-class BlogApp extends StatelessWidget {
+class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
-      title: 'Firebase App',
+      title: 'Perkl',
       theme: new ThemeData (
         primarySwatch: Colors.deepPurple
       ),
       home: LoginPage(),
       routes: <String, WidgetBuilder> {
-        '/landingpage': (BuildContext context) => new BlogApp(),
+        '/landingpage': (BuildContext context) => new MainApp(),
         '/signup': (BuildContext context) => new SignUpPage(),
         '/homepage': (BuildContext context) => new HomePage(),
         '/searchpage': (BuildContext context) => new SearchPage(),

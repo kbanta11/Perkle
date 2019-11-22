@@ -13,10 +13,25 @@ import 'package:audioplayers/audioplayers.dart';
 
 import 'UserManagement.dart';
 
+class PostAudioPlayer {
+  String postAudioUrl;
+  bool hasPlayed = false;
+  bool isPlaying = false;
+  AudioPlayer postPlayer;
+
+  PostAudioPlayer(String audioUrl, AudioPlayer postPlayer) {
+    this.postAudioUrl = audioUrl;
+    this.postPlayer = postPlayer;
+  }
+}
+
 class ActivityManager {
   FlutterSound soundManager = new FlutterSound();
   AudioPlayer audioPlayer = new AudioPlayer();
   AudioPlayer currentlyPlayingPlayer;
+  List<PostAudioPlayer> timelinePlaylist = new List();
+  StreamController _playlistStreamController = new StreamController<bool>.broadcast();
+  Stream get playlistPlaying => _playlistStreamController.stream.asBroadcastStream();
   StreamSubscription<RecordStatus> recordingSubscription;
 
   bool isLoggedIn() {
@@ -276,16 +291,64 @@ class ActivityManager {
     if(this.currentlyPlayingPlayer != null){
       AudioPlayer oldPlayer = this.currentlyPlayingPlayer;
       oldPlayer.stop();
+      PostAudioPlayer oldPost = this.timelinePlaylist.where((player) {
+        return player.postPlayer.playerId == oldPlayer.playerId;
+      }).toList().first;
+      oldPost.isPlaying = false;
     }
     this.currentlyPlayingPlayer = player;
     int status = await player.play(fileUrl);
     print('playing recording: $status');
   }
 
+  pausePlaying() async {
+    int result = await this.currentlyPlayingPlayer.pause();
+    this._playlistStreamController.add(false);
+    print('pausing player');
+  }
+
+  resumePlaying() async {
+    int result = await this.currentlyPlayingPlayer.resume();
+    print('resume playing');
+  }
+
   stopPlaying(AudioPlayer player) async {
     int result = await player.stop();
     this.currentlyPlayingPlayer = null;
     print('recording stopped: $result');
+  }
+
+  PostAudioPlayer addPostToPlaylist(String postAudioUrl, AudioPlayer postPlayer) {
+    PostAudioPlayer postObject = new PostAudioPlayer(postAudioUrl, postPlayer);
+    this.timelinePlaylist.add(postObject);
+    print('Post added to timeline playlist');
+    return postObject;
+  }
+
+  playPlaylist() async {
+    List<PostAudioPlayer> unheardPosts = this.timelinePlaylist.where((player) {
+      return player.hasPlayed == false;
+    }).toList();
+    PostAudioPlayer currentPost = unheardPosts[0];
+    print('Current Playlist Post: $currentPost');
+    if(currentPost != null) {
+      print('Has Played: ${currentPost.hasPlayed}; Is Currently Playing ${currentPost.isPlaying}');
+      if (!currentPost.hasPlayed && !currentPost.isPlaying) {
+        print('Starting next post player');
+        currentPost.isPlaying = true;
+        this._playlistStreamController.add(true);
+        this.playRecording(currentPost.postAudioUrl, currentPost.postPlayer);
+      }
+      if(this.currentlyPlayingPlayer != null) {
+        this._playlistStreamController.add(true);
+        this.currentlyPlayingPlayer.resume();
+      }
+    }
+  }
+
+  pausePlaylist() async {
+    this.pausePlaying();
+    this._playlistStreamController.add(false);
   }
 
   Future<void> followUser(String newFollowUID) async {
@@ -450,7 +513,6 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
   print('starting set date format');
   String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(date);
   print(dateString);
-  String _postDescription;
   String _postTitle;
   String _postTags;
 
@@ -478,20 +540,6 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
               ),
               SizedBox(height: 20.0),
               Text('Post Description (optional)'),
-              Container(
-                width: 700.0,
-                child: TextField(
-                  decoration: InputDecoration(
-                      hintText: 'A short description of this post...',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.multiline,
-                  maxLines: 5,
-                  onChanged: (value) {
-                    _postDescription = value;
-                  },
-                ),
-              ),
               SizedBox(height: 20.0),
               Text('Stream Tags (separated by \'#\')'),
               Container(
@@ -555,7 +603,6 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                         } else {
                           List<String> tagList = processTagString(_postTags);
                           print({"postTitle": _postTitle,
-                            "postValue": _postDescription,
                             "localRecordingLocation": recordingLocation,
                             "date": date,
                             "dateString": dateString,
@@ -565,7 +612,6 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                             "test": "tester",
                           });
                           await ActivityManager().addPost(context, {"postTitle": _postTitle,
-                            "postValue": _postDescription,
                             "localRecordingLocation": recordingLocation,
                             "date": date,
                             "dateString": dateString,

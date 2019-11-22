@@ -84,18 +84,20 @@ class _ConversationPageState extends State<ConversationPage> {
                                   stream: postPlayer.onPlayerStateChanged,
                                   builder: (BuildContext context, snapshot) {
                                     Color playBtnBG = Colors.deepPurple;
-                                    if(snapshot.data == AudioPlayerState.PLAYING)
+                                    if(snapshot.data == AudioPlayerState.PLAYING || snapshot.data == AudioPlayerState.PAUSED)
                                       playBtnBG = Colors.red;
                                     if(postAudioUrl == null || postAudioUrl == 'null')
                                       playBtnBG = Colors.grey;
 
                                     return FloatingActionButton(
                                       backgroundColor: playBtnBG,
-                                      child: snapshot.data == AudioPlayerState.PLAYING ? Icon(Icons.stop) : Icon(Icons.play_arrow),
+                                      child: snapshot.data == AudioPlayerState.PLAYING ? Icon(Icons.pause) : Icon(Icons.play_arrow),
                                       heroTag: null,
                                       onPressed: () async {
                                         if(snapshot.data == AudioPlayerState.PLAYING) {
-                                          _activityManager.stopPlaying(postPlayer);
+                                          _activityManager.pausePlaying();
+                                        } else if(snapshot.data == AudioPlayerState.PAUSED) {
+                                          _activityManager.resumePlaying();
                                         } else {
                                           if (postAudioUrl != null && postAudioUrl != 'null') {
                                             _activityManager.playRecording(postAudioUrl, postPlayer);
