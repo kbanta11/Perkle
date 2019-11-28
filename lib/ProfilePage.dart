@@ -11,8 +11,9 @@ import 'ListPage.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
+  ActivityManager activityManager;
 
-  ProfilePage({Key key, @required this.userId}) : super(key: key);
+  ProfilePage({Key key, @required this.userId, this.activityManager}) : super(key: key);
 
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -21,17 +22,17 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String userId;
   int _selectedIndex = 3;
-  ActivityManager activityManager = new ActivityManager();
 
   void _onItemTapped(int index) async {
+    print('Activity Manager: ${widget.activityManager}');
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => HomePage(),
+        builder: (context) => HomePage(activityManager: widget.activityManager,),
       ));
     }
     if(index == 2) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => ListPage(type: 'conversation'),
+        builder: (context) => ListPage(type: 'conversation', activityManager: widget.activityManager,),
       ));
     }
     setState(() {
@@ -53,12 +54,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    ActivityManager activityManager = widget.activityManager;
       return Scaffold(
 
         body: Container(
           child: Column(
             children: <Widget>[
-              topPanel(context),
+              topPanel(context, activityManager),
               SizedBox(height: 5.0),
               UserInfoSection(userId: userId),
               Divider(height: 1.0),

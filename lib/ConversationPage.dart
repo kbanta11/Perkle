@@ -15,10 +15,9 @@ import 'ProfilePage.dart';
 
 class ConversationPage extends StatefulWidget {
   final String conversationId;
-  final String targetUsername;
-  final String targetUID;
+  ActivityManager activityManager;
 
-  ConversationPage({Key key, @required this.conversationId, this.targetUsername, this.targetUID}) : super(key: key);
+  ConversationPage({Key key, @required this.conversationId, this.activityManager}) : super(key: key);
 
   @override
   _ConversationPageState createState() => _ConversationPageState();
@@ -26,14 +25,11 @@ class ConversationPage extends StatefulWidget {
 
 class _ConversationPageState extends State<ConversationPage> {
   int _selectedIndex = 2;
-  ActivityManager _activityManager = new ActivityManager();
-  bool _isPlaying = false;
-  String _playingId;
 
   void _onItemTapped(int index) async {
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => HomePage(),
+        builder: (context) => HomePage(activityManager: widget.activityManager,),
       ));
     }
     if(index == 3) {
@@ -41,7 +37,7 @@ class _ConversationPageState extends State<ConversationPage> {
         return docRef.documentID;
       });
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => ProfilePage(userId: uid),
+        builder: (context) => ProfilePage(userId: uid, activityManager: widget.activityManager),
       ));
     }
     setState(() {
@@ -57,11 +53,11 @@ class _ConversationPageState extends State<ConversationPage> {
 
   @override
   Widget build(BuildContext context) {
-    print('Conversation with ${widget.targetUID}');
+    ActivityManager _activityManager = widget.activityManager;
     return Scaffold(
       body: Column(
         children: <Widget>[
-          topPanel(context),
+          topPanel(context, _activityManager),
           Expanded(
               child: StreamBuilder(
                   stream: Firestore.instance.collection('directposts').where('conversationId', isEqualTo: widget.conversationId).orderBy('datePosted', descending: true).snapshots(),
@@ -76,6 +72,8 @@ class _ConversationPageState extends State<ConversationPage> {
                           DateTime datePosted = docSnap.data['datePosted'].toDate();
                           String dateString = DateFormat('MMMM dd, yyyy hh:mm:ss').format(datePosted).toString();
                           String postAudioUrl = docSnap.data['audioFileLocation'];
+
+                          PostAudioPlayer thisPost = _activityManager.addPostToPlaylist(postAudioUrl, postPlayer);
 
                           Widget playButton = SizedBox(
                               height: 35.0,
@@ -100,7 +98,8 @@ class _ConversationPageState extends State<ConversationPage> {
                                           _activityManager.resumePlaying();
                                         } else {
                                           if (postAudioUrl != null && postAudioUrl != 'null') {
-                                            _activityManager.playRecording(postAudioUrl, postPlayer);
+                                            _activityManager.setCurrentPost(thisPost);
+                                            thisPost.play();
                                           }
                                         }
                                       },
@@ -142,7 +141,7 @@ class _ConversationPageState extends State<ConversationPage> {
                                                               onTap: () {
                                                                 Navigator.push(context, MaterialPageRoute(
                                                                   builder: (context) =>
-                                                                      ProfilePage(userId: docSnap.data['senderUID']),
+                                                                      ProfilePage(userId: docSnap.data['senderUID'], activityManager: widget.activityManager),
                                                                 ));
                                                               },
                                                               child: Container(
@@ -163,7 +162,7 @@ class _ConversationPageState extends State<ConversationPage> {
                                                           onTap: () {
                                                             Navigator.push(context, MaterialPageRoute(
                                                               builder: (context) =>
-                                                                  ProfilePage(userId: docSnap.data['senderUID']),
+                                                                  ProfilePage(userId: docSnap.data['senderUID'], activityManager: widget.activityManager),
                                                             ));
                                                           },
                                                           child: Container(
@@ -192,7 +191,7 @@ class _ConversationPageState extends State<ConversationPage> {
                                                             onTap: () {
                                                               Navigator.push(context, MaterialPageRoute(
                                                                 builder: (context) =>
-                                                                    ProfilePage(userId: docSnap.data['senderUID']),
+                                                                    ProfilePage(userId: docSnap.data['senderUID'], activityManager: widget.activityManager),
                                                               ));
                                                             },
                                                             child: Container(
@@ -213,7 +212,7 @@ class _ConversationPageState extends State<ConversationPage> {
                                                         onTap: () {
                                                           Navigator.push(context, MaterialPageRoute(
                                                             builder: (context) =>
-                                                                ProfilePage(userId: docSnap.data['senderUID']),
+                                                                ProfilePage(userId: docSnap.data['senderUID'], activityManager: widget.activityManager),
                                                           ));
                                                         },
                                                         child: Container(
@@ -252,8 +251,7 @@ class _ConversationPageState extends State<ConversationPage> {
             child: Icon(Icons.mail_outline),
             heroTag: null,
             onPressed: () async {
-              print('Sending to ${widget.targetUID}');
-                await _activityManager.sendDirectPostDialog(widget.targetUID, widget.targetUsername, context);
+                await _activityManager.sendDirectPostDialog(context, conversationId: widget.conversationId);
             },
           ),
       bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),

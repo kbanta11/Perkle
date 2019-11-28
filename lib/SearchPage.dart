@@ -12,6 +12,10 @@ import 'services/ActivityManagement.dart';
 
 
 class SearchPage extends StatefulWidget {
+  ActivityManager activityManager;
+
+  SearchPage({Key key, this.activityManager}) : super(key: key);
+
   @override
   _SearchPageState createState() => _SearchPageState();
 }
@@ -24,17 +28,17 @@ class _SearchPageState extends State<SearchPage> {
     String uid = await _getUID();
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => HomePage(),
+        builder: (context) => HomePage(activityManager: widget.activityManager,),
       ));
     }
     if(index == 3) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => ProfilePage(userId: uid),
+        builder: (context) => ProfilePage(userId: uid, activityManager: widget.activityManager,),
       ));
     }
     if(index == 2) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => ListPage(type: 'conversation'),
+        builder: (context) => ListPage(type: 'conversation', activityManager: widget.activityManager,),
       ));
     }
     setState(() {
@@ -59,7 +63,7 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       body: Column(
         children: <Widget>[
-          topPanel(context),
+          topPanel(context, widget.activityManager),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
                 stream: Firestore.instance.collection('users').snapshots(),
@@ -161,7 +165,7 @@ class _SearchPageState extends State<SearchPage> {
                                       Navigator.push(context, MaterialPageRoute(
                                         builder: (context) =>
                                             ProfilePage(
-                                                userId: document['uid']),
+                                                userId: document['uid'], activityManager: widget.activityManager,),
                                       ));
                                     }
                                 ),

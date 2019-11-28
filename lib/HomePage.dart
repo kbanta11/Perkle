@@ -10,6 +10,10 @@ import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
 class HomePage extends StatefulWidget {
+  ActivityManager activityManager;
+
+  HomePage({Key key, this.activityManager}) : super(key: key);
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -18,18 +22,19 @@ class _HomePageState extends State<HomePage> {
   Future<FirebaseUser> currentUser = FirebaseAuth.instance.currentUser();
   DocumentReference userDoc;
   int _selectedIndex = 0;
-  ActivityManager _activityManager = new ActivityManager();
+  ActivityManager _activityManager;
 
-  void _onItemTapped(int index) async {
+  void _onItemTapped(int index, {ActivityManager actManage}) async {
+    print('Activity Manager: $actManage');
     String uid = await _getUID();
     if(index == 3) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => ProfilePage(userId: uid),
+        builder: (context) => ProfilePage(userId: uid, activityManager: actManage),
       ));
     }
     if(index == 2) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => ListPage(type: 'conversation'),
+        builder: (context) => ListPage(type: 'conversation', activityManager: actManage),
       ));
     }
     setState(() {
@@ -51,7 +56,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
-
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _showUsernameDialog(context);
@@ -60,6 +64,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if(widget.activityManager == null)
+      _activityManager = new ActivityManager();
+    else
+      _activityManager = widget.activityManager;
+
     if (currentUser == null) {
       Navigator.of(context).pushReplacementNamed('/landingpage');
     }
@@ -71,7 +80,7 @@ class _HomePageState extends State<HomePage> {
               new Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: <Widget>[
-                  topPanel(context),
+                  topPanel(context, _activityManager),
                   Expanded(
                     child:  Padding(
                         padding: EdgeInsets.only(top: 5.0, right: 5.0, left: 5.0, bottom: 5.0),
@@ -104,7 +113,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-      bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
+      bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex, activityManager: _activityManager),
     );
   }
 }

@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 import 'ProfilePage.dart';
+import 'SearchPage.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
@@ -76,12 +77,15 @@ class _TimerDialogState extends State<TimerDialog> {
 }
 
 class RecordButton extends StatefulWidget {
+  ActivityManager activityManager;
+
+  RecordButton({Key key, @required this.activityManager}) : super(key: key);
+
   @override
   _RecordButtonState createState() => _RecordButtonState();
 }
 
 class _RecordButtonState extends State<RecordButton> {
-  ActivityManager activityManager = new ActivityManager();
   bool _isRecording = false;
   String _postAudioPath;
   DateTime _startRecordDate;
@@ -111,7 +115,7 @@ class _RecordButtonState extends State<RecordButton> {
             backgroundColor:  _isRecording ? Colors.transparent : Colors.red,
             onPressed: () async {
               if(_isRecording) {
-                List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+                List<dynamic> stopRecordVals = await widget.activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
                 String recordingLocation = stopRecordVals[0];
                 int secondsLength = stopRecordVals[1];
 
@@ -123,7 +127,10 @@ class _RecordButtonState extends State<RecordButton> {
                 await addPostDialog(context, date, recordingLocation, secondsLength);
               } else {
                 //await showTimer();
-                List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
+                if(widget.activityManager.currentlyPlayingPlayer != null) {
+                  widget.activityManager.pausePlaying();
+                }
+                List<dynamic> startRecordVals = await widget.activityManager.startRecordNewPost();
                 String postPath = startRecordVals[0];
                 DateTime startDate = startRecordVals[1];
                 setState(() {
@@ -139,7 +146,7 @@ class _RecordButtonState extends State<RecordButton> {
   }
 }
 
-Widget topPanel(BuildContext context) {
+Widget topPanel(BuildContext context, ActivityManager activityManager) {
   return Container(
     height: 250.0,
     width: MediaQuery.of(context).size.width,
@@ -180,7 +187,9 @@ Widget topPanel(BuildContext context) {
               icon: Icon(Icons.search),
               iconSize: 40.0,
               onPressed: () {
-                Navigator.of(context).pushNamed('/searchpage');
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (context) => SearchPage(activityManager: activityManager),
+                ));
               },
             ),
             /*new FlatButton(
@@ -214,7 +223,7 @@ Widget topPanel(BuildContext context) {
                 )
               ),
             ),
-            RecordButton()
+            RecordButton(activityManager: activityManager,)
           ]
         ),
       ]
@@ -320,9 +329,17 @@ class _UserInfoSectionState extends State<UserInfoSection> {
                         child: Icon(Icons.mail_outline),
                         heroTag: null,
                         onPressed: () async {
+                          String currentUsername;
+                          String currentUserId;
+                          await UserManagement().getUserData().then((docRef) async {
+                            currentUserId = docRef.documentID;
+                            await docRef.get().then((snapshot) {
+                              currentUsername = snapshot.data['username'].toString();
+                            });
+                          });
                           await Firestore.instance.collection('users').document(widget.userId).get().then((DocumentSnapshot snapshot) async {
                             String username = snapshot.data['username'].toString();
-                            await activityManager.sendDirectPostDialog(widget.userId, username, context);
+                            await activityManager.sendDirectPostDialog(context, memberMap: {widget.userId: username, currentUserId: currentUsername});
                           });
                         },
                       )
@@ -905,7 +922,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
                   onTap: () {
                     Navigator.push(context, MaterialPageRoute(
                       builder: (context) =>
-                          ProfilePage(userId: userId),
+                          ProfilePage(userId: userId, activityManager: activityManager,),
                     ));
                   },
                   child: Container(
@@ -926,7 +943,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
               onTap: () {
                 Navigator.push(context, MaterialPageRoute(
                   builder: (context) =>
-                      ProfilePage(userId: userId),
+                      ProfilePage(userId: userId, activityManager: activityManager,),
                 ));
               },
               child: Container(
@@ -986,8 +1003,9 @@ class _TimelineListItemState extends State<TimelineListItem> {
                               activityManager.resumePlaying();
                             } else {
                               if (postAudioUrl != null && postAudioUrl != 'null') {
-                                thisPost.isPlaying = true;
-                                activityManager.playRecording(postAudioUrl, postPlayer);
+                                activityManager.setCurrentPost(thisPost);
+                                activityManager.playlistStreamController.add(false);
+                                thisPost.play();
                               }
                             }
                           },
@@ -1081,7 +1099,7 @@ Widget mainPopMenu(BuildContext context) {
 
 
 //Bottom Navigation Bar
-Widget bottomNavBar(Function tapFunc, int selectedIndex) {
+Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activityManager}) {
   bool _isActive = false;
   return Container(
     decoration: BoxDecoration(
@@ -1112,7 +1130,9 @@ Widget bottomNavBar(Function tapFunc, int selectedIndex) {
         ),
       ],
       currentIndex: selectedIndex,
-      onTap: tapFunc,
+      onTap: (index) {
+        activityManager != null ? tapFunc(index, actManage: activityManager) : tapFunc(index);
+      },
       fixedColor: Colors.deepPurple,
       unselectedItemColor: Colors.white,
       type: BottomNavigationBarType.fixed,

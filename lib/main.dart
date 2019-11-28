@@ -6,6 +6,7 @@ import 'SignUpPage.dart';
 import 'HomePage.dart';
 import 'SearchPage.dart';
 import 'Dashboard.dart';
+import 'services/ActivityManagement.dart';
 
 void main() async {
   SystemChrome.setPreferredOrientations([
@@ -16,6 +17,7 @@ void main() async {
 }
 
 class MainApp extends StatelessWidget {
+
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
