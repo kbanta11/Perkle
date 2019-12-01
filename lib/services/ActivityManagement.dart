@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:flutter_sound/ios_quality.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_sound/android_encoder.dart';
 import 'package:path_provider/path_provider.dart';
@@ -83,11 +84,15 @@ class ActivityManager {
 
 
         //Upload file to firebase storage -- need to serialize date into filename
-        File audioFile = File(postData['localRecordingLocation']);
+        print(postData['localRecordingLocation']);
+        File audioFile = new File(postData['localRecordingLocation']);
         String filename = postData['dateString'].toString().replaceAll(new RegExp(r' '), '_');
         print(filename);
         final StorageReference fsRef = FirebaseStorage.instance.ref().child(userId).child('$filename');
+        print('Post storage ref: ${fsRef}');
+        print('File (${audioFile}) exists: ${audioFile.existsSync()}');
         final StorageUploadTask uploadTask = fsRef.putFile(audioFile);
+        print('$uploadTask');
         String fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
         String fileUrlString = fileUrl.toString();
 
@@ -276,11 +281,11 @@ class ActivityManager {
       if(recordingSubscription == null) {
         final appDataDir = await getApplicationDocumentsDirectory();
         String localPath = appDataDir.path;
-        String extension = '.mp3';
+        String extension = Platform.isIOS ? '.m4a' : '.mp3';
         String filePath = '$localPath/tempAudio$extension';
         print('File Path: $filePath');
        // String length
-        String newPostPath = await soundManager.startRecorder('tempAudio$extension', androidEncoder: Platform.isIOS ? null : AndroidEncoder.AMR_WB);
+        String newPostPath = await soundManager.startRecorder('tempAudio$extension', androidEncoder: Platform.isIOS ? null : AndroidEncoder.AMR_WB, iosQuality: IosQuality.HIGH);
         print('starting Recorded at: $newPostPath');
         DateTime startRecordDateTime = DateTime.now();
         recordingSubscription = soundManager.onRecorderStateChanged.listen((e) {
@@ -288,7 +293,7 @@ class ActivityManager {
               DateTime.fromMillisecondsSinceEpoch(e.currentPosition.toInt()));
           print(date);
         });
-        return [newPostPath, startRecordDateTime];
+        return [Platform.isIOS ? 'sound.m4a' : newPostPath, startRecordDateTime];
       }
       return null;
     } catch (e) {

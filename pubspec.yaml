@@ -28,7 +28,7 @@ dependencies:
   image_picker:
   image_cropper:
   intl:
-  flutter_sound: 1.5.1
+  flutter_sound: 1.5.2
   flutter_launcher_icons:
   path_provider:
   audioplayers:
