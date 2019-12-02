@@ -285,7 +285,7 @@ class ActivityManager {
         String filePath = '$localPath/tempAudio$extension';
         print('File Path: $filePath');
        // String length
-        String newPostPath = await soundManager.startRecorder('tempAudio$extension', androidEncoder: Platform.isIOS ? null : AndroidEncoder.AMR_WB, iosQuality: IosQuality.HIGH);
+        String newPostPath = await soundManager.startRecorder('tempAudio$extension', androidEncoder: Platform.isIOS ? null : AndroidEncoder.AAC, bitRate: 100000, iosQuality: IosQuality.HIGH);
         print('starting Recorded at: $newPostPath');
         DateTime startRecordDateTime = DateTime.now();
         recordingSubscription = soundManager.onRecorderStateChanged.listen((e) {
