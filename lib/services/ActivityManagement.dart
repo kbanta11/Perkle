@@ -294,7 +294,7 @@ class ActivityManager {
               DateTime.fromMillisecondsSinceEpoch(e.currentPosition.toInt()));
           print(date);
         });
-        return [Platform.isIOS ? 'sound.m4a' : newPostPath, startRecordDateTime];
+        return [Platform.isIOS ? newPostPath.replaceAll('file://', '') : newPostPath, startRecordDateTime];
       }
       return null;
     } catch (e) {
@@ -306,7 +306,6 @@ class ActivityManager {
   Future<List<dynamic>> stopRecordNewPost(String postPath, DateTime startDateTime) async {
     try {
       String result = await soundManager.stopRecorder();
-      print('recorder stopped: $result');
 
       DateTime endRecordDateTime = DateTime.now();
       Duration recordingTime = endRecordDateTime.difference(startDateTime);
