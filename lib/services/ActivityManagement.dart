@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_sound/android_encoder.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'UserManagement.dart';
 
@@ -550,13 +551,11 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
                     hintText: dateString,
                   ),
                   onChanged: (value) {
-                    print(_postTitle);
+                    //print(_postTitle);
                     _postTitle = value;
                   }
                 )
               ),
-              SizedBox(height: 20.0),
-              Text('Post Description (optional)'),
               SizedBox(height: 20.0),
               Text('Stream Tags (separated by \'#\')'),
               Container(
@@ -646,6 +645,123 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
         );
       }
   );
+}
+
+class UploadPostDialog extends StatefulWidget {
+  @override
+  _UploadPostDialogState createState() => new _UploadPostDialogState();
+}
+
+class _UploadPostDialogState extends State<UploadPostDialog> {
+  DateTime date = DateTime.now();
+  String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(DateTime.now());
+  String fileName;
+  String filepath;
+  Duration duration;
+  String postTitle;
+  String postTags;
+  String noFileError;
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      contentPadding: EdgeInsets.fromLTRB(10.0, 5.0, 10.0, 5.0),
+      title: Center(child: Text('Upload Post', style: TextStyle(color: Colors.deepPurple),)),
+      children: <Widget>[
+        Text('Post Title',
+          style: TextStyle(
+            fontSize: 16.0
+          )
+        ),
+        TextField(
+          decoration: InputDecoration(
+            hintText: dateString,
+          ),
+          onChanged: (value) {
+            postTitle = value;
+          }
+        ),
+        SizedBox(height: 15.0),
+        Text('Stream Tags (separated by "#")',
+          style: TextStyle(
+            fontSize: 16.0
+          )
+        ),
+        SizedBox(height: 5.0),
+        TextField(
+          decoration: InputDecoration(
+            hintText: '#TagYourTopics',
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: TextInputType.multiline,
+          maxLines: 5,
+          onChanged: (value) {
+            postTags = value;
+          },
+        ),
+        SizedBox(height: 10.0),
+        FlatButton(
+          color: Colors.deepPurple,
+          textColor: Colors.white,
+          child: Center(child: fileName == null ? Text('Choose a file...') : Text(fileName)),
+          onPressed: () async {
+            String path = await FilePicker.getFilePath(type: FileType.AUDIO, fileExtension: 'mp3');
+            File uploadFile = File(path);
+            print('Selected File Path: $path');
+            print('File: ${uploadFile}: ${await uploadFile.exists()}');
+            AudioPlayer tempPlayer = new AudioPlayer();
+            await tempPlayer.setUrl(path);
+            int audioDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.getDuration());
+            Duration postDuration = Duration(milliseconds: audioDuration);
+            print('Duration: $audioDuration/Seconds: ${postDuration.inSeconds}');
+            setState(() {
+              filepath = path;
+              fileName = path.split('/').last;
+              duration = postDuration;
+            });
+          },
+        ),
+        Center(child: noFileError == null ? Container() : Text(noFileError, style: TextStyle(color: Colors.red),)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            FlatButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            OutlineButton(
+              borderSide: BorderSide(
+                color: Colors.deepPurple
+              ),
+              child: Text('Upload Post', style: TextStyle(color: Colors.deepPurple),),
+              onPressed: () async {
+                if(filepath == null) {
+                  setState(() {
+                    noFileError = 'Please select an audio file!';
+                  });
+                } else {
+                  noFileError = null;
+                  List<String> tagList = processTagString(postTags);
+                  await ActivityManager().addPost(context, {"postTitle": postTitle,
+                    "localRecordingLocation": filepath,
+                    "date": date,
+                    "dateString": dateString,
+                    "listens": 0,
+                    "secondsLength": duration.inSeconds,
+                    "streamList": tagList,
+                  });
+                  print('Post added');
+                }
+              },
+            ),
+          ]
+        ),
+      ],
+
+    );
+  }
 }
 
 class DirectMessageDialog extends StatefulWidget {

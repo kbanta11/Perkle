@@ -3,9 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
 
@@ -220,6 +217,14 @@ Widget topPanel(BuildContext context, ActivityManager activityManager) {
                     color: Colors.white,
                   ),
                   heroTag: null,
+                  onPressed: () async {
+                    await showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return UploadPostDialog();
+                      }
+                    );
+                  },
                 )
               ),
             ),

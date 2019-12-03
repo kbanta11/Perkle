@@ -1,5 +1,5 @@
-name: flutter_blog_app
-description: A Flutter social blogging app.
+name: Perkl
+description: The Place for Personal Podcasts
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -18,8 +18,8 @@ environment:
 
 dependencies:
 
-  cloud_firestore: 0.12.10
-  firebase_auth: 0.14.0+5
+  cloud_firestore: 0.12.9+8
+  firebase_auth: 0.14.0+9
   firebase_core:
   firebase_database:
   firebase_storage:
@@ -30,8 +30,9 @@ dependencies:
   intl:
   flutter_sound: 1.5.2
   flutter_launcher_icons:
+  file_picker:
   path_provider:
-  audioplayers:
+  audioplayers: 0.13.2
 
   flutter:
     sdk: flutter
