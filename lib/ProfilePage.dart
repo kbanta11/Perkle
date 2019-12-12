@@ -8,6 +8,7 @@ import 'services/ActivityManagement.dart';
 import 'PageComponents.dart';
 import 'HomePage.dart';
 import 'ListPage.dart';
+import 'DiscoverPage.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
@@ -28,6 +29,11 @@ class _ProfilePageState extends State<ProfilePage> {
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) => HomePage(activityManager: widget.activityManager,),
+      ));
+    }
+    if(index == 1) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => DiscoverPage(activityManager: widget.activityManager),
       ));
     }
     if(index == 2) {

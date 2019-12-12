@@ -6,6 +6,7 @@ import 'ConversationPage.dart';
 import 'PageComponents.dart';
 import 'HomePage.dart';
 import 'ProfilePage.dart';
+import 'DiscoverPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -27,6 +28,11 @@ class _ListPageState extends State<ListPage> {
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) => HomePage(activityManager: widget.activityManager,),
+      ));
+    }
+    if(index == 1) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => DiscoverPage(activityManager: widget.activityManager),
       ));
     }
     if(index == 3) {

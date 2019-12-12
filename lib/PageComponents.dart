@@ -8,6 +8,7 @@ import 'package:audioplayers/audioplayers.dart';
 
 import 'ProfilePage.dart';
 import 'SearchPage.dart';
+import 'StreamTagPage.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
@@ -143,7 +144,7 @@ class _RecordButtonState extends State<RecordButton> {
   }
 }
 
-Widget topPanel(BuildContext context, ActivityManager activityManager) {
+Widget topPanel(BuildContext context, ActivityManager activityManager, {String pageTitle, bool showSearchBar = false, String searchRequestId}) {
   return Container(
     height: 250.0,
     width: MediaQuery.of(context).size.width,
@@ -172,7 +173,21 @@ Widget topPanel(BuildContext context, ActivityManager activityManager) {
               children: <Widget>[
                 mainPopMenu(context),
                 Expanded(
-                  child: Center(child: new Text('Perkl')),
+                  child: showSearchBar ? Padding(
+                      padding: EdgeInsets.only(left: 20.0),
+                      child: TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(hintText: 'Search...', hintStyle: TextStyle(color: Colors.white), border: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white),
+                        )),
+                        style: TextStyle(color: Colors.white),
+                        cursorColor: Colors.white,
+                        onChanged: (value) async {
+                          DateTime date = DateTime.now();
+                          await Firestore.instance.collection('requests').document(searchRequestId).setData({'searchTerm': value, "searchDateTime": date});
+                        }
+                      )
+                  ) : Center(child: new Text(pageTitle != null ? pageTitle : 'Perkl')),
                 ),
               ]
           ),
@@ -181,26 +196,14 @@ Widget topPanel(BuildContext context, ActivityManager activityManager) {
           titleSpacing: 5.0,
           actions: <Widget>[
             IconButton(
-              icon: Icon(Icons.search),
+              icon: Icon(showSearchBar ? Icons.cancel : Icons.search),
               iconSize: 40.0,
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(
+                showSearchBar ? Navigator.of(context).pop() : Navigator.push(context, MaterialPageRoute(
                   builder: (context) => SearchPage(activityManager: activityManager),
                 ));
               },
             ),
-            /*new FlatButton(
-              child: Text('Logout'),
-              textColor: Colors.white,
-              onPressed: () {
-                FirebaseAuth.instance.signOut().then((value) {
-                  Navigator.of(context).pushReplacementNamed('/landingpage');
-                })
-                    .catchError((e) {
-                  print(e);
-                });
-              }
-          ),*/
           ],
         ),
         SizedBox(height: 15.0),
@@ -686,8 +689,9 @@ class _BioTextSectionState extends State<BioTextSection> {
 class TimelineSection extends StatefulWidget {
   final Map<String, dynamic> idMap;
   ActivityManager activityManager;
+  String streamTag;
 
-  TimelineSection({Key key, @required this.idMap, this.activityManager}) : super(key: key);
+  TimelineSection({Key key, @required this.activityManager, this.idMap, this.streamTag}) : super(key: key);
 
   @override
   _TimelineSectionState createState() => _TimelineSectionState();
@@ -700,17 +704,26 @@ class _TimelineSectionState extends State<TimelineSection> {
   String _playingPostId;
 
   Future<Query> setStream() async {
-    String timelineId = widget.idMap['timelineId'];
-    String userId = widget.idMap['userId'];
+
 
     Query ref;
-    if(timelineId != null) {
-      // print('setting reference to timlineid');
-      ref = Firestore.instance.collection('posts').where('timelines', arrayContains: timelineId).orderBy("datePosted", descending: true);
+    if(widget.streamTag != null) {
+      String streamTag = widget.streamTag;
+      print('Stream Tag: $streamTag');
+      ref = Firestore.instance.collection('posts').where('streamList', arrayContains: streamTag).orderBy('datePosted', descending: true);
     } else {
-      // print('setting reference to user id');
-      ref = Firestore.instance.collection('posts').where('userUID', isEqualTo: userId).orderBy("datePosted", descending: true);
+      String timelineId = widget.idMap['timelineId'];
+      String userId = widget.idMap['userId'];
+
+      if(timelineId != null) {
+        print('setting reference to timlineid');
+        ref = Firestore.instance.collection('posts').where('timelines', arrayContains: timelineId).orderBy("datePosted", descending: true);
+      } else {
+        print('setting reference to user id');
+        ref = Firestore.instance.collection('posts').where('userUID', isEqualTo: userId).orderBy("datePosted", descending: true);
+      }
     }
+
     return ref;
   }
 
@@ -735,7 +748,7 @@ class _TimelineSectionState extends State<TimelineSection> {
                 builder: (context, AsyncSnapshot<QuerySnapshot>snapshot) {
                   //print(snapshot.data);
                   if(!snapshot.hasData || snapshot.data.documents.length == 0)
-                    return Center(child: Text('Users has no posts'));
+                    return Center(child: Text('User has no posts'));
 
                   switch(snapshot.connectionState){
                     case ConnectionState.none:
@@ -855,7 +868,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
     Widget titleWidget = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('@${username}',
+          Text('@$username',
             style: TextStyle(
               fontSize: 18.0,
               color: Color(0xFF7B7B7B),
@@ -882,7 +895,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
         titleWidget = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('@${username}',
+              Text('@$username',
                 style: TextStyle(
                   fontSize: 18.0,
                   color: Color(0xFF7B7B7B),
@@ -909,6 +922,12 @@ class _TimelineListItemState extends State<TimelineListItem> {
                           color: Colors.lightBlue,
                         )
                     ),
+                  onTap: () {
+                      print('Going to Stream Tag Page: ${hashtag.toString()}');
+                    Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => StreamTagPage(activityManager: activityManager, tag: hashtag.toString(),)
+                    ));
+                  },
                   )).toList()
               ),
             ]
@@ -1104,7 +1123,7 @@ Widget mainPopMenu(BuildContext context) {
 
 
 //Bottom Navigation Bar
-Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activityManager}) {
+Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activityManager, bool noSelection}) {
   bool _isActive = false;
   return Container(
     decoration: BoxDecoration(
@@ -1138,7 +1157,7 @@ Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activi
       onTap: (index) {
         activityManager != null ? tapFunc(index, actManage: activityManager) : tapFunc(index);
       },
-      fixedColor: Colors.deepPurple,
+      fixedColor: noSelection == true ? Colors.white : Colors.deepPurple,
       unselectedItemColor: Colors.white,
       type: BottomNavigationBarType.fixed,
       backgroundColor: Colors.transparent,

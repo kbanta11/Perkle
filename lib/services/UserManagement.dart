@@ -92,7 +92,11 @@ class UserManagement {
     return Firestore.instance.collection('users').document(user.uid);
   }
 
-
+  Future<String> getUID() async {
+    return await FirebaseAuth.instance.currentUser().then((user) async {
+      return user.uid.toString();
+    });
+  }
 
 
   Future<bool> userAlreadyCreated () async {

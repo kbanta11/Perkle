@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'PageComponents.dart';
 import 'ProfilePage.dart';
 import 'ListPage.dart';
+import 'DiscoverPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -35,6 +36,11 @@ class _HomePageState extends State<HomePage> {
     if(index == 2) {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) => ListPage(type: 'conversation', activityManager: actManage),
+      ));
+    }
+    if(index == 1) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => DiscoverPage(activityManager: actManage),
       ));
     }
     setState(() {

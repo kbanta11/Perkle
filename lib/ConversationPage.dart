@@ -12,6 +12,7 @@ import 'PageComponents.dart';
 import 'HomePage.dart';
 import 'ListPage.dart';
 import 'ProfilePage.dart';
+import 'DiscoverPage.dart';
 
 class ConversationPage extends StatefulWidget {
   final String conversationId;
@@ -30,6 +31,16 @@ class _ConversationPageState extends State<ConversationPage> {
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) => HomePage(activityManager: widget.activityManager,),
+      ));
+    }
+    if(index == 1) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => DiscoverPage(activityManager: widget.activityManager),
+      ));
+    }
+    if(index == 2) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => ListPage(type: 'conversation', activityManager: widget.activityManager,),
       ));
     }
     if(index == 3) {

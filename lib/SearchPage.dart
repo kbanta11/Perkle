@@ -6,6 +6,7 @@ import 'ProfilePage.dart';
 import 'PageComponents.dart';
 import 'ListPage.dart';
 import 'HomePage.dart';
+import 'DiscoverPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -23,6 +24,7 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   DocumentReference userDoc;
   int _selectedIndex = 1;
+  DocumentReference requestDoc = Firestore.instance.collection('/requests').document();
 
   void _onItemTapped(int index) async {
     String uid = await _getUID();
@@ -39,6 +41,11 @@ class _SearchPageState extends State<SearchPage> {
     if(index == 2) {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) => ListPage(type: 'conversation', activityManager: widget.activityManager,),
+      ));
+    }
+    if(index == 1) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => DiscoverPage(activityManager: widget.activityManager),
       ));
     }
     setState(() {
@@ -63,114 +70,137 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       body: Column(
         children: <Widget>[
-          topPanel(context, widget.activityManager),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-                stream: Firestore.instance.collection('users').snapshots(),
-                builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          topPanel(context, widget.activityManager, showSearchBar: true, searchRequestId: requestDoc == null ? null : requestDoc.documentID),
+          requestDoc == null ? Center(child: CircularProgressIndicator()) : Expanded(
+            child: StreamBuilder(
+                stream: requestDoc.snapshots(),
+                builder: (BuildContext context, AsyncSnapshot snapshot) {
+                  List results;
+                  try {
+                    results = snapshot.data['results'];
+                  } catch(e) {
+                    return Center(child: Text('There are no results for this search...'));
+                  }
+
+                  if(results == null)
+                    return Center(child: CircularProgressIndicator());
+
+                  if(results.length == 0)
+                    return Center(child: Text('There are no results for this search...'));
+
                   if (snapshot.hasError) {
                     return Text('Error: ${snapshot.error}');
                   }
+
+                  if(snapshot == null || snapshot.data == null)
+                    return Container();
                   switch (snapshot.connectionState) {
                     case ConnectionState.waiting:
-                      return Text('Loading Users...');
+                      return Center(child: CircularProgressIndicator());
                     default:
                       return ListView(
-                        children: snapshot.data.documents.map((document) {
-                          String thisUserId = document.reference.documentID;
+                        children: snapshot.data['results'].map<Widget>((userId) {
+                          print(userId);
+                          return StreamBuilder(
+                            stream: Firestore.instance.collection('users').document(userId).snapshots(),
+                            builder: (BuildContext context, AsyncSnapshot snapshot) {
+                              print(snapshot.data);
+                              if(!snapshot.hasData)
+                                return Container();
+                              Widget followButton = IconButton(
+                                  icon: Icon(Icons.person_add),
+                                  color: Colors.deepPurple,
+                                  onPressed: () {
+                                    ActivityManager().followUser(userId);
+                                    print('now following ${snapshot.data['username']}');
+                                  }
+                              );
 
-                          Widget followButton = IconButton(
-                              icon: Icon(Icons.person_add),
-                              color: Colors.deepPurple,
-                              onPressed: () {
-                                ActivityManager().followUser(document.reference.documentID);
-                                print('now following ${document['username']}');
-                              }
-                          );
-
-                          return Column(
-                              children: <Widget>[
-                                ListTile(
-                                    leading: StreamBuilder(
-                                        stream: Firestore.instance.collection('users').document(thisUserId).snapshots(),
-                                        builder: (context, snapshot) {
-                                          if(snapshot.hasData){
-                                            String profilePicUrl = snapshot.data['profilePicUrl'];
-                                            if(profilePicUrl != null)
+                              return Column(
+                                  children: <Widget>[
+                                    ListTile(
+                                        leading: StreamBuilder(
+                                            stream: Firestore.instance.collection('users').document(userId).snapshots(),
+                                            builder: (context, snapshot) {
+                                              if(snapshot.hasData){
+                                                String profilePicUrl = snapshot.data['profilePicUrl'];
+                                                if(profilePicUrl != null)
+                                                  return Container(
+                                                      height: 50.0,
+                                                      width: 50.0,
+                                                      decoration: BoxDecoration(
+                                                          shape: BoxShape.circle,
+                                                          color: Colors.deepPurple,
+                                                          image: DecorationImage(
+                                                              fit: BoxFit.cover,
+                                                              image: NetworkImage(profilePicUrl.toString())
+                                                          )
+                                                      )
+                                                  );
+                                              }
                                               return Container(
                                                   height: 50.0,
                                                   width: 50.0,
                                                   decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: Colors.deepPurple,
-                                                      image: DecorationImage(
-                                                          fit: BoxFit.cover,
-                                                          image: NetworkImage(profilePicUrl.toString())
-                                                      )
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.deepPurple,
                                                   )
                                               );
-                                          }
-                                          return Container(
-                                              height: 50.0,
-                                              width: 50.0,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.deepPurple,
+                                            }
+                                        ),
+                                        title: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: <Widget>[
+                                              Expanded(
+                                                  child: Text(snapshot.data['username'])
+                                              ),
+                                              Container(
+                                                  height: 40.0,
+                                                  width: 40.0,
+                                                  child: FutureBuilder(
+                                                      future: UserManagement().getUserData(),
+                                                      builder: (context, snapshot) {
+                                                        if(snapshot.hasData) {
+                                                          return StreamBuilder(
+                                                              stream: snapshot.data.snapshots(),
+                                                              builder: (context, snapshot) {
+                                                                if(snapshot.hasData) {
+                                                                  bool isFollowing = false;
+                                                                  String uid = snapshot.data.reference.documentID;
+                                                                  bool isThisUser = uid == userId;
+                                                                  if(snapshot.data['following'] != null) {
+                                                                    Map<dynamic, dynamic> followingList = snapshot.data['following'];
+                                                                    isFollowing = followingList.containsKey(userId);
+                                                                  }
+                                                                  print('Following: $isFollowing');
+                                                                  if(!isThisUser && !isFollowing)
+                                                                    return followButton;
+                                                                  else
+                                                                    return Container();
+                                                                }
+                                                                return Container();
+                                                              }
+                                                          );
+                                                        }
+                                                        return Container();
+                                                      })
                                               )
-                                          );
+                                            ]
+                                        ),
+                                        onTap: () {
+                                          print(
+                                              'go to user profile: ${snapshot.data['uid']}');
+                                          Navigator.push(context, MaterialPageRoute(
+                                            builder: (context) =>
+                                                ProfilePage(
+                                                  userId: snapshot.data['uid'], activityManager: widget.activityManager,),
+                                          ));
                                         }
                                     ),
-                                    title: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: <Widget>[
-                                          Expanded(
-                                              child: Text(document['username'])
-                                          ),
-                                          Container(
-                                              height: 40.0,
-                                              width: 40.0,
-                                              child: FutureBuilder(
-                                                  future: UserManagement().getUserData(),
-                                                  builder: (context, snapshot) {
-                                                    if(snapshot.hasData) {
-                                                      return StreamBuilder(
-                                                          stream: snapshot.data.snapshots(),
-                                                          builder: (context, snapshot) {
-                                                            if(snapshot.hasData) {
-                                                              bool isFollowing = false;
-                                                              String userId = snapshot.data.reference.documentID;
-                                                              bool isThisUser = userId == thisUserId;
-                                                              if(snapshot.data['following'] != null) {
-                                                                Map<dynamic, dynamic> followingList = snapshot.data['following'];
-                                                                isFollowing = followingList.containsKey(thisUserId);
-                                                              }
-                                                              print('Following: $isFollowing');
-                                                              if(!isThisUser && !isFollowing)
-                                                                return followButton;
-                                                              else
-                                                                return Container();
-                                                            }
-                                                            return Container();
-                                                          }
-                                                      );
-                                                    }
-                                                    return Container();
-                                                  })
-                                          )
-                                        ]
-                                    ),
-                                    onTap: () {
-                                      print(
-                                          'go to user profile: ${document['uid']}');
-                                      Navigator.push(context, MaterialPageRoute(
-                                        builder: (context) =>
-                                            ProfilePage(
-                                                userId: document['uid'], activityManager: widget.activityManager,),
-                                      ));
-                                    }
-                                ),
-                                Divider(height: 5.0),
-                              ]
+                                    Divider(height: 5.0),
+                                  ]
+                              );
+                            }
                           );
                         }).toList(),
                       );
@@ -180,7 +210,7 @@ class _SearchPageState extends State<SearchPage> {
           )
         ]
       ),
-      bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
+      bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex, noSelection: true),
     );
   }
 }
