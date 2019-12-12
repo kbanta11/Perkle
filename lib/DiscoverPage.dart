@@ -259,7 +259,12 @@ class _DiscoverPageState extends State<DiscoverPage> {
                                                         crossAxisAlignment: CrossAxisAlignment.start,
                                                         children: <Widget>[
                                                           Text(snapshot.data['username']),
-                                                          Text('Followers: $followerCnt')
+                                                          Row(
+                                                            children: <Widget>[
+                                                              Icon(Icons.people),
+                                                              Text('$followerCnt')
+                                                            ]
+                                                          )
                                                         ]
                                                       )
                                                   ),

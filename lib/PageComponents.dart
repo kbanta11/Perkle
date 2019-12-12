@@ -378,7 +378,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
         stream: Firestore.instance.collection('users').document(widget.userId).snapshots(),
         builder: (context, snapshot) {
           if(snapshot.hasData) {
-            print('Pic URL: ${snapshot.data['profilePicUrl']}');
+            //print('Pic URL: ${snapshot.data['profilePicUrl']}');
             if(snapshot.data['profilePicUrl'] != null) {
               String profilePicUrl = snapshot.data['profilePicUrl'].toString();
               return Container(
@@ -411,17 +411,17 @@ class _UserInfoSectionState extends State<UserInfoSection> {
           initialData: false,
           builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
             if(!snapshot.data){
-              print('not logged in user profile pic');
+              //print('not logged in user profile pic');
               return profileImage;
             }
-            print('logged in user profile pic');
+            //print('logged in user profile pic');
             return Stack(
               children: <Widget>[
                 StreamBuilder(
                     stream: Firestore.instance.collection('users').document(widget.userId).snapshots(),
                     builder: (context, snapshot) {
                       if(snapshot.hasData) {
-                        print('Pic URL: ${snapshot.data['profilePicUrl']}');
+                        //print('Pic URL: ${snapshot.data['profilePicUrl']}');
                         if(snapshot.data['profilePicUrl'] != null) {
                           String profilePicUrl = snapshot.data['profilePicUrl'].toString();
                           return Container(
@@ -507,7 +507,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
                     StreamBuilder(
                         stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
                         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                          print(snapshot.data.toString());
+                          //print(snapshot.data.toString());
                           if (!snapshot.hasData) {
                             return Text('@',
                               style: TextStyle(fontSize: 18.0),
@@ -748,7 +748,7 @@ class _TimelineSectionState extends State<TimelineSection> {
                 builder: (context, AsyncSnapshot<QuerySnapshot>snapshot) {
                   //print(snapshot.data);
                   if(!snapshot.hasData || snapshot.data.documents.length == 0)
-                    return Center(child: Text('User has no posts'));
+                    return Center(child: Text('No posts found...'));
 
                   switch(snapshot.connectionState){
                     case ConnectionState.none:
@@ -762,6 +762,7 @@ class _TimelineSectionState extends State<TimelineSection> {
                           )
                         );
                     default:
+                      widget.activityManager.timelinePlaylist = new List();
                       return ListView(
                           scrollDirection: Axis.vertical,
                           shrinkWrap: true,
@@ -819,6 +820,7 @@ class _TimelineSectionState extends State<TimelineSection> {
                               'postLengthString': postLength,
                               'activityManager': widget.activityManager,
                               'streamList': streamList,
+                              'postPlayer': new AudioPlayer(),
                             };
 
                             return Column(
@@ -862,6 +864,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
     String postAudioUrl = widget.params['postAudioUrl'];
     String postLengthString = widget.params['postLengthString'];
     ActivityManager activityManager = widget.params['activityManager'];
+    AudioPlayer postPlayer = widget.params['postPlayer'];
 
     PostAudioPlayer thisPost = activityManager.addPostToPlaylist(postAudioUrl, postPlayer);
 
@@ -994,7 +997,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
                   if(snapshot.hasData)
                     _playlistPlaying = snapshot.data;
                   return StreamBuilder(
-                      stream: thisPost.postPlayer.onPlayerStateChanged,
+                      stream: postPlayer.onPlayerStateChanged,
                       builder: (BuildContext context, snapshot) {
                         print('State: ${snapshot.data}');
 
@@ -1010,20 +1013,24 @@ class _TimelineListItemState extends State<TimelineListItem> {
                           }
                         }
 
-                        Color playBtnBG = Colors.deepPurple;
-                        if(snapshot.data == AudioPlayerState.PLAYING || snapshot.data == AudioPlayerState.PAUSED)
+                        Color playBtnBG;
+
+                        if(snapshot.data == AudioPlayerState.PLAYING || snapshot.data == AudioPlayerState.PAUSED || postPlayer.state == AudioPlayerState.PLAYING || postPlayer.state == AudioPlayerState.PAUSED)
                           playBtnBG = Colors.red;
+                        else
+                          playBtnBG = Colors.deepPurple;
+
                         if(postAudioUrl == null || postAudioUrl == 'null')
                           playBtnBG = Colors.grey;
 
                         return FloatingActionButton(
                           backgroundColor: playBtnBG,
-                          child: snapshot.data == AudioPlayerState.PLAYING ? Icon(Icons.pause) : Icon(Icons.play_arrow),
+                          child: snapshot.data == AudioPlayerState.PLAYING || postPlayer.state == AudioPlayerState.PLAYING ? Icon(Icons.pause) : Icon(Icons.play_arrow),
                           heroTag: null,
                           onPressed: () async {
-                            if(snapshot.data == AudioPlayerState.PLAYING) {
+                            if(snapshot.data == AudioPlayerState.PLAYING || postPlayer.state == AudioPlayerState.PLAYING) {
                               activityManager.pausePlaying();
-                            } else if(snapshot.data == AudioPlayerState.PAUSED) {
+                            } else if(snapshot.data == AudioPlayerState.PAUSED || postPlayer.state == AudioPlayerState.PAUSED) {
                               activityManager.resumePlaying();
                             } else {
                               if (postAudioUrl != null && postAudioUrl != 'null') {
@@ -1040,7 +1047,22 @@ class _TimelineListItemState extends State<TimelineListItem> {
               ),
             ),
             SizedBox(height: 2.0),
-            Text(postLengthString),
+            StreamBuilder(
+              stream: postPlayer.onAudioPositionChanged,
+              builder: (context, AsyncSnapshot<Duration> snapshot) {
+                if(!snapshot.hasData)
+                  return Text(postLengthString);
+
+                int hours = snapshot.data.inHours;
+                int minutes = snapshot.data.inMinutes.remainder(60);
+                int seconds = snapshot.data.inSeconds.remainder(60);
+                String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
+                String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
+                if(hours > 0)
+                  return Text('$hours:$minutesString:$secondsString');
+                return Text('$minutesString:$secondsString');
+              }
+            ),
           ]
       ),
       onTap: () {
