@@ -63,15 +63,10 @@ class ActivityManager {
     this.currentlyPlayingPlayer = player.postPlayer;
   }
 
-  addPost(BuildContext context, Map<String, dynamic> postData) async {
+  addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic> sendToUsers) async {
     if (isLoggedIn()) {
       print('Starting post add');
       await Firestore.instance.runTransaction((Transaction transaction) async {
-        print('awaiting post add...');
-        DocumentReference ref = Firestore.instance.collection('/posts').document();
-        print('Doc Ref add post: $ref');
-        String docId = ref.documentID;
-        print(docId);
         String userId = await FirebaseAuth.instance.currentUser().then((user) {
           return user.uid;
         });
@@ -80,12 +75,8 @@ class ActivityManager {
             return snapshot.data['username'];
           });
         });
-        print(userId);
-        DateTime date = postData['date'];
-
 
         //Upload file to firebase storage -- need to serialize date into filename
-        print(postData['localRecordingLocation']);
         File audioFile = new File(postData['localRecordingLocation']);
         String filename = postData['dateString'].toString().replaceAll(new RegExp(r' '), '_');
         print(filename);
@@ -97,50 +88,86 @@ class ActivityManager {
         String fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
         String fileUrlString = fileUrl.toString();
 
-        Map<String, dynamic> userTimelines = new Map<String, dynamic>.from(await UserManagement().getUserData().then((DocumentReference userDoc) async {
-          print('user doc in add post: $userDoc');
-          return await userDoc.get().then((DocumentSnapshot userSnap){
-            print('got user snap: $userSnap // ${userSnap.data.toString()}');
-            print(userSnap.data['timelinesIncluded']);
-            if(userSnap.data['timelinesIncluded'] != null) {
-              print('user is included on timelines');
-              return new Map<String, dynamic>.from(
-                  userSnap.data['timelinesIncluded']);
-            } else {
-              return new Map<String, dynamic>();
-            }
+        if(addToTimeline) {
+          print('awaiting post add...');
+          DocumentReference ref = Firestore.instance.collection('/posts').document();
+          print('Doc Ref add post: $ref');
+          String docId = ref.documentID;
+          print(docId);
+          DateTime date = postData['date'];
+
+          Map<String, dynamic> userTimelines = new Map<String, dynamic>.from(await UserManagement().getUserData().then((DocumentReference userDoc) async {
+            print('user doc in add post: $userDoc');
+            return await userDoc.get().then((DocumentSnapshot userSnap){
+              print('got user snap: $userSnap // ${userSnap.data.toString()}');
+              print(userSnap.data['timelinesIncluded']);
+              if(userSnap.data['timelinesIncluded'] != null) {
+                print('user is included on timelines');
+                return new Map<String, dynamic>.from(
+                    userSnap.data['timelinesIncluded']);
+              } else {
+                return new Map<String, dynamic>();
+              }
+            });
+          }));
+          print('checking user timelines == null');
+          if(userTimelines == null) {
+            print('user is not on any timelines');
+            userTimelines = new Map<String, dynamic>();
+          }
+
+          await transaction.set(ref, {
+            'userUID':  userId,
+            'username': username,
+            'postTitle': postData['postTitle'],
+            'datePosted': postData['date'],
+            'dateString': postData['dateString'],
+            'audioFileLocation': fileUrlString,
+            'listenCount': 0,
+            'secondsLength': postData['secondsLength'],
+            'streamList': postData['streamList'],
+            'timelines': userTimelines.keys.toList(),
+          }).then((doc) async {
+            print('adding post to user');
+            await UserManagement().addPost(docId);
+          }).catchError((e) {
+            print(e);
           });
-        }));
-        print('checking user timelines == null');
-        if(userTimelines == null) {
-          print('user is not on any timelines');
-          userTimelines = new Map<String, dynamic>();
         }
 
-        await transaction.set(ref, {
-          'userUID':  userId,
-          'username': username,
-          'postTitle': postData['postTitle'],
-          'postValue': postData['postValue'],
-          'datePosted': postData['date'],
-          'dateString': postData['dateString'],
-          'audioFileLocation': fileUrlString,
-          'listenCount': 0,
-          'secondsLength': postData['secondsLength'],
-          'streamList': postData['streamList'],
-          'timelines': userTimelines.keys.toList(),
-        }).then((doc) async {
-          print('adding post to user');
-          await UserManagement().addPost(docId).then((val) {
-            Navigator.of(context).pop();
-          });
-        }).catchError((e) {
-          print(e);
-        });
+        if(sendToUsers != null){
+          if(sendToUsers.length > 0) {
+            if(sendAsGroup) {
+              //Create memberMap {uid: username} for all users in group
+              Map<String, dynamic> _memberMap = new Map<String, dynamic>();
+              _memberMap.addAll({userId: username});
+              sendToUsers.forEach((key, value) async {
+                String _username = await Firestore.instance.collection('users').document(key).get().then((doc) {
+                  return doc.data['username'];
+                });
+                _memberMap.addAll({key: _username});
+              });
+              print('Member Map (Send as group): $_memberMap');
+              await sendDirectPost(postData['postTitle'], null, postData['secondsLength'], memberMap: _memberMap, fileUrl: fileUrlString);
+            } else {
+              //Iterate over users to send to and send direct post for each w/
+              // memberMap of currentUser and send to user
+              sendToUsers.forEach((key, value) async {
+                Map<String, dynamic> _memberMap = new Map<String, dynamic>();
+                _memberMap.addAll({userId: username});
+                String _thisUsername = await Firestore.instance.collection('users').document(key).get().then((doc) {
+                  return doc.data['username'];
+                });
+                _memberMap.addAll({key: _thisUsername});
+                //send direct post to this user
+                await sendDirectPost(postData['postTitle'], null, postData['secondsLength'], memberMap: _memberMap, fileUrl: fileUrlString);
+              });
+            }
+          }
+        }
       });
       print('add finished');
-    } else {
-      Navigator.of(context).pushReplacementNamed('/landingpage');
+      Navigator.of(context).pop();
     }
   }
 
@@ -153,10 +180,11 @@ class ActivityManager {
     );
   }
 
-  Future<void> sendDirectPost(String messageTitle, String audioPath, int secondsLength, {String conversationId, Map<String, dynamic> memberMap}) async {
+  Future<void> sendDirectPost(String messageTitle, String audioPath, int secondsLength, {String conversationId, Map<String, dynamic> memberMap, String fileUrl}) async {
     String _conversationId = conversationId;
     if(isLoggedIn()) {
         WriteBatch batch = Firestore.instance.batch();
+        DateTime date = DateTime.now();
 
         //Create document for new direct post message
         DocumentReference directPostRef = Firestore.instance.collection('/directposts').document();
@@ -178,16 +206,20 @@ class ActivityManager {
         });
         */
 
-        //Get audio file
-        File audioFile = File(audioPath);
-        DateTime date = DateTime.now();
-        String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(date).toString();
-
         //Upload audio file
-        final StorageReference storageRef = FirebaseStorage.instance.ref().child(postingUserID).child('direct-posts').child(dateString);
-        final StorageUploadTask uploadTask = storageRef.putFile(audioFile);
-        String fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
-        String fileUrlString = fileUrl.toString();
+        String fileUrlString;
+        if(fileUrl == null) {
+          //Get audio file
+          File audioFile = File(audioPath);
+          String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(date).toString();
+          final StorageReference storageRef = FirebaseStorage.instance.ref().child(postingUserID).child('direct-posts').child(dateString);
+          final StorageUploadTask uploadTask = storageRef.putFile(audioFile);
+          String _fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+          fileUrlString = _fileUrl.toString();
+        } else {
+          fileUrlString = fileUrl.toString();
+        }
+
 
         //Check if conversation exists
         List<String> _memberList = new List<String>();
@@ -196,9 +228,11 @@ class ActivityManager {
         _memberList.sort();
         if(_conversationId == null){
           await Firestore.instance.collection('conversations').where('memberList', isEqualTo: _memberList).getDocuments().then((snapshot) {
-            DocumentSnapshot conversation = snapshot.documents.first;
-            if(conversation != null)
-              _conversationId = conversation.reference.documentID;
+            if(snapshot.documents.isNotEmpty) {
+              DocumentSnapshot conversation = snapshot.documents.first;
+              if(conversation != null)
+                _conversationId = conversation.reference.documentID;
+            }
           });
         }
         bool conversationExists = _conversationId != null;
@@ -208,20 +242,37 @@ class ActivityManager {
         });
 
         if(conversationExists) {
+          print('Conversation exists: $_conversationId');
           DocumentReference conversationRef = Firestore.instance.collection('/conversations').document(_conversationId);
-          Map<String, dynamic> postMap = await conversationRef.get().then((DocumentSnapshot snapshot) {
-            return Map<String, dynamic>.from(snapshot.data['postMap']);
+          Map<String, dynamic> postMap;
+          Map<String, dynamic> conversationMembers;
+          await conversationRef.get().then((DocumentSnapshot snapshot) {
+            postMap = Map<String, dynamic>.from(snapshot.data['postMap']);
+            conversationMembers = Map<String, dynamic>.from(snapshot.data['conversationMembers']);
           });
 
           //To-Do --increment unread posts for all users other than posting user
-          //--------------------------------------------------------------------
+          //-------------------------------------------------------------------
+          print('Members: $conversationMembers');
+          Map<String, dynamic> newMemberMap = new Map<String, dynamic>();
+          conversationMembers.forEach((uid, details) {
+            Map<dynamic, dynamic> newDetails = details;
+            if(uid != postingUserID) {
+              int unheardCnt = details['unreadPosts'];
+              if(unheardCnt != null)
+                unheardCnt = unheardCnt + 1;
+              newDetails['unreadPosts'] = unheardCnt;
+            }
+            newMemberMap[uid] = newDetails;
+          });
 
           postMap.addAll({directPostDocId: postingUserID});
-          batch.updateData(conversationRef, {'postMap': postMap, 'lastDate': date});
+          batch.updateData(conversationRef, {'postMap': postMap, 'lastDate': date, 'conversationMembers': newMemberMap});
         } else {
           //Create new conversation document and update data
           DocumentReference newConversationRef = Firestore.instance.collection('/conversations').document();
           conversationId = newConversationRef.documentID;
+          print('creating new conversation: $conversationId');
           Map<String, dynamic> conversationMembers = new Map<String, dynamic>();
           memberMap.forEach((uid, username) {
             if(uid == postingUserID)
@@ -266,7 +317,7 @@ class ActivityManager {
 
         //Add data to new direct post document (message title, file url, length, date, sender, recipient, conversationId)
         Map<String, dynamic> newPostData = {'senderUID': postingUserID, 'senderUsername': postingUsername, 'messageTitle': messageTitle,
-          'secondsLength': secondsLength, 'audioFileLocation': fileUrlString, 'conversationId': _conversationId,
+          'secondsLength': secondsLength, 'audioFileLocation': fileUrlString, 'conversationId': _conversationId != null ? _conversationId : conversationId,
           'datePosted': date
         };
 
@@ -536,114 +587,258 @@ Future<void> addPostDialog(BuildContext context, DateTime date, String recording
   showDialog(
       context: context,
       builder: (BuildContext context) {
-        return SimpleDialog(
-            contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
-            title: Center(child: Text('Add New Post',
-              style: TextStyle(color: Colors.deepPurple)
-            )),
-            children: <Widget>[
-              Text('Post Title (optional)'),
-              Container(
-                width: 700.0,
-                child: TextField(
+        return AddPostDialog(date: date, recordingLocation: recordingLocation, secondsLength: secondsLength,);
+      }
+  );
+}
+
+class AddPostDialog extends StatefulWidget {
+  DateTime date;
+  String recordingLocation;
+  int secondsLength;
+
+  AddPostDialog({Key key, @required this.date, @required this.recordingLocation, @required this.secondsLength}) : super(key: key);
+
+  @override
+  _AddPostDialogState createState() => new _AddPostDialogState();
+}
+
+class _AddPostDialogState extends State<AddPostDialog> {
+  String _postTitle;
+  String _postTags;
+  bool _isLoading = false;
+  int page = 0;
+  bool _addToTimeline = true;
+  bool _sendAsGroup = false;
+  Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
+
+  @override
+  build(BuildContext context) {
+    String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(widget.date);
+
+    Widget page0 = Column(
+        children: <Widget>[
+          Text('Post Title (optional)'),
+          Container(
+              width: 700.0,
+              child: TextField(
                   decoration: InputDecoration(
-                    hintText: dateString,
+                    hintText: _postTitle == null ? dateString : _postTitle,
                   ),
                   onChanged: (value) {
                     //print(_postTitle);
                     _postTitle = value;
                   }
-                )
+              )
+          ),
+          SizedBox(height: 20.0),
+          Text('Stream Tags (separated by \'#\')'),
+          Container(
+            width: 700.0,
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: _postTags == null ? '#TagYourTopics' : _postTags,
+                border: OutlineInputBorder(),
               ),
-              SizedBox(height: 20.0),
-              Text('Stream Tags (separated by \'#\')'),
-              Container(
-                width: 700.0,
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: '#TagYourTopics',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.multiline,
-                  maxLines: 5,
-                  onChanged: (value) {
-                    _postTags = value;
-                  },
-                ),
-              ),
-              /*
+              keyboardType: TextInputType.multiline,
+              maxLines: 5,
+              onChanged: (value) {
+                _postTags = value;
+              },
+            ),
+          ),
+          /*
               Placeholder for adding field for capturing streams/tags for the post as well as public/private
                */
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  FlatButton(
-                    child: Text('Cancel'),
-                    textColor: Colors.deepPurple,
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  FlatButton(
-                      child: Text('Add Post'),
-                      textColor: Colors.deepPurple,
-                      onPressed: () async {
-                        String postError;
-                        String postErrorTitle;
-                        if(_postTags != null){
-                          int numTags = '#'.allMatches(_postTags).length;
-                          if(numTags > 15) {
-                            postError = 'The limit for the number of stream tags on a post is 15.';
-                            postErrorTitle = 'Too Many Stream Tags!';
-                          }
-                        }
-                        if(postError != null){
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: Text(postErrorTitle),
-                                content: Text(postError),
-                                actions: <Widget>[
-                                  FlatButton(
-                                    child: Text('Ok'),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        } else {
-                          List<String> tagList = processTagString(_postTags);
-                          print({"postTitle": _postTitle,
-                            "localRecordingLocation": recordingLocation,
-                            "date": date,
-                            "dateString": dateString,
-                            "listens": 0,
-                            "secondsLength": secondsLength,
-                            "streamList": tagList,
-                            "test": "tester",
-                          });
-                          await ActivityManager().addPost(context, {"postTitle": _postTitle,
-                            "localRecordingLocation": recordingLocation,
-                            "date": date,
-                            "dateString": dateString,
-                            "listens": 0,
-                            "secondsLength": secondsLength,
-                            "streamList": tagList,
-                          });
-                          print('Post added');
-                        }
-                      }
-                  )
-                ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              FlatButton(
+                child: Text('Cancel'),
+                textColor: Colors.deepPurple,
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
               ),
+              FlatButton(
+                child: Text('Send To...'),
+                textColor: Colors.deepPurple,
+                onPressed: () {
+                  String postError;
+                  String postErrorTitle;
+                  if(_postTags != null){
+                    int numTags = '#'.allMatches(_postTags).length;
+                    if(numTags > 15) {
+                      postError = 'The limit for the number of stream tags on a post is 15.';
+                      postErrorTitle = 'Too Many Stream Tags!';
+                    }
+                  }
+                  if(postError != null){
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text(postErrorTitle),
+                          content: Text(postError),
+                          actions: <Widget>[
+                            FlatButton(
+                              child: Text('Ok'),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  } else {
+                    setState(() {
+                      page = 1;
+                    });
+                  }
+                }
+              )
             ],
-        );
-      }
-  );
+          )
+        ]
+    );
+
+    Widget page1 = Column(
+      children: <Widget>[
+        CheckboxListTile(
+          title: Text('My Timeline'),
+          value: _addToTimeline,
+          onChanged: (value) {
+            setState(() {
+              _addToTimeline = !_addToTimeline;
+            });
+          }
+        ),
+        Container(
+          child: SwitchListTile(
+            title: Text('Send as Group'),
+            activeColor: Colors.deepPurple,
+            value: _sendAsGroup,
+            onChanged: (value) {
+              setState(() {
+                _sendAsGroup = !_sendAsGroup;
+              });
+            },
+          )
+        ),
+        Divider(height: 2.5),
+        FutureBuilder(
+          future: FirebaseAuth.instance.currentUser(),
+          builder: (context, AsyncSnapshot<FirebaseUser> userSnap) {
+            if(!userSnap.hasData)
+              return Container(height: 300.0, width: 500.0);
+            String userId = userSnap.data.uid;
+            return StreamBuilder(
+              stream: Firestore.instance.collection('users').document(userId).snapshots(),
+              builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+                if(!snapshot.hasData)
+                  return Container(height: 300.0, width: 500.0);
+                Map<dynamic, dynamic> followers = snapshot.data['followers'];
+                if(followers == null)
+                  return Container(height: 300.0, width: 500.0);
+                else
+                  return Container(
+                    height: 300.0,
+                    width: 500.0,
+                    child: ListView(
+                      shrinkWrap: true,
+                      scrollDirection: Axis.vertical,
+                      children: followers.entries.map((item) {
+                        if(!_sendToUsers.containsKey(item.key))
+                          _sendToUsers.addAll({item.key: false});
+                        bool _val = _sendToUsers[item.key];
+                        return CheckboxListTile(
+                            title: FutureBuilder(
+                              future: Firestore.instance.collection('users').document(item.key).get(),
+                              builder: (context, AsyncSnapshot<DocumentSnapshot> itemDoc) {
+                                if(!itemDoc.hasData)
+                                  return Container();
+                                return Text(itemDoc.data['username']);
+                              }
+                            ),
+                            value: _val,
+                            onChanged: (value) {
+                              print(_sendToUsers);
+                              setState(() {
+                                _sendToUsers[item.key] = value;
+                              });
+                            }
+                        );
+                      }).toList(),
+                    )
+                  );
+              }
+            );
+          }
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            FlatButton(
+              child: Text('Back'),
+              textColor: Colors.deepPurple,
+              onPressed: () {
+                setState(() {
+                  page = 0;
+                });
+              }
+            ),
+            FlatButton(
+                child: Text('Add Post'),
+                textColor: Colors.deepPurple,
+                onPressed: () async {
+                    List<String> tagList = processTagString(_postTags);
+                    print({"postTitle": _postTitle,
+                      "localRecordingLocation": widget.recordingLocation,
+                      "date": widget.date,
+                      "dateString": dateString,
+                      "listens": 0,
+                      "secondsLength": widget.secondsLength,
+                      "streamList": tagList,
+                      "test": "tester",
+                    });
+                    setState(() {
+                      _isLoading = true;
+                    });
+                    _sendToUsers.removeWhere((key, value) => value == false);
+                    print('Sending to: $_sendToUsers / As Group: $_sendAsGroup / Add to Timeline: $_addToTimeline');
+                    await ActivityManager().addPost(context, {"postTitle": _postTitle,
+                      "localRecordingLocation": widget.recordingLocation,
+                      "date": widget.date,
+                      "dateString": dateString,
+                      "listens": 0,
+                      "secondsLength": widget.secondsLength,
+                      "streamList": tagList,
+                    }, _addToTimeline, _sendAsGroup, _sendToUsers);
+                    print('Post added');
+                }
+            )
+          ]
+        )
+      ]
+    );
+
+    return SimpleDialog(
+      contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
+      title: Center(child: Text(page == 0 ? 'Add New Post' : 'Send To',
+          style: TextStyle(color: Colors.deepPurple)
+      )),
+      children: <Widget>[
+        _isLoading ? Center(
+            child: Container(
+                height: 75.0,
+                width: 75.0,
+                child: CircularProgressIndicator()
+            )
+        ) : page == 0 ? page0 : page1,
+      ],
+    );
+  }
 }
 
 class UploadPostDialog extends StatefulWidget {
@@ -750,7 +945,7 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
                     "listens": 0,
                     "secondsLength": duration.inSeconds,
                     "streamList": tagList,
-                  });
+                  }, true, false, null);
                   print('Post added');
                 }
               },
@@ -780,6 +975,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
   DateTime _startRecordDate;
   int _secondsLength;
   ActivityManager activityManager = new ActivityManager();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -790,77 +986,87 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
         textAlign: TextAlign.center,
       )),
       children: <Widget>[
-        Text('Message Title', style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)),
-        Container(
-            width: 700.0,
-            child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Message Title (Optional)',
-                ),
-                onChanged: (value) {
-                  _messageTitle = value;
-                }
-            )
-        ),
-        SizedBox(height: 20.0),
-        FloatingActionButton(
-            backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
-            child: Icon(Icons.mic),
-            heroTag: null,
-            onPressed: () async {
-              if(_isRecording) {
-                List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-                String recordingLocation = stopRecordVals[0];
-                int secondsLength = stopRecordVals[1];
-
-                print('$recordingLocation -/- Length: $secondsLength');
-                setState(() {
-                  _isRecording = !_isRecording;
-                  _secondsLength = secondsLength;
-                });
-                print('getting date');
-                DateTime date = new DateTime.now();
-                print('date before dialog: $date');
-                //await addPostDialog(context, date, recordingLocation, secondsLength);
-              } else {
-                List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
-                String postPath = startRecordVals[0];
-                DateTime startDate = startRecordVals[1];
-                setState(() {
-                  _isRecording = !_isRecording;
-                  _postAudioPath = postPath;
-                  _startRecordDate = startDate;
-                });
-              }
-            }
-        ),
-        SizedBox(height: 10.0),
-        Center(
-          child: _postAudioPath == null ? Text('Audio Recording Missing',
-            style: TextStyle(color: Colors.red),
-          ) : null,
-        ),
-        SizedBox(height: 10.0),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        _isLoading ? Center(child: Container(height: 75.0, width: 75.0, child: CircularProgressIndicator())) : Column(
           children: <Widget>[
-            FlatButton(
-              child: Text('Cancel'),
+            Text('Message Title', style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)),
+            Container(
+                width: 700.0,
+                child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Message Title (Optional)',
+                    ),
+                    onChanged: (value) {
+                      _messageTitle = value;
+                    }
+                )
             ),
-            FlatButton(
-              child: Text('Send'),
-              onPressed: () async {
-                if(_postAudioPath != null && _secondsLength != null){
-                  if(widget.conversationId != null) {
-                    await activityManager.sendDirectPost(_messageTitle, _postAudioPath, _secondsLength, conversationId: widget.conversationId);
-                    Navigator.of(context).pop();
+            SizedBox(height: 20.0),
+            FloatingActionButton(
+                backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
+                child: Icon(Icons.mic),
+                heroTag: null,
+                onPressed: () async {
+                  if(_isRecording) {
+                    List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+                    String recordingLocation = stopRecordVals[0];
+                    int secondsLength = stopRecordVals[1];
+
+                    print('$recordingLocation -/- Length: $secondsLength');
+                    setState(() {
+                      _isRecording = !_isRecording;
+                      _secondsLength = secondsLength;
+                    });
+                    print('getting date');
+                    DateTime date = new DateTime.now();
+                    print('date before dialog: $date');
+                    //await addPostDialog(context, date, recordingLocation, secondsLength);
                   } else {
-                    await activityManager.sendDirectPost(_messageTitle, _postAudioPath, _secondsLength, memberMap: widget.memberMap);
-                    Navigator.of(context).pop();
+                    List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
+                    String postPath = startRecordVals[0];
+                    DateTime startDate = startRecordVals[1];
+                    setState(() {
+                      _isRecording = !_isRecording;
+                      _postAudioPath = postPath;
+                      _startRecordDate = startDate;
+                    });
                   }
                 }
-              },
             ),
+            SizedBox(height: 10.0),
+            Center(
+              child: _postAudioPath == null ? Text('Audio Recording Missing',
+                style: TextStyle(color: Colors.red),
+              ) : null,
+            ),
+            SizedBox(height: 10.0),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  FlatButton(
+                      child: Text('Cancel'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      }
+                  ),
+                  _isLoading ? Container() : FlatButton(
+                    child: Text('Send'),
+                    onPressed: () async {
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      if(_postAudioPath != null && _secondsLength != null){
+                        if(widget.conversationId != null) {
+                          await activityManager.sendDirectPost(_messageTitle, _postAudioPath, _secondsLength, conversationId: widget.conversationId);
+                          Navigator.of(context).pop();
+                        } else {
+                          await activityManager.sendDirectPost(_messageTitle, _postAudioPath, _secondsLength, memberMap: widget.memberMap);
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
+                  ),
+                ]
+            )
           ]
         ),
       ],

@@ -32,7 +32,7 @@ dependencies:
   flutter_launcher_icons:
   file_picker:
   path_provider:
-  audioplayers: 0.13.2
+  audioplayers: 0.13.5
 
   flutter:
     sdk: flutter

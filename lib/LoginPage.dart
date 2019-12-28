@@ -173,7 +173,10 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
     bool userDocCreated;
 
     print('Starting Google sign in');
-    final GoogleSignInAccount googleUser = await _googleSignIn.signIn();
+    final GoogleSignInAccount googleUser = await _googleSignIn.signIn().catchError((e) {
+      print('Error ${e.toString()}');
+    });
+    print('Google User: $googleUser');
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
     final AuthCredential credential = GoogleAuthProvider.getCredential(
       accessToken: googleAuth.accessToken,
