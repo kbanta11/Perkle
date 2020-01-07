@@ -86,6 +86,16 @@ class _ConversationPageState extends State<ConversationPage> {
 
                           PostAudioPlayer thisPost = _activityManager.addPostToPlaylist(postAudioUrl, postPlayer);
 
+                          String postLength = '--:--';
+                          if(secondsLength != null) {
+                            Duration postDuration = Duration(seconds: secondsLength);
+                            if(postDuration.inHours > 0){
+                              postLength = '${postDuration.inHours}:${postDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${postDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+                            } else {
+                              postLength = '${postDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${postDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+                            }
+                          }
+
                           Widget playButton = SizedBox(
                               height: 35.0,
                               width: 35.0,
@@ -140,7 +150,28 @@ class _ConversationPageState extends State<ConversationPage> {
                                           return Padding(
                                               padding: EdgeInsets.fromLTRB(0.0, 5.0, 0.0, 5.0),
                                               child: ListTile(
-                                                leading: playButton,
+                                                leading: Column(
+                                                    children: <Widget>[
+                                                      playButton,
+                                                      SizedBox(height: 2.0),
+                                                      StreamBuilder(
+                                                          stream: postPlayer.onAudioPositionChanged,
+                                                          builder: (context, AsyncSnapshot<Duration> snapshot) {
+                                                            if(!snapshot.hasData)
+                                                              return Text(postLength);
+
+                                                            int hours = snapshot.data.inHours;
+                                                            int minutes = snapshot.data.inMinutes.remainder(60);
+                                                            int seconds = snapshot.data.inSeconds.remainder(60);
+                                                            String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
+                                                            String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
+                                                            if(hours > 0)
+                                                              return Text('$hours:$minutesString:$secondsString');
+                                                            return Text('$minutesString:$secondsString');
+                                                          }
+                                                      )
+                                                    ]
+                                                ),
                                                 title: messageText,
                                                 trailing: StreamBuilder(
                                                     stream: Firestore.instance.collection('users').document(docSnap.data['senderUID']).snapshots(),
@@ -238,7 +269,28 @@ class _ConversationPageState extends State<ConversationPage> {
                                                   }
                                               ),
                                               title: messageText,
-                                              trailing: playButton,
+                                              trailing: Column(
+                                                  children: <Widget>[
+                                                    playButton,
+                                                    SizedBox(height: 2.0),
+                                                    StreamBuilder(
+                                                        stream: postPlayer.onAudioPositionChanged,
+                                                        builder: (context, AsyncSnapshot<Duration> snapshot) {
+                                                          if(!snapshot.hasData)
+                                                            return Text(postLength);
+
+                                                          int hours = snapshot.data.inHours;
+                                                          int minutes = snapshot.data.inMinutes.remainder(60);
+                                                          int seconds = snapshot.data.inSeconds.remainder(60);
+                                                          String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
+                                                          String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
+                                                          if(hours > 0)
+                                                            return Text('$hours:$minutesString:$secondsString');
+                                                          return Text('$minutesString:$secondsString');
+                                                        }
+                                                    )
+                                                  ]
+                                              ),
                                             )
                                         );
                                       } else {

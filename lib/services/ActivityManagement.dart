@@ -190,6 +190,7 @@ class ActivityManager {
         DocumentReference directPostRef = Firestore.instance.collection('/directposts').document();
         String directPostDocId = directPostRef.documentID;
 
+
         //Get posting user id and username
         DocumentReference postingUserDoc = await UserManagement().getUserData();
         String postingUserID = postingUserDoc.documentID;
@@ -237,9 +238,11 @@ class ActivityManager {
         }
         bool conversationExists = _conversationId != null;
 
+        /*
         Map<String, dynamic> conversationMap = await postingUserDoc.get().then((DocumentSnapshot snapshot) {
           return snapshot.data['directConversationMap'] == null ? null : Map<String, dynamic>.from(snapshot.data['directConversationMap']);
         });
+         */
 
         if(conversationExists) {
           print('Conversation exists: $_conversationId');
@@ -281,8 +284,10 @@ class ActivityManager {
               conversationMembers.addAll({uid: {'username': username, 'unreadPosts': 1}});
           });
           Map<String, dynamic> postMap = {directPostDocId: postingUserID};
+
           batch.setData(newConversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': date});
 
+          /*
           //Add a new conversation to the sending user doc conversationMap
           Map<String, dynamic> senderConversationMap = await postingUserDoc.get().then((DocumentSnapshot snapshot) {
             return snapshot.data['directConversationMap'] == null ? null : Map<String, dynamic>.from(snapshot.data['directConversationMap']);
@@ -295,10 +300,13 @@ class ActivityManager {
           else
             senderConversationMap = sendConvoData;
 
-          batch.updateData(postingUserDoc, {'directConversationMap': senderConversationMap});
+          WriteBatch testBatch3 = Firestore.instance.batch();
+          testBatch3.updateData(postingUserDoc, {'directConversationMap': senderConversationMap});
+          print('');
+          print('committing testBatch3');
+          await testBatch3.commit();
 
           //Add a new conversation to the recieving user doc conversationMap - store number of unread posts and other user name
-          /*
           Map<String, dynamic> recipientConversationMap = await recipientDocRef.get().then((DocumentSnapshot snapshot) {
             return snapshot.data['directConversationMap'] == null ? null : Map<String, dynamic>.from(snapshot.data['directConversationMap']);
           });
@@ -323,9 +331,11 @@ class ActivityManager {
 
         batch.setData(directPostRef, newPostData);
 
-        batch.commit();
+        await batch.commit().catchError(((error) {
+          print('Error committing testBatch4: $error');
+        }));
+        print('batch committed');
     }
-    //print('Sending $messageTitle to $recipientUserId with file $audioPath that is $secondsLength seconds long');
   }
 
   Future<List<dynamic>> startRecordNewPost() async {
