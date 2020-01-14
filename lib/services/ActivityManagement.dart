@@ -63,7 +63,7 @@ class ActivityManager {
     this.currentlyPlayingPlayer = player.postPlayer;
   }
 
-  addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic> sendToUsers) async {
+  addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic> sendToUsers, Map<String, dynamic> addToConversations) async {
     if (isLoggedIn()) {
       print('Starting post add');
       await Firestore.instance.runTransaction((Transaction transaction) async {
@@ -163,6 +163,15 @@ class ActivityManager {
                 await sendDirectPost(postData['postTitle'], null, postData['secondsLength'], memberMap: _memberMap, fileUrl: fileUrlString);
               });
             }
+          }
+        }
+
+        if(addToConversations != null) {
+          if(addToConversations.length > 0) {
+            addToConversations.forEach((key, value) async {
+              print('adding to conversation: $key');
+              await sendDirectPost(postData['postTitle'], null, postData['secondsLength'], fileUrl: fileUrlString, conversationId: key);
+            });
           }
         }
       });
@@ -621,6 +630,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
   bool _addToTimeline = true;
   bool _sendAsGroup = false;
   Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
+  Map<String, dynamic> _addToConversations = new Map<String, dynamic>();
 
   @override
   build(BuildContext context) {
@@ -724,6 +734,66 @@ class _AddPostDialogState extends State<AddPostDialog> {
             });
           }
         ),
+        Divider(height: 2.5),
+        FutureBuilder(
+            future: FirebaseAuth.instance.currentUser(),
+            builder: (context, AsyncSnapshot<FirebaseUser> userSnap) {
+              if(!userSnap.hasData)
+                return Container(height: 300.0, width: 500.0);
+              String userId = userSnap.data.uid;
+              return StreamBuilder(
+                  stream: Firestore.instance.collection('conversations').where('memberList', arrayContains: userSnap.data.uid.toString()).snapshots(),
+                  builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                    if(!snapshot.hasData)
+                      return Container(height: 300.0, width: 500.0);
+
+                    if(snapshot.data.documents.length == 0)
+                      return Center(child: Text('You have no conversations!'));
+                    else
+                      return Container(
+                          height: 300.0,
+                          width: 500.0,
+                          child: ListView(
+                            shrinkWrap: true,
+                            scrollDirection: Axis.vertical,
+                            children: snapshot.data.documents.map((convo) {
+                              String titleText = '';
+                              Map<dynamic, dynamic> memberDetails = convo.data['conversationMembers'];
+                              if(memberDetails != null){
+                                memberDetails.forEach((key, value) {
+                                  if(key != userSnap.data.uid) {
+                                    if(titleText.length > 0)
+                                      titleText = titleText + ', ' + value['username'];
+                                    else
+                                      titleText = value['username'];
+                                  }
+                                });
+                              }
+
+                              if(titleText.length > 50){
+                                titleText = titleText.substring(0,47) + '...';
+                              }
+                              if(!_addToConversations.containsKey(convo.documentID))
+                                _addToConversations.addAll({convo.documentID: false});
+                              bool _val = _addToConversations[convo.documentID];
+                              return CheckboxListTile(
+                                  title: Text(titleText),
+                                  value: _val,
+                                  onChanged: (value) {
+                                    print(_addToConversations);
+                                    setState(() {
+                                      _addToConversations[convo.documentID] = value;
+                                    });
+                                  }
+                              );
+                            }).toList(),
+                          )
+                      );
+                  }
+              );
+            }
+        ),
+        Divider(height: 2.5),
         Container(
           child: SwitchListTile(
             title: Text('Send as Group'),
@@ -816,6 +886,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                       _isLoading = true;
                     });
                     _sendToUsers.removeWhere((key, value) => value == false);
+                    _addToConversations.removeWhere((key, value) => value == false);
                     print('Sending to: $_sendToUsers / As Group: $_sendAsGroup / Add to Timeline: $_addToTimeline');
                     await ActivityManager().addPost(context, {"postTitle": _postTitle,
                       "localRecordingLocation": widget.recordingLocation,
@@ -824,7 +895,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                       "listens": 0,
                       "secondsLength": widget.secondsLength,
                       "streamList": tagList,
-                    }, _addToTimeline, _sendAsGroup, _sendToUsers);
+                    }, _addToTimeline, _sendAsGroup, _sendToUsers, _addToConversations);
                     print('Post added');
                 }
             )
@@ -955,7 +1026,7 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
                     "listens": 0,
                     "secondsLength": duration.inSeconds,
                     "streamList": tagList,
-                  }, true, false, null);
+                  }, true, false, null, null);
                   print('Post added');
                 }
               },
