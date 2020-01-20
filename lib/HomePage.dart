@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'dart:io';
+import 'dart:async';
 import 'PageComponents.dart';
 import 'ProfilePage.dart';
 import 'ListPage.dart';
@@ -9,6 +10,7 @@ import 'DiscoverPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class HomePage extends StatefulWidget {
   ActivityManager activityManager;
@@ -24,6 +26,36 @@ class _HomePageState extends State<HomePage> {
   DocumentReference userDoc;
   int _selectedIndex = 0;
   ActivityManager _activityManager;
+  final Firestore _db = Firestore.instance;
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+
+  StreamSubscription iosSubscription;
+
+  _saveDeviceToken() async {
+    // Get the current user
+    String uid = await FirebaseAuth.instance.currentUser().then((user) {
+      return user.uid;
+    });
+    // FirebaseUser user = await _auth.currentUser();
+
+    // Get the token for this device
+    String userToken = await _firebaseMessaging.getToken();
+
+    // Save it to Firestore
+    if (userToken != null) {
+      var tokens = _db
+          .collection('users')
+          .document(uid)
+          .collection('tokens')
+          .document(userToken);
+
+      await tokens.setData({
+        'token': userToken,
+        'createdAt': FieldValue.serverTimestamp(), // optional
+        'platform': Platform.operatingSystem // optional
+      });
+    }
+  }
 
   void _onItemTapped(int index, {ActivityManager actManage}) async {
     print('Activity Manager: $actManage');
@@ -66,6 +98,43 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _showUsernameDialog(context);
     });
+    if (Platform.isIOS) {
+      iosSubscription = _firebaseMessaging.onIosSettingsRegistered.listen((data) {
+        // save the token  OR subscribe to a topic here
+      });
+
+      _firebaseMessaging.requestNotificationPermissions(IosNotificationSettings());
+    }
+
+    _firebaseMessaging.configure(
+      onMessage: (Map<String, dynamic> message) async {
+        print("onMessage: $message");
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            content: ListTile(
+              title: Text(message['notification']['title']),
+              subtitle: Text(message['notification']['body']),
+            ),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Ok'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      },
+      onLaunch: (Map<String, dynamic> message) async {
+        print("onLaunch: $message");
+        // TODO optional
+      },
+      onResume: (Map<String, dynamic> message) async {
+        print("onResume: $message");
+        // TODO optional
+      },
+    );
+    _saveDeviceToken();
   }
 
   @override

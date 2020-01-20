@@ -3,6 +3,11 @@ const _ = require('lodash');
 
 const request = require('request-promise');
 
+const admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
+
+const db = admin.firestore();
+
 exports.indexUsersToElastic = functions.firestore.document('/users/{uid}').onWrite((change, context) => {
 	let userData = change.after.data();
 	let userId = context.params.uid;
@@ -43,6 +48,117 @@ exports.indexUsersToElastic = functions.firestore.document('/users/{uid}').onWri
 	return request(elasticSearchRequest).then(response => {
 		console.log('ElasticSearch Response: ', response);
 		return;
+	});
+});
+
+exports.usernameFanOut = functions.firestore.document('/users/{uid}').onWrite(async (change, context) => {
+	let userDataAfter = change.after.data();
+	let userDataBefore = change.before.data();
+	let usernameAfter = userDataAfter['username'];
+	let usernameBefore = userDataBefore['username'];
+	let userId = userDataAfter['uid'];
+	
+	if(usernameAfter !== usernameBefore) {
+		//Update username on all post documents from user
+		await db.collection('posts').where('userUID', '==', userId).get().then(snapshot => {
+			if(snapshot.empty) {
+				console.log('User has no posts');
+				return;
+			}
+			
+			snapshot.forEach(doc => {
+				let transaction = db.runTransaction(t => {
+					return t.get(doc.ref).then(_doc => {
+						t.update(_doc.ref, {username: usernameAfter});
+						return;
+					});
+				});
+			});
+			return;
+		}).catch(err => {
+			console.log('Error getting user posts: ' + err);
+		});
+		
+		//Update username on all direct posts where sender
+		await db.collection('directposts').where('senderUID', '==', userId).get().then(snapshot => {
+			if(snapshot.empty) {
+				console.log('User has no direct posts');
+				return;
+			}
+			
+			snapshot.forEach(doc => {
+				let transaction = db.runTransaction(t => {
+					return t.get(doc.ref).then(_doc => {
+						t.update(_doc.ref, {senderUsername: usernameAfter});
+						return;
+					});
+				});
+			});
+			return;
+		}).catch(err => {
+			console.log('Error getting direct user posts: ' + err);
+		});
+		
+		//Update username on all conversations user is included
+		await db.collection('conversations').where('memberList', 'array-contains', userId).get().then(snapshot => {
+			if(snapshot.empty) {
+				console.log('User has no conversations');
+				return;
+			}
+			
+			snapshot.forEach(doc => {
+				let transaction = db.runTransaction(t => {
+					return t.get(doc.ref).then(_doc => {
+						let docData = _doc.data();
+						let conversationMembers = docData['conversationMembers'];
+						conversationMembers[userId]['username'] = usernameAfter;
+						t.update(_doc.ref, {conversationMembers: conversationMembers});
+						return;
+					});
+				});
+			});
+			return;
+		}).catch(err => {
+			console.log('Error getting user posts: ' + err);
+		});
+	}
+	return 1;
+});
+
+exports.directMessageNotification = functions.firestore.document('/conversations/{id}').onWrite((change, context) => {
+	let conversationData = change.after.data();
+	let conversationMembers = conversationData['conversationMembers'];
+	
+	Object.keys(conversationMembers).forEach(key => {
+		console.log('Key: ' + key);
+		return db.collection('users').doc(key).collection('tokens').limit(1).get().then(querySnapshot => {
+			if(querySnapshot.empty) {
+				console.log('User ' + key + ' does not have messaging token');
+			} else {
+				querySnapshot.forEach(doc => {
+					let token = doc.data().token;
+					const payload = {
+						notification: {
+						title: `Perkl Message`,
+						body: 'You have a new message on Perkl!',
+						badge: '1',
+						sound: 'default'
+						}
+					}
+					admin
+						.messaging()
+						.sendToDevice(token, payload)
+						.then(response => {
+						  console.log('Successfully sent message:', response);
+						  return;
+						})
+						.catch(error => {
+						  console.log('Error sending message:', error);
+						});
+				});
+			}
+			return 1;
+		});
 	});
 });
 

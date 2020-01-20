@@ -23,7 +23,7 @@ dependencies:
   firebase_core:
   firebase_database:
   firebase_storage:
-  #firebase_messaging:
+  firebase_messaging:
   google_sign_in:
   image_picker:
   image_cropper:
