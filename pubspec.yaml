@@ -30,6 +30,7 @@ dependencies:
   intl:
   flutter_sound: 1.5.2
   flutter_launcher_icons:
+  flushbar:
   file_picker:
   path_provider:
   audioplayers: 0.13.5

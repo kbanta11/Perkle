@@ -10,6 +10,7 @@ import 'DiscoverPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
+import 'package:flushbar/flushbar.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class HomePage extends StatefulWidget {
@@ -109,21 +110,15 @@ class _HomePageState extends State<HomePage> {
     _firebaseMessaging.configure(
       onMessage: (Map<String, dynamic> message) async {
         print("onMessage: $message");
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            content: ListTile(
-              title: Text(message['notification']['title']),
-              subtitle: Text(message['notification']['body']),
-            ),
-            actions: <Widget>[
-              FlatButton(
-                child: Text('Ok'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-        );
+        Flushbar(
+          backgroundColor: Colors.deepPurple,
+          title:  message['notification']['title'],
+          message:  message['notification']['body'],
+          duration:  Duration(seconds: 3),
+          margin: EdgeInsets.all(8),
+          borderRadius: 8,
+          flushbarPosition: FlushbarPosition.TOP,
+        )..show(context);
       },
       onLaunch: (Map<String, dynamic> message) async {
         print("onLaunch: $message");
