@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flushbar/flushbar.dart';
+import 'dart:async';
+import 'dart:io';
 
 import 'services/UserManagement.dart';
+import 'services/ActivityManagement.dart';
+import 'HomePage.dart';
+import 'ConversationPage.dart';
 
 final GoogleSignIn _googleSignIn = new GoogleSignIn();
 
@@ -14,16 +22,79 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   String _email;
   String _password;
+  final Firestore _db = Firestore.instance;
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+  bool _redirectOnNotification = true;
+
+  StreamSubscription iosSubscription;
 
   _checkLoggedIn() async {
     FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
     if(currentUser != null)
-      Navigator.of(context).pushReplacementNamed("/homepage");
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => HomePage(redirectOnNotification: true,),
+      ));;
   }
 
   @override
   void initState() {
     super.initState();
+    if (Platform.isIOS) {
+      iosSubscription = _firebaseMessaging.onIosSettingsRegistered.listen((data) {
+        // save the token  OR subscribe to a topic here
+      });
+
+      _firebaseMessaging.requestNotificationPermissions(IosNotificationSettings());
+    }
+
+    _firebaseMessaging.configure(
+      onMessage: (Map<String, dynamic> message) async {
+        print("onMessage: $message");
+        Flushbar(
+          backgroundColor: Colors.deepPurple,
+          title:  message['notification']['title'],
+          message:  message['notification']['body'],
+          duration:  Duration(seconds: 3),
+          margin: EdgeInsets.all(8),
+          borderRadius: 8,
+          flushbarPosition: FlushbarPosition.TOP,
+          onTap: (flushbar) {
+            String conversationId = message['data']['conversationId'];
+            if(conversationId != null){
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) => ConversationPage(conversationId: conversationId, activityManager: new ActivityManager()),
+              ));
+            }
+          },
+        )..show(context);
+      },
+      onLaunch: (Map<String, dynamic> message) async {
+        print("onLaunch: $message");
+        // TODO optional
+        String conversationId = message['data']['conversationId'];
+        print('Conversation id: ' + conversationId);
+        if(conversationId != null && _redirectOnNotification){
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => ConversationPage(conversationId: conversationId, activityManager: new ActivityManager()),
+          )).then((_) {
+            _redirectOnNotification = false;
+          });
+        }
+      },
+      onResume: (Map<String, dynamic> message) async {
+        print("onResume: $message");
+        // TODO optional
+        String conversationId = message['data']['conversationId'];
+        print('Conversation id: ' + conversationId);
+        if(conversationId != null && _redirectOnNotification){
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => ConversationPage(conversationId: conversationId, activityManager: new ActivityManager()),
+          )).then((_) {
+            _redirectOnNotification = false;
+          });
+        }
+      },
+    );
     _checkLoggedIn();
   }
 

@@ -279,7 +279,7 @@ class ActivityManager {
           });
 
           postMap.addAll({directPostDocId: postingUserID});
-          batch.updateData(conversationRef, {'postMap': postMap, 'lastDate': date, 'conversationMembers': newMemberMap});
+          batch.updateData(conversationRef, {'postMap': postMap, 'lastDate': date, 'lastPostUsername': postingUsername, 'lastPostUserId': postingUserID, 'conversationMembers': newMemberMap});
         } else {
           //Create new conversation document and update data
           DocumentReference newConversationRef = Firestore.instance.collection('/conversations').document();
@@ -294,7 +294,7 @@ class ActivityManager {
           });
           Map<String, dynamic> postMap = {directPostDocId: postingUserID};
 
-          batch.setData(newConversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': date});
+          batch.setData(newConversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': date, 'lastPostUsername': postingUsername, 'lastPostUserId': postingUserID});
 
           /*
           //Add a new conversation to the sending user doc conversationMap
@@ -739,19 +739,19 @@ class _AddPostDialogState extends State<AddPostDialog> {
             future: FirebaseAuth.instance.currentUser(),
             builder: (context, AsyncSnapshot<FirebaseUser> userSnap) {
               if(!userSnap.hasData)
-                return Container(height: 300.0, width: 500.0);
+                return Container(height: 180.0, width: 500.0);
               String userId = userSnap.data.uid;
               return StreamBuilder(
                   stream: Firestore.instance.collection('conversations').where('memberList', arrayContains: userSnap.data.uid.toString()).snapshots(),
                   builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
                     if(!snapshot.hasData)
-                      return Container(height: 300.0, width: 500.0);
+                      return Container(height: 180.0, width: 500.0);
 
                     if(snapshot.data.documents.length == 0)
                       return Center(child: Text('You have no conversations!'));
                     else
                       return Container(
-                          height: 300.0,
+                          height: 180.0,
                           width: 500.0,
                           child: ListView(
                             shrinkWrap: true,
@@ -811,19 +811,19 @@ class _AddPostDialogState extends State<AddPostDialog> {
           future: FirebaseAuth.instance.currentUser(),
           builder: (context, AsyncSnapshot<FirebaseUser> userSnap) {
             if(!userSnap.hasData)
-              return Container(height: 300.0, width: 500.0);
+              return Container(height: 180.0, width: 500.0);
             String userId = userSnap.data.uid;
             return StreamBuilder(
               stream: Firestore.instance.collection('users').document(userId).snapshots(),
               builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
                 if(!snapshot.hasData)
-                  return Container(height: 300.0, width: 500.0);
+                  return Container(height: 180.0, width: 500.0);
                 Map<dynamic, dynamic> followers = snapshot.data['followers'];
                 if(followers == null)
-                  return Container(height: 300.0, width: 500.0);
+                  return Container(height: 180.0, width: 500.0);
                 else
                   return Container(
-                    height: 300.0,
+                    height: 180.0,
                     width: 500.0,
                     child: ListView(
                       shrinkWrap: true,

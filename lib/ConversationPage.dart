@@ -27,6 +27,16 @@ class ConversationPage extends StatefulWidget {
 class _ConversationPageState extends State<ConversationPage> {
   int _selectedIndex = 2;
 
+  void _resetUserUnheard(String conversationId) async {
+    FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
+    String currentUserId = currentUser.uid.toString();
+    DocumentSnapshot convoSnap = await Firestore.instance.collection('conversations').document(conversationId).get();
+    Map<dynamic, dynamic> convoMembers = convoSnap.data['conversationMembers'];
+    convoMembers[currentUserId]['unreadPosts'] = 0;
+    print('Conversation Members: $convoMembers');
+    convoSnap.reference.updateData({'conversationMembers': convoMembers}, );
+  }
+
   void _onItemTapped(int index) async {
     if(index == 0) {
       Navigator.push(context, MaterialPageRoute(
@@ -60,6 +70,12 @@ class _ConversationPageState extends State<ConversationPage> {
     return await Firestore.instance.collection('/users').document(uid).get().then((snapshot) async {
       return snapshot.data['username'].toString();
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _resetUserUnheard(widget.conversationId);
   }
 
   @override

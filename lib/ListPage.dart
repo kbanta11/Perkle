@@ -61,7 +61,7 @@ class _ListPageState extends State<ListPage> {
               builder: (BuildContext context, AsyncSnapshot<String> uidSnap) {
                 if(uidSnap.hasData) {
                   return StreamBuilder(
-                      stream: Firestore.instance.collection('conversations').where('memberList', arrayContains: uidSnap.data.toString()).snapshots(),
+                      stream: Firestore.instance.collection('conversations').where('memberList', arrayContains: uidSnap.data.toString()).orderBy('lastDate', descending: true).snapshots(),
                       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
                         if(snapshot.hasData) {
                           if(snapshot.data.documents.length == 0)
@@ -95,9 +95,10 @@ class _ListPageState extends State<ListPage> {
                                 }
 
                                 int unreadPosts = 0;
-                                Map<dynamic, dynamic> userDetails = memberDetails[uidSnap];
+                                Map<dynamic, dynamic> userDetails = memberDetails[uidSnap.data.toString()];
                                 if(userDetails != null) {
                                   unreadPosts = userDetails['unreadPosts'];
+                                  print('Unread Posts: $unreadPosts');
                                 }
 
                                 Widget unheardIndicator = Container(height: 0.1,width: 0.1,);

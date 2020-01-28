@@ -126,12 +126,32 @@ exports.usernameFanOut = functions.firestore.document('/users/{uid}').onWrite(as
 });
 
 exports.directMessageNotification = functions.firestore.document('/conversations/{id}').onWrite((change, context) => {
+	let beforeConversationData = change.before.data();
+	let beforeLastDate = null;
+	if(typeof beforeConversationData !== 'undefined')
+		beforeLastDate = beforeConversationData['lastDate'];
 	let conversationData = change.after.data();
+	let lastDate = null;
+	if(typeof conversationData !== 'undefined')
+		lastDate = conversationData['lastDate'];
 	let conversationMembers = conversationData['conversationMembers'];
+	let conversationId = change.after.id;
+	let senderUsername = 'A User'; 
+	
+	//console.log('Previous Last Date: ' + beforeLastDate.toDate().toString() + '; Current Last Date: ' + lastDate.toDate().toString());
+	if(lastDate.isEqual(beforeLastDate)) {
+		console.log('Should not send notification');
+		return;
+	}
+	
+	if(conversationData['lastPostUsername'] !== null)
+		senderUsername = conversationData['lastPostUsername'];
 	
 	Object.keys(conversationMembers).forEach(key => {
 		console.log('Key: ' + key);
-		return db.collection('users').doc(key).collection('tokens').limit(1).get().then(querySnapshot => {
+		if(key !== conversationData['lastPostUserId']) {
+			console.log('Username: ' + conversationMembers[key]['username']);
+			return db.collection('users').doc(key).collection('tokens').get().then(querySnapshot => {
 			if(querySnapshot.empty) {
 				console.log('User ' + key + ' does not have messaging token');
 			} else {
@@ -140,9 +160,14 @@ exports.directMessageNotification = functions.firestore.document('/conversations
 					const payload = {
 						notification: {
 						title: `Perkl Message`,
-						body: 'You have a new message on Perkl!',
+						body: 'You have a new message on Perkl from ' + senderUsername + '!',
 						badge: '1',
-						sound: 'default'
+						sound: 'default',
+						click_action:'FLUTTER_NOTIFICATION_CLICK',
+						},
+						data: {
+							conversationId: conversationId,
+							senderUsername: senderUsername,
 						}
 					}
 					admin
@@ -159,6 +184,7 @@ exports.directMessageNotification = functions.firestore.document('/conversations
 			}
 			return 1;
 		});
+		}
 	});
 });
 

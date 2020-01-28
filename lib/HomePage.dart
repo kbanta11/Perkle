@@ -7,6 +7,7 @@ import 'PageComponents.dart';
 import 'ProfilePage.dart';
 import 'ListPage.dart';
 import 'DiscoverPage.dart';
+import 'ConversationPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -15,8 +16,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 class HomePage extends StatefulWidget {
   ActivityManager activityManager;
+  bool redirectOnNotification;
 
-  HomePage({Key key, this.activityManager}) : super(key: key);
+  HomePage({Key key, this.activityManager, this.redirectOnNotification}) : super(key: key);
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -29,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   ActivityManager _activityManager;
   final Firestore _db = Firestore.instance;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+
 
   StreamSubscription iosSubscription;
 
@@ -99,36 +102,6 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _showUsernameDialog(context);
     });
-    if (Platform.isIOS) {
-      iosSubscription = _firebaseMessaging.onIosSettingsRegistered.listen((data) {
-        // save the token  OR subscribe to a topic here
-      });
-
-      _firebaseMessaging.requestNotificationPermissions(IosNotificationSettings());
-    }
-
-    _firebaseMessaging.configure(
-      onMessage: (Map<String, dynamic> message) async {
-        print("onMessage: $message");
-        Flushbar(
-          backgroundColor: Colors.deepPurple,
-          title:  message['notification']['title'],
-          message:  message['notification']['body'],
-          duration:  Duration(seconds: 3),
-          margin: EdgeInsets.all(8),
-          borderRadius: 8,
-          flushbarPosition: FlushbarPosition.TOP,
-        )..show(context);
-      },
-      onLaunch: (Map<String, dynamic> message) async {
-        print("onLaunch: $message");
-        // TODO optional
-      },
-      onResume: (Map<String, dynamic> message) async {
-        print("onResume: $message");
-        // TODO optional
-      },
-    );
     _saveDeviceToken();
   }
 
