@@ -116,7 +116,16 @@ class _LoginPageState extends State<LoginPage> {
                   child:Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      Image.asset('assets/images/logo.png'),
+                      Container(
+                        height: 80,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage('assets/images/logo.png'),
+                            fit: BoxFit.fill
+                          ),
+                        ),
+                      ),
                       SizedBox(height: 50.0),
                       TextField(
                           decoration: InputDecoration(hintText: 'Email Address'),

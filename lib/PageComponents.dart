@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
 
@@ -852,7 +853,22 @@ class TimelineListItem extends StatefulWidget {
 class _TimelineListItemState extends State<TimelineListItem> {
   bool _thisPlaying = false;
   AudioPlayer postPlayer = new AudioPlayer();
-  bool _showDetail = false;
+  String currentUserId;
+
+  void _getCurrentUserId() async {
+    String uid = await FirebaseAuth.instance.currentUser().then((user) {
+      return user.uid;
+    });
+    setState(() {
+      currentUserId = uid;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentUserId();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -860,6 +876,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
     String username = widget.params['username'];
     String postTitle = widget.params['postTitle'];
     String postDate = widget.params['postDate'];
+    String postId = widget.params['thisPostId'];
     List<dynamic> streamList = widget.params['streamList'];
     String postAudioUrl = widget.params['postAudioUrl'];
     String postLengthString = widget.params['postLengthString'];
@@ -893,52 +910,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
         ]
     );
 
-    if(_showDetail) {
-      if(streamList != null) {
-        titleWidget = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text('@$username',
-                style: TextStyle(
-                  fontSize: 18.0,
-                  color: Color(0xFF7B7B7B),
-                ),
-              ),
-              SizedBox(height: 2.5),
-              Text(postTitle,
-                style: TextStyle(
-                  fontSize: 18.0,
-                ),
-              ),
-              SizedBox(height: 2.5),
-              Text(postDate,
-                style: TextStyle(
-                  fontSize: 14.0,
-                  color: Color(0xFF7B7B7B),
-                ),
-              ),
-              Wrap(
-                spacing: 8.0,
-                children: streamList.map((hashtag) => InkWell(
-                    child: Text('#${hashtag.toString()}',
-                        style: TextStyle(
-                          color: Colors.lightBlue,
-                        )
-                    ),
-                  onTap: () {
-                      print('Going to Stream Tag Page: ${hashtag.toString()}');
-                    Navigator.push(context, MaterialPageRoute(
-                        builder: (context) => StreamTagPage(activityManager: activityManager, tag: hashtag.toString(),)
-                    ));
-                  },
-                  )).toList()
-              ),
-            ]
-        );
-      }
-    }
-
-    return ListTile(
+    return ExpansionTile(
       leading: StreamBuilder(
           stream: Firestore.instance.collection('users').document(userId).snapshots(),
           builder: (context, snapshot) {
@@ -1065,11 +1037,95 @@ class _TimelineListItemState extends State<TimelineListItem> {
             ),
           ]
       ),
-      onTap: () {
-        setState((){
-          _showDetail = !_showDetail;
-        });
-      },
+      children: <Widget>[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            streamList != null ? Row(
+                children: <Widget>[
+                  SizedBox(width: 90),
+                  Wrap(
+                      spacing: 8.0,
+                      children: streamList.map((hashtag) => InkWell(
+                        child: Text('#${hashtag.toString()}',
+                            style: TextStyle(
+                              color: Colors.lightBlue,
+                            )
+                        ),
+                        onTap: () {
+                          print('Going to Stream Tag Page: ${hashtag.toString()}');
+                          Navigator.push(context, MaterialPageRoute(
+                              builder: (context) => StreamTagPage(activityManager: activityManager, tag: hashtag.toString(),)
+                          ));
+                        },
+                      )).toList()
+                  ),
+                ]
+            ) : Container(width: 0.1, height: 0.1),
+            currentUserId == userId ? IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () async {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: 200),
+                      child: AlertDialog(
+                        title: Text('Delete Post?'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text('Are you sure you want to delete this post?'),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: <Widget>[
+                                  FlatButton(
+                                    child: Text('Cancel'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  FlatButton(
+                                    child: Text('Delete'),
+                                    onPressed: () async {
+                                      WriteBatch batch = Firestore.instance.batch();
+                                      //Delete Post doc
+                                      DocumentReference postRef = Firestore.instance.collection('posts').document(postId);
+                                      print('deleting post $postId');
+                                      batch.delete(postRef);
+                                      //Delete post from user's post map
+                                      DocumentReference userDoc = Firestore.instance.collection('users').document(currentUserId);
+                                      Map<dynamic, dynamic> postMap = await userDoc.get().then((snap) {
+                                        return snap.data['posts'];
+                                      });
+                                      postMap.remove(postId);
+                                      batch.updateData(userDoc, {'posts': postMap});
+                                      //Delete file from storage
+                                      //StorageReference storageRef = await FirebaseStorage.instance.getReferenceFromUrl(postAudioUrl);
+                                      //Delete all direct posts with this file
+                                      //Or don't delete file at all and only delete posts?
+                                      //Perform Delete
+                                      await batch.commit().then((_) {
+                                        Navigator.of(context).pop();
+                                      });
+                                      //await storageRef.delete();
+                                    },
+                                  ),
+                                ],
+                              )
+                            ]
+                        ),
+                      ),
+                    );
+                  }
+                );
+              },
+            ) : IconButton(
+                icon: Icon(Icons.file_download)
+            )
+          ]
+        )
+      ],
     );
   }
 }
