@@ -1,8 +1,16 @@
+import 'dart:convert';
+
+import 'package:Perkl/main.dart';
+import 'package:Perkl/services/db_services.dart';
+import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 
 import 'ConversationPage.dart';
+import 'MainPageTemplate.dart';
 import 'PageComponents.dart';
 import 'HomePage.dart';
 import 'ProfilePage.dart';
@@ -11,6 +19,7 @@ import 'DiscoverPage.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
+/*------------------------------------
 class ListPage extends StatefulWidget {
   final String type;
   ActivityManager activityManager;
@@ -190,6 +199,96 @@ class _ListPageState extends State<ListPage> {
         ]
       ),
       bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
+    );
+  }
+}
+------------------------------------------------------*/
+
+//New Version
+class ConversationListPageMobile extends StatelessWidget {
+  @override
+  build(BuildContext context) {
+    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    return MultiProvider(
+      providers: [
+        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        StreamProvider<List<Conversation>>(create: (_) => DBService().streamConversations(firebaseUser.uid)),
+      ],
+      child: Consumer<List<Conversation>>(
+        builder: (context, conversations, _) {
+          User user = Provider.of<User>(context);
+          return MainPageTemplate(
+            bottomNavIndex: 2,
+            body: conversations == null ? Center(child: Text('You haven\'t started any conversations yet!'))
+              : ListView(
+              children: conversations.map((conversation) {
+                String firstOtherUid = conversation.memberList.where((item) => item != user.uid).first;
+                String titleText = '';
+                int unreadPosts = 0;
+                conversation.conversationMembers.forEach((key, userData) {
+                  if(key != user.uid) {
+                    if(titleText.length > 0) {
+                      titleText = '$titleText, ${userData['username']}';
+                    } else {
+                      titleText = '${userData['username']}';
+                    }
+                  } else {
+                    unreadPosts = userData['unreadPosts'] ?? 0;
+                  }
+                });
+
+                return Column(
+                  children: <Widget>[
+                    ListTile(
+                      leading: StreamProvider<User>(
+                        create: (context) => UserManagement().streamUserDoc(firstOtherUid),
+                        child: Consumer<User>(
+                          builder: (context, firstUser, _) {
+                            if(firstUser == null || firstUser.profilePicUrl == null)
+                              return Container(
+                                  height: 60.0,
+                                  width: 60.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.deepPurple,
+                                  )
+                              );
+                            return Container(
+                                height: 60.0,
+                                width: 60.0,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.deepPurple,
+                                  image: DecorationImage(
+                                    fit: BoxFit.cover,
+                                    image: NetworkImage(firstUser.profilePicUrl),
+                                  ),
+                                )
+                            );
+                          },
+                        )
+                      ),
+                      title: Text('$titleText', style: TextStyle(fontSize: 18)),
+                      trailing: FaIcon(unreadPosts > 0 ? FontAwesomeIcons.solidComments : FontAwesomeIcons.comments,
+                        color: Colors.deepPurple,
+                        size: 24,
+                      ),
+                      onTap: () {
+                        //print('go to conversation: ${convoItem.targetUsername} (${convoItem.conversationId})');
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => ConversationPageMobile(conversationId: conversation.id),
+                        ));
+                      }
+                    ),
+                    Divider(height: 15, thickness: 1,)
+                  ]
+                );
+              }).toList(),
+            ),
+          );
+        },
+      ),
     );
   }
 }

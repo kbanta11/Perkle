@@ -33,7 +33,11 @@ dependencies:
   flushbar:
   file_picker:
   path_provider:
-  audioplayers: 0.13.5
+  audioplayers:
+  provider:
+  sliding_up_panel:
+  font_awesome_flutter:
+
 
   flutter:
     sdk: flutter

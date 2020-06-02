@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flushbar/flushbar.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -32,8 +33,8 @@ class _LoginPageState extends State<LoginPage> {
     FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
     if(currentUser != null)
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => HomePage(redirectOnNotification: true,),
-      ));;
+        builder: (context) => HomePageMobile(redirectOnNotification: true,),
+      ));
   }
 
   @override
@@ -62,7 +63,7 @@ class _LoginPageState extends State<LoginPage> {
             String conversationId = message['data']['conversationId'];
             if(conversationId != null){
               Navigator.push(context, MaterialPageRoute(
-                builder: (context) => ConversationPage(conversationId: conversationId, activityManager: new ActivityManager()),
+                builder: (context) => ConversationPageMobile(conversationId: conversationId),
               ));
             }
           },
@@ -75,7 +76,7 @@ class _LoginPageState extends State<LoginPage> {
         print('Conversation id: ' + conversationId);
         if(conversationId != null && _redirectOnNotification){
           Navigator.push(context, MaterialPageRoute(
-            builder: (context) => ConversationPage(conversationId: conversationId, activityManager: new ActivityManager()),
+            builder: (context) => ConversationPageMobile(conversationId: conversationId),
           )).then((_) {
             _redirectOnNotification = false;
           });
@@ -88,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
         print('Conversation id: ' + conversationId);
         if(conversationId != null && _redirectOnNotification){
           Navigator.push(context, MaterialPageRoute(
-            builder: (context) => ConversationPage(conversationId: conversationId, activityManager: new ActivityManager()),
+            builder: (context) => ConversationPageMobile(conversationId: conversationId),
           )).then((_) {
             _redirectOnNotification = false;
           });
@@ -101,7 +102,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context){
 
-    return new Scaffold (
+    return Scaffold (
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -121,8 +122,8 @@ class _LoginPageState extends State<LoginPage> {
                         width: 80,
                         decoration: BoxDecoration(
                           image: DecorationImage(
-                            image: AssetImage('assets/images/logo.png'),
-                            fit: BoxFit.fill
+                              image: AssetImage('assets/images/logo.png'),
+                              fit: BoxFit.fill
                           ),
                         ),
                       ),
@@ -187,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
               )
           ),
         )
-      ),
+    ),
     );
   }
 }

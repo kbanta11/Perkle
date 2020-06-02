@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
+import 'services/models.dart';
 
+import 'main.dart';
+import 'MainPageTemplate.dart';
 import 'PageComponents.dart';
 import 'HomePage.dart';
 import 'ListPage.dart';
 import 'DiscoverPage.dart';
+import 'Timeline.dart';
 
+/*--------------------------------------------
 class ProfilePage extends StatefulWidget {
   final String userId;
   ActivityManager activityManager;
@@ -79,5 +85,41 @@ class _ProfilePageState extends State<ProfilePage> {
 
         bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
       );
+  }
+}
+----------------------------------------*/
+
+//--------------------------------------------------
+//New Version
+class ProfilePageMobile extends StatelessWidget {
+  String userId;
+
+  ProfilePageMobile({this.userId});
+
+  @override
+  build(BuildContext context) {
+    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    return userId == null ? Center(child: CircularProgressIndicator(),) : MultiProvider(
+      providers: [
+        StreamProvider<User>(create: (_) => UserManagement().streamUserDoc(userId)),
+      ],
+      child: Consumer<User>(
+          builder: (context, user, _) {
+            return user == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
+                bottomNavIndex: 3,
+                body: Column(
+                  children: <Widget>[
+                    UserInfoSection(userId: userId),
+                    Divider(height: 5.0),
+                    Expanded(
+                      child: Timeline(userId: user.uid,)
+                    )
+                  ],
+                ),
+            );
+          }
+      ),
+    );
   }
 }

@@ -1,14 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:Perkl/MainPageTemplate.dart';
+import 'package:Perkl/main.dart';
+import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:provider/provider.dart';
 
 import 'ProfilePage.dart';
 import 'SearchPage.dart';
+import 'HomePage.dart';
 import 'StreamTagPage.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -145,6 +150,173 @@ class _RecordButtonState extends State<RecordButton> {
   }
 }
 
+//New Version
+class TopPanel extends StatelessWidget {
+  bool showSearchBar = false;
+  String searchRequestId;
+  String pageTitle;
+  bool showPostButtons = true;
+  TextEditingController searchController;
+
+  TopPanel({
+    this.showSearchBar,
+    this.searchRequestId,
+    this.pageTitle,
+    this.showPostButtons,
+    this.searchController,
+  });
+
+  @override
+  build(BuildContext context) {
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    MainTemplateProvider templateProvider = Provider.of<MainTemplateProvider>(context);
+    if(searchController == null)
+      searchController = new TextEditingController();
+    String playingPostText = '';
+    if(mp != null) {
+      if(mp.currentPostId != null) {
+        if(mp.currentPostObj != null) {
+          playingPostText = '@${mp.currentPostObj.username} | ${mp.currentPostObj.postTitle != null ? mp.currentPostObj.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(mp.currentPostObj.datePosted)}';
+        }
+        if(mp.currentDirectPostObj != null) {
+          playingPostText = '@${mp.currentDirectPostObj.senderUsername} | ${mp.currentDirectPostObj.messageTitle != null ? mp.currentDirectPostObj.messageTitle : DateFormat('MMMM dd, yyyy hh:mm').format(mp.currentDirectPostObj.datePosted)}';
+        }
+      }
+    }
+    return Container(
+      height: 250.0,
+      width: MediaQuery.of(context).size.width,
+      decoration: BoxDecoration(
+        color: Colors.deepPurple,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(0.0, 5.0),
+            blurRadius: 20.0,
+          )
+        ],
+        borderRadius: BorderRadius.only(bottomLeft: Radius.elliptical(35.0, 25.0), bottomRight: Radius.elliptical(35.0, 25.0)),
+        image: DecorationImage(
+          fit: BoxFit.cover,
+          image: AssetImage('assets/images/mic-stage.jpg'),
+        ),
+      ),
+      child: Column(
+          children: <Widget>[
+            AppBar(
+              backgroundColor: Colors.transparent,
+              title: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    mainPopMenu(context),
+                    Expanded(
+                      child: showSearchBar != null && showSearchBar ? Padding(
+                          padding: EdgeInsets.only(left: 20.0),
+                          child: TextField(
+                            controller: searchController,
+                              autofocus: true,
+                              decoration: InputDecoration(hintText: 'Search...', hintStyle: TextStyle(color: Colors.white), border: UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.white),
+                              )),
+                              style: TextStyle(color: Colors.white),
+                              cursorColor: Colors.white,
+                              onChanged: (value) async {
+                                DateTime date = DateTime.now();
+                                templateProvider.setSearchTerm(value);
+                                if(searchRequestId != null)
+                                  await Firestore.instance.collection('requests').document(searchRequestId).setData({'searchTerm': value, "searchDateTime": date});
+                              }
+                          )
+                      ) : Center(child: new Text(pageTitle != null ? pageTitle : 'Perkl')),
+                    ),
+                  ]
+              ),
+              centerTitle: true,
+              automaticallyImplyLeading: false,
+              titleSpacing: 5.0,
+              actions: <Widget>[
+                IconButton(
+                  icon: Icon(showSearchBar != null && showSearchBar ? Icons.cancel : Icons.search),
+                  iconSize: 40.0,
+                  onPressed: () {
+                    showSearchBar != null && showSearchBar ? Navigator.of(context).pop() : Navigator.push(context, MaterialPageRoute(
+                      builder: (context) => SearchPageMobile(),
+                    ));
+                  },
+                ),
+              ],
+            ),
+            showPostButtons != null && !showPostButtons ? Container() : Padding(
+              padding: EdgeInsets.fromLTRB(10, 10, 10, 0),
+              child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    Container(
+                      height: 75.0,
+                      width: 75.0,
+                      child: InkWell(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.deepPurple,
+                          ),
+                          child: Icon(
+                            Icons.cloud_upload,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onTap: () async {
+                          await showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return UploadPostDialog();
+                              }
+                          );
+                        },
+                      ),
+                    ),
+                    RecordButton(activityManager: mp.activityManager,)
+                  ]
+              )
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text(playingPostText, style: TextStyle(color: Colors.white, fontSize: 16)),
+                    Expanded(
+                      child: Container()
+                    ),
+                    mp == null || mp.player == null ? Container() : MultiProvider(
+                      providers: [
+                        StreamProvider<PostPosition>(create: (_) => mp.player.onAudioPositionChanged.map((duration) => PostPosition(duration: duration))),
+                        StreamProvider<PostDuration>(create: (_) => mp.player.onDurationChanged.map((duration) => PostDuration(duration: duration)))
+                      ],
+                      child: Consumer<PostPosition>(
+                        builder: (context, position, _) {
+                          PostDuration postLength = Provider.of<PostDuration>(context);
+                          return position == null || postLength == null ? Container() : Text('${position.getPostPosition()}/${postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16));
+                        }
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ),
+            Center(
+              child: showPostButtons != null && showPostButtons ? Icon(Icons.keyboard_arrow_up, color: Colors.white) : Icon(Icons.keyboard_arrow_down, color: Colors.white,),
+            )
+          ]
+      )
+    );
+  }
+}
+
+//Old Version
+/*-----------------------------------
 Widget topPanel(BuildContext context, ActivityManager activityManager, {String pageTitle, bool showSearchBar = false, String searchRequestId}) {
   return Container(
     height: 250.0,
@@ -239,6 +411,7 @@ Widget topPanel(BuildContext context, ActivityManager activityManager, {String p
     ),
   );
 }
+ -------------------------------------------*/
 
 class PlaylistControls extends StatefulWidget {
   ActivityManager activityManager;
@@ -686,6 +859,7 @@ class _BioTextSectionState extends State<BioTextSection> {
   }
 }
 
+/*---------------------------------------------------
 //  Timeline Component
 class TimelineSection extends StatefulWidget {
   final Map<String, dynamic> idMap;
@@ -840,6 +1014,7 @@ class _TimelineSectionState extends State<TimelineSection> {
     );
   }
 }
+
 
 class TimelineListItem extends StatefulWidget {
   Map<String, dynamic> params;
@@ -1129,6 +1304,8 @@ class _TimelineListItemState extends State<TimelineListItem> {
     );
   }
 }
+-------------------------------------------*/
+
 
 Widget mainPopMenu(BuildContext context) {
   return PopupMenuButton(
@@ -1136,7 +1313,11 @@ Widget mainPopMenu(BuildContext context) {
         PopupMenuItem(
           child: Text('Logout'),
           value: 1,
-        )
+        ),
+        PopupMenuItem(
+          child: Text('New Home'),
+          value: 2
+        ),
       ],
     child: FutureBuilder(
         future: FirebaseAuth.instance.currentUser(),
@@ -1194,11 +1375,12 @@ Widget mainPopMenu(BuildContext context) {
             print(e);
           });
         }
+        if(value == 2) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => HomePageMobile()));
+        }
     }
   );
 }
-
-
 
 //Bottom Navigation Bar
 Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activityManager, bool noSelection}) {
@@ -1240,5 +1422,48 @@ Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activi
       type: BottomNavigationBarType.fixed,
       backgroundColor: Colors.transparent,
     )
+  );
+}
+
+//New Bottom Nav Bar
+Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager activityManager, bool noSelection}) {
+  bool _isActive = false;
+  return Container(
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.only(topLeft: Radius.elliptical(10, 10), topRight: Radius.elliptical(10, 10)),
+          image: DecorationImage(
+              image: AssetImage('assets/images/mic-stage.jpg'),
+              fit: BoxFit.cover,
+              alignment: Alignment(-.5,-.75)
+          )
+      ),
+      child: BottomNavigationBar(
+        items: <BottomNavigationBarItem> [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            title: Text('Home'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.surround_sound),
+            title: Text('Discover'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.mail_outline),
+            title: Text('Messages'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_circle),
+            title: Text('Profile'),
+          ),
+        ],
+        currentIndex: selectedIndex,
+        onTap: (index) {
+          activityManager != null ? tapFunc(index, actManage: activityManager) : tapFunc(index);
+        },
+        fixedColor: noSelection == true ? Colors.white : Colors.deepPurple,
+        unselectedItemColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.transparent,
+      )
   );
 }

@@ -1,19 +1,27 @@
+import 'package:Perkl/main.dart';
+import 'package:Perkl/services/db_services.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'dart:io';
 import 'dart:async';
+import 'MainPageTemplate.dart';
 import 'PageComponents.dart';
 import 'ProfilePage.dart';
 import 'ListPage.dart';
 import 'DiscoverPage.dart';
 import 'ConversationPage.dart';
+import 'Timeline.dart';
 
+import 'services/models.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'package:flushbar/flushbar.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+/*--------------------------------------------
 class HomePage extends StatefulWidget {
   ActivityManager activityManager;
   bool redirectOnNotification;
@@ -160,6 +168,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+-------------------------------------------------*/
 
 
 // Show Username dialog
@@ -189,7 +198,64 @@ Future<void> _showUsernameDialog(BuildContext context) async {
   return null;
 }
 
+//HomePage Provider Rebuild
+class HomePageMobile extends StatefulWidget {
+  bool redirectOnNotification;
 
+  HomePageMobile({Key key, this.redirectOnNotification}) : super(key: key);
 
+  @override
+  HomePageMobileState createState() => HomePageMobileState();
+}
+
+class HomePageMobileState extends State<HomePageMobile> {
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+
+  StreamSubscription iosSubscription;
+
+  _saveDeviceToken() async {
+    // Get the current user
+    String uid = await FirebaseAuth.instance.currentUser().then((user) {
+      return user.uid;
+    });
+    // FirebaseUser user = await _auth.currentUser();
+
+    // Get the token for this device
+    String userToken = await _firebaseMessaging.getToken();
+
+    // Save it to Firestore
+    if (userToken != null && uid != null) {
+      DBService().updateDeviceToken(userToken, uid);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _showUsernameDialog(context);
+    });
+    _saveDeviceToken();
+  }
+
+  @override
+  build(BuildContext context) {
+    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    return MultiProvider(
+      providers: [
+        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+      ],
+      child: Consumer<User>(
+        builder: (context, user, _) {
+          return user == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
+              bottomNavIndex: 0,
+              body: Timeline(timelineId: user.mainFeedTimelineId,)
+          );
+        }
+      ),
+    );
+  }
+}
 
 

@@ -7,8 +7,11 @@ import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'models.dart';
 
 class UserManagement {
+  Firestore _db = Firestore.instance;
+
   storeNewUser(user, context, {username}){
     //print('Storing new user data');
     Firestore.instance.collection('/timelines').add({'type': 'UserMainFeed', 'userUID': user.uid}).then((doc) {
@@ -35,6 +38,16 @@ class UserManagement {
     } else {
       return false;
     }
+  }
+
+  Stream<User> streamCurrentUser(FirebaseUser user) {
+    return _db.collection('users').document(user.uid).snapshots().map((snap) {
+      return User.fromFirestore(snap);
+    });
+  }
+  
+  Stream<User> streamUserDoc(String userId) {
+    return _db.collection('users').document(userId).snapshots().map((snap) => User.fromFirestore(snap));
   }
 
   Future<void> updateUser(BuildContext context, Map<String, dynamic> userData) async {

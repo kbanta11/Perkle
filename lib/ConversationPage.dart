@@ -1,10 +1,16 @@
+import 'package:Perkl/MainPageTemplate.dart';
+import 'package:Perkl/services/db_services.dart';
+import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:provider/provider.dart';
 
+import 'main.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
@@ -14,6 +20,7 @@ import 'ListPage.dart';
 import 'ProfilePage.dart';
 import 'DiscoverPage.dart';
 
+/*-------------------------------------------------------
 class ConversationPage extends StatefulWidget {
   final String conversationId;
   ActivityManager activityManager;
@@ -334,6 +341,112 @@ class _ConversationPageState extends State<ConversationPage> {
             },
           ),
       bottomNavigationBar: bottomNavBar(_onItemTapped, _selectedIndex),
+    );
+  }
+}
+-------------------------------------------*/
+
+//New Version
+class ConversationPageMobile extends StatelessWidget {
+  String conversationId;
+
+  ConversationPageMobile({this.conversationId});
+
+  @override
+  build(BuildContext context) {
+    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    return MultiProvider(
+      providers: [
+        StreamProvider<List<DirectPost>>(create: (_) => DBService().streamDirectPosts(conversationId)),
+        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
+      ],
+      child: Consumer<List<DirectPost>>(
+        builder: (context, postList, _) {
+          User user = Provider.of<User>(context);
+          return MainPageTemplate(
+            bottomNavIndex: 2,
+            body: postList == null ? Center(child: CircularProgressIndicator()) : ListView(
+              children: postList.map((post) {
+                return StreamProvider<User>(
+                  create: (context) => UserManagement().streamUserDoc(post.senderUID),
+                  child: Consumer<User>(
+                    builder: (context, sender, _) {
+                      if(sender == null)
+                        return Container();
+
+                      //Return list tile for this direct message
+                      //Create picUrl widget
+                      Widget picButton = InkWell(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (context) =>
+                                  ProfilePageMobile(userId: sender.uid),
+                            ));
+                          },
+                          child: sender.profilePicUrl != null ? Container(
+                              height: 50.0,
+                              width: 50.0,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.deepPurple,
+                                  image: DecorationImage(
+                                      fit: BoxFit.cover,
+                                      image: NetworkImage(sender.profilePicUrl)
+                                  )
+                              )
+                          ) : Container(
+                              height: 50.0,
+                              width: 50.0,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.deepPurple,
+                              )
+                          )
+                      );
+
+                      //Create play button column
+                      Widget playColumn = Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          InkWell(
+                            child: Container(
+                              height: 35,
+                              width: 35,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: mp.currentPostId == post.id ? Colors.red : Colors.deepPurple
+                              ),
+                              child: Center(child: FaIcon(mp.currentPostId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                            ),
+                            onTap: () {
+                              mp.isPlaying != null && mp.isPlaying && mp.currentPostId == post.id ? mp.pausePost() : mp.playPost(directPost: post);
+                            },
+                          ),
+                          Text(post.getLengthString())
+                        ],
+                      );
+
+                      return Column(
+                        children: <Widget>[
+                          ListTile(
+                            leading: user.uid == sender.uid ? playColumn : picButton,
+                            trailing: user.uid == sender.uid ? picButton : playColumn,
+                            title: Text(post.messageTitle ?? DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted).toString(), style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left),
+                            subtitle: Text('@${post.senderUsername}', style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left,),
+                          ),
+                          Divider(height: 10, thickness: 1,)
+                        ],
+                      );
+                    },
+                  ),
+                );
+              }).toList()
+            ),
+          );
+        },
+      ),
     );
   }
 }
