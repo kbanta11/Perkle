@@ -37,7 +37,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        Image.asset('assets/images/logo.png'),
+                        Image.asset('assets/images/logo.png', height: 150, width: 150,),
                         SizedBox(height: 50.0),
                         TextField(
                             decoration: InputDecoration(
