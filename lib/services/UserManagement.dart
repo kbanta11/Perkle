@@ -12,7 +12,7 @@ import 'models.dart';
 class UserManagement {
   Firestore _db = Firestore.instance;
 
-  storeNewUser(user, context, {username}){
+  Future<void> storeNewUser(user, context, {username}) async {
     //print('Storing new user data');
     Firestore.instance.collection('/timelines').add({'type': 'UserMainFeed', 'userUID': user.uid}).then((doc) {
       String timelineId = doc.documentID;
@@ -22,12 +22,6 @@ class UserManagement {
         'username': username != null ? username : null,
         'usernameCaseInsensitive': username != null ? username.toLowerCase() : null,
         'mainFeedTimelineId': timelineId,
-      }).then((value) {
-        Navigator.of(context).pop();
-        print('Pushing to homepage');
-        Navigator.of(context).pushReplacementNamed('/homepage');
-      }).catchError((e) {
-        print(e);
       });
     });
   }

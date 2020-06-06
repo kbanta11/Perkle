@@ -418,7 +418,7 @@ class DiscoverPageMobile extends StatelessWidget {
                           ),
                         ),
                         Expanded(
-                          child: (pageProvider == null || pageProvider.selectedTag == null) && firstTag == null ? Center(child: CircularProgressIndicator()) : Timeline(tagStream: DBService().streamTagPosts(pageProvider.selectedTag ?? firstTag),),
+                          child: (pageProvider == null || pageProvider.selectedTag == null) && firstTag == null ? Center(child: CircularProgressIndicator()) : Timeline(tagStream: DBService().streamTagPosts(pageProvider.selectedTag ?? firstTag), type: TimelineType.STREAMTAG,),
                         )
                       ],
                     ),

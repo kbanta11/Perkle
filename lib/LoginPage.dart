@@ -225,7 +225,9 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
                   );
                 }
               );
-              _signInWithGoogle();
+              _signInWithGoogle(context).then((_) {
+                Navigator.of(context).pop();
+              });
             },
             child: Container(
               width: 200.0,
@@ -250,7 +252,7 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
   }
 
   // Example code of how to sign in with google.
-  void _signInWithGoogle() async {
+  Future<void> _signInWithGoogle(BuildContext context) async {
     bool userDocCreated;
 
     print('Starting Google sign in');
@@ -283,12 +285,20 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
         print('userid: $_userID-------------');
         if (!userDocCreated) {
           print('creating user document');
-          UserManagement().storeNewUser(currentUser, context);
+          UserManagement().storeNewUser(currentUser, context).then((value) {
+            print('closing loading dialog');
+            Navigator.of(context).pop();
+            print('Pushing to homepage');
+            Navigator.of(context).pushReplacementNamed('/homepage');
+          });
         } else {
+          print('closing loading dialog');
+          Navigator.of(context).pop();
           Navigator.of(context).pushReplacementNamed('/homepage');
         }
       } else {
         _success = false;
+        Navigator.of(context).pop();
       }
     });
   }

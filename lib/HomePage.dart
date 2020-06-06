@@ -232,9 +232,10 @@ class HomePageMobileState extends State<HomePageMobile> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _showUsernameDialog(context);
-    });
+    //WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //  await _showUsernameDialog(context);
+    //});
+    print('Skipping checking username');
     _saveDeviceToken();
   }
 
@@ -250,7 +251,7 @@ class HomePageMobileState extends State<HomePageMobile> {
         builder: (context, user, _) {
           return user == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
               bottomNavIndex: 0,
-              body: Timeline(timelineId: user.mainFeedTimelineId,)
+              body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
           );
         }
       ),

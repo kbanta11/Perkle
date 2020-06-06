@@ -71,4 +71,18 @@ class DBService {
       'platform': Platform.operatingSystem // optional
     });
   }
+
+  void markConversationRead(String conversationId, String userId) async {
+    DocumentReference conversationRef = _db.collection('conversations').document(conversationId);
+    Conversation convo = await conversationRef.get().then((doc) => Conversation.fromFirestore(doc));
+    print('Members before: ${convo.conversationMembers}');
+    if(convo.conversationMembers != null && convo.conversationMembers.containsKey(userId)) {
+      print('setting user unread to 0');
+      Map userMap = convo.conversationMembers[userId];
+      userMap['unreadPosts'] = 0;
+      convo.conversationMembers[userId] = userMap;
+    }
+    print('Members after: ${convo.conversationMembers}');
+    await _db.runTransaction((transaction) => transaction.update(conversationRef, {'conversationMembers': convo.conversationMembers}));
+  }
 }

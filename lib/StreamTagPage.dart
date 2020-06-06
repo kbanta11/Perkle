@@ -82,7 +82,7 @@ class StreamTagPageMobile extends StatelessWidget {
     return MainPageTemplate(
       bottomNavIndex: 1,
       pageTitle: tag ?? '',
-      body: tag == null ? Center(child: Text('No Tag Selected')) : Timeline(tagStream: DBService().streamTagPosts(tag),),
+      body: tag == null ? Center(child: Text('No Tag Selected')) : Timeline(tagStream: DBService().streamTagPosts(tag), type: TimelineType.STREAMTAG),
     );
   }
 }

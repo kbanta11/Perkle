@@ -1,4 +1,5 @@
 import 'package:Perkl/services/ActivityManagement.dart';
+import 'package:Perkl/services/UserManagement.dart';
 import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,12 +32,20 @@ class MainApp extends StatelessWidget {
       ],
       child: Consumer<FirebaseUser>(
         builder: (context, currentUser, _) {
+
           return MaterialApp(
             title: 'Perkl',
             theme: new ThemeData (
                 primarySwatch: Colors.deepPurple
             ),
-            home: currentUser == null ? Scaffold(body:LoginPage()) : HomePageMobile(),
+            home: currentUser == null ? Scaffold(body: LoginPage()) : StreamProvider<User>(
+              create: (context) => UserManagement().streamCurrentUser(currentUser),
+              child: Consumer<User>(
+                builder: (context, user, _) {
+                  return user == null ? Scaffold(body:LoginPage()) : HomePageMobile();
+                },
+              ),
+            ),
             routes: <String, WidgetBuilder> {
               '/landingpage': (BuildContext context) => new MainApp(),
               '/signup': (BuildContext context) => new SignUpPage(),
@@ -57,6 +66,7 @@ enum PostType {
 }
 
 class MainAppProvider extends ChangeNotifier {
+  bool showLoadingDialog = false;
   ActivityManager activityManager = new ActivityManager();
   bool isPlaying;
   String currentPostId;
@@ -79,10 +89,15 @@ class MainAppProvider extends ChangeNotifier {
       currentDirectPostObj = directPost;
       currentPostType = PostType.DIRECT_POST;
       isPlaying = true;
-      player.play(directPost.audioFileLocation);
+      player.play(directPost.audioFileLocation).catchError((e) {
+        print('error playing post: $e');
+      });
     }
     player.onPlayerCompletion.listen((_) {
       stopPost();
+    });
+    player.onPlayerStateChanged.listen((state) {
+      print('Player State: $state');
     });
     notifyListeners();
   }

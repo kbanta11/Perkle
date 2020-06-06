@@ -47,8 +47,17 @@ class Timeline extends StatelessWidget {
           User currentUser = Provider.of<User>(context);
           List<Post> postList = postListSnap.data;
           print('Post List: ${postList != null ? postList.length : ''}');
+          String emptyText = 'Looks like there are\'nt any posts to show here!';
+          if(type == TimelineType.MAINFEED)
+            emptyText = 'Your Timeline is Empty! Try following some users!';
+          if(type == TimelineType.USER && currentUser != null && userId == currentUser.uid)
+            emptyText = 'You have no posts! Try recording and say hello!';
+          if(type == TimelineType.USER && currentUser != null && userId != currentUser.uid)
+            emptyText = 'This user hasn\'t posted yet!';
+          if(type == TimelineType.STREAMTAG)
+            emptyText = 'There aren\'t any posts for this tag yet!';
           return ListView(
-            children: postList == null ? [Center(child: CircularProgressIndicator())] : postList.map((post) {
+            children: postList == null ? [Center(child: CircularProgressIndicator())] : postList.length == 0 ? [Center(child: Text(emptyText))] : postList.map((post) {
               return StreamProvider<User>(
                 create: (context) => UserManagement().streamUserDoc(post.userUID),
                 child: Consumer<User>(
