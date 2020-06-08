@@ -28,11 +28,11 @@ class Timeline extends StatelessWidget {
   build(BuildContext context) {
     FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    print('TimelineId: $timelineId/StreamTag: $tagStream/UserId: $userId');
+    //print('TimelineId: $timelineId/StreamTag: $tagStream/UserId: $userId');
     Stream postStream;
     if(tagStream != null) {
       postStream = tagStream;
-      print('Grabbed stream for tag: $tagStream');
+      //print('Grabbed stream for tag: $tagStream');
     } else {
       postStream = DBService().streamTimelinePosts(firebaseUser, timelineId: timelineId, userId: userId);
     }
@@ -46,7 +46,11 @@ class Timeline extends StatelessWidget {
         builder: (context, AsyncSnapshot<List<Post>> postListSnap) {
           User currentUser = Provider.of<User>(context);
           List<Post> postList = postListSnap.data;
-          print('Post List: ${postList != null ? postList.length : ''}');
+          if(postList != null) {
+            //print('setting page posts');
+            mp.setPagePosts(postList);
+          }
+          //print('Post List: ${postList != null ? postList.length : ''}');
           String emptyText = 'Looks like there are\'nt any posts to show here!';
           if(type == TimelineType.MAINFEED)
             emptyText = 'Your Timeline is Empty! Try following some users!';
@@ -114,19 +118,42 @@ class Timeline extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
-                              InkWell(
-                                child: Container(
-                                  height: 35,
-                                  width: 35,
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: mp.currentPostId == post.id ? Colors.red : Colors.deepPurple
-                                  ),
-                                  child: Center(child: FaIcon(mp.currentPostId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                              Container(
+                                width: 80,
+                                child: Row(
+                                  children: <Widget>[
+                                    InkWell(
+                                      child: Container(
+                                        height: 35,
+                                        width: 35,
+                                        decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: mp.currentPostId == post.id ? Colors.red : Colors.deepPurple
+                                        ),
+                                        child: Center(child: FaIcon(mp.currentPostId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                      ),
+                                      onTap: () {
+                                        mp.isPlaying != null && mp.isPlaying && mp.currentPostId == post.id ? mp.pausePost() : mp.playPost(post: post);
+                                      },
+                                    ),
+                                    SizedBox(width: 5,),
+                                    InkWell(
+                                      child: Container(
+                                        height: 35,
+                                        width: 35,
+                                        decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
+                                        ),
+                                        child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
+                                      ),
+                                      onTap: () {
+                                        if(mp.queue.where((p) => p.id == post.id).length <= 0)
+                                          mp.addPostToQueue(post);
+                                      },
+                                    )
+                                  ],
                                 ),
-                                onTap: () {
-                                  mp.isPlaying != null && mp.isPlaying && mp.currentPostId == post.id ? mp.pausePost() : mp.playPost(post: post);
-                                },
                               ),
                               Text(post.getLengthString())
                             ],

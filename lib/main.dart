@@ -68,6 +68,8 @@ enum PostType {
 class MainAppProvider extends ChangeNotifier {
   bool showLoadingDialog = false;
   ActivityManager activityManager = new ActivityManager();
+  List<Post> queue = new List<Post>();
+  List<Post> pagePosts;
   bool isPlaying;
   String currentPostId;
   Post currentPostObj;
@@ -75,12 +77,18 @@ class MainAppProvider extends ChangeNotifier {
   PostType currentPostType;
   AudioPlayer player = new AudioPlayer();
   bool panelOpen = true;
+  PostPosition position;
+  PostDuration postLength;
 
   playPost({Post post, DirectPost directPost}) {
+    player = new AudioPlayer();
     if(post != null) {
       currentPostId = post.id;
       currentPostObj = post;
       currentPostType = PostType.POST;
+      if(queue.where((p) => p.id == post.id).length > 0) {
+        queue.removeWhere((p) => p.id == post.id);
+      }
       isPlaying = true;
       player.play(post.audioFileLocation);
     }
@@ -93,18 +101,26 @@ class MainAppProvider extends ChangeNotifier {
         print('error playing post: $e');
       });
     }
-    player.onPlayerCompletion.listen((_) {
+    player.onPlayerCompletion.listen((_) async {
       stopPost();
+      playPostFromQueue();
     });
-    player.onPlayerStateChanged.listen((state) {
-      print('Player State: $state');
+    player.onDurationChanged.listen((d) {
+      postLength = PostDuration(duration: d);
+      notifyListeners();
+    });
+    player.onAudioPositionChanged.listen((d) {
+      position = PostPosition(duration: d);
+      notifyListeners();
     });
     notifyListeners();
   }
 
   stopPost() {
     isPlaying = false;
-    player.stop();
+    //player.stop();
+    player.dispose();
+    //player = new AudioPlayer();
     notifyListeners();
   }
 
@@ -117,5 +133,24 @@ class MainAppProvider extends ChangeNotifier {
   updatePanelState() {
     panelOpen = !panelOpen;
     notifyListeners();
+  }
+
+  addPostToQueue(Post post) {
+    queue.add(post);
+    print('Queue Length: ${queue.length}');
+    notifyListeners();
+  }
+
+  playPostFromQueue() async {
+    await new Future.delayed(const Duration(seconds : 2));
+    if(queue.length > 0) {
+      Post currentPost = queue.removeAt(0);
+      print('playing next post: ${currentPost.id}');
+      playPost(post: currentPost);
+    }
+  }
+
+  setPagePosts(List<Post> posts) {
+    pagePosts = posts;
   }
 }

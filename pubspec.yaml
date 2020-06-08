@@ -37,6 +37,7 @@ dependencies:
   provider:
   sliding_up_panel:
   font_awesome_flutter:
+  marquee:
 
 
   flutter:

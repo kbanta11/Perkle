@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 
 import 'ProfilePage.dart';
@@ -284,24 +285,19 @@ class TopPanel extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: <Widget>[
-                    Text(playingPostText, style: TextStyle(color: Colors.white, fontSize: 16)),
+                    //Text(playingPostText, style: TextStyle(color: Colors.white, fontSize: 16)),
                     Expanded(
-                      child: Container()
+                      child: playingPostText.length > 0 ? Marquee(
+                        text: playingPostText,
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        velocity: 10,
+                        blankSpace: 20,
+                      ) : Container()
                     ),
-                    mp == null || mp.player == null ? Container() : MultiProvider(
-                      providers: [
-                        StreamProvider<PostPosition>(create: (_) => mp.player.onAudioPositionChanged.map((duration) => PostPosition(duration: duration))),
-                        StreamProvider<PostDuration>(create: (_) => mp.player.onDurationChanged.map((duration) => PostDuration(duration: duration)))
-                      ],
-                      child: Consumer<PostPosition>(
-                        builder: (context, position, _) {
-                          PostDuration postLength = Provider.of<PostDuration>(context);
-                          return position == null || postLength == null ? Container() : Text('${position.getPostPosition()}/${postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16));
-                        }
-                      ),
-                    ),
+                    SizedBox(width: 5),
+                    mp.position == null || mp.postLength == null ? Container() : Text('${mp.position.getPostPosition()}/${mp.postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ],
                 ),
               )
