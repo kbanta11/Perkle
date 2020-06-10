@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:Perkl/FeedbackForm.dart';
 import 'package:Perkl/MainPageTemplate.dart';
 import 'package:Perkl/main.dart';
 import 'package:Perkl/services/models.dart';
@@ -1311,9 +1312,13 @@ Widget mainPopMenu(BuildContext context) {
           value: 1,
         ),
         PopupMenuItem(
-          child: Text('New Home'),
+          child: Text('Feedback'),
           value: 2
         ),
+        PopupMenuItem(
+          child: Text('Account Settings'),
+          value: 3,
+        )
       ],
     child: FutureBuilder(
         future: FirebaseAuth.instance.currentUser(),
@@ -1372,7 +1377,12 @@ Widget mainPopMenu(BuildContext context) {
           });
         }
         if(value == 2) {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => HomePageMobile()));
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return FeedbackForm();
+            }
+          );
         }
     }
   );

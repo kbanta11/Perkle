@@ -85,4 +85,16 @@ class DBService {
     print('Members after: ${convo.conversationMembers}');
     await _db.runTransaction((transaction) => transaction.update(conversationRef, {'conversationMembers': convo.conversationMembers}));
   }
+
+  Future<void> sendFeedback(int rating, String positive, String negative, User user) async {
+    DocumentReference feedbackRef = _db.collection('feedback').document('initial-testing').collection('responses').document(user.uid);
+    await _db.runTransaction((trans) => trans.set(feedbackRef, {
+      'userId': user.uid,
+      'rating': rating,
+      'positive': positive,
+      'negative': negative,
+      'datesent': DateTime.now(),
+    }));
+    return;
+  }
 }
