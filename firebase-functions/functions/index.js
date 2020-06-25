@@ -4,9 +4,17 @@ const _ = require('lodash');
 const request = require('request-promise');
 
 const admin = require('firebase-admin');
+const ffmpegLib = require('fluent-ffmpeg');
+const ffmpeg_static = require('ffmpeg-static');
+ffmpegLib.setFfmpegPath(ffmpeg_static.path);
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
 admin.initializeApp(functions.config().firebase);
 
 const db = admin.firestore();
+
 
 exports.indexUsersToElastic = functions.firestore.document('/users/{uid}').onWrite((change, context) => {
 	let userData = change.after.data();
@@ -232,4 +240,59 @@ exports.getSearchResults = functions.firestore.document('/requests/{id}').onWrit
 			"results": resultIDs
 		}, {merge: true});
 	});
+});
+
+exports.convertAudioFileFormatPosts = functions.firestore.document('/posts/{id}').onWrite(async (change, context) => {
+	let convert = false;
+	let requestData = change.after.data();
+	console.log('Post Being Processed: ' + change.after.id);
+	console.log('Post File URL: ' + requestData['audioFileLocation']);
+	let fileUrl = requestData['audioFileLocation'];
+	let userId = requestData['userUID'];
+	let dateString = requestData['dateString'];
+	let filePath = userId + '/' + dateString.replace(' ', '_');
+	//set bucket for user to download audio file
+	let bucket = admin.storage().bucket('flutter-fire-test-be63e.appspot.com');
+	//define temporary file path to store file to for processing and output
+	let tempFilePath = path.join(os.tmpdir(), "tempFile");
+	let tempNewFilePath = path.join(os.tmpdir(), 'aac_tempFile');
+	//start downloading the file to the temp path
+	await bucket.file(filePath).download({destination: tempFilePath});
+	//check if file needs to be processed
+	await ffmpegLib
+	    //.setFfmpegPath(ffmpeg_static.path)
+	    .ffprobe(tempFilePath, function(err, metadata) {
+	    console.log('probing file');
+        if(!err) {
+            let streams = metadata.streams;
+            let data = streams[0];
+            let formatData = metadata.format;
+            let format = formatData.format_name
+            //console.log('Input File Data: Streams ' + streams + '/Data ' + data + '/formatData ' + formatData + '/format ' + format);
+            console.dir(metadata);
+            if(format !== 'aac') {
+                convert = true;
+                console.log('should convert file');
+            }
+        } else {
+            console.log('Error probing file: ' + err.message);
+        }
+    });
+    console.log('Downloaded and probed file: ' + tempFilePath);
+    //process file
+    if(!convert) {
+        let convertCommand = ffmpegLib({source: tempFilePath})
+           //.setFfmpegPath(ffmpeg_static.path)
+            .audioCodec('aac')
+            .on('error', function(err) {
+                console.log('Error Converting File: ' + err.message);
+            }).saveToFile(tempNewFilePath);
+        await bucket.upload(tempNewFilePath, {destination: dateString}).then((data) => {
+            var file = data[0];
+            console.log('File Uploaded: ' + file.getSignedUrl());
+            return 0;
+        });
+    } else {
+        console.log('Not converting file, already proper format');
+    }
 });

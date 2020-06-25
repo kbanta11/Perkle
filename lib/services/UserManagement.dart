@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
+//import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'models.dart';
 
@@ -74,12 +74,12 @@ class UserManagement {
           print('check currposts');
           if(currPosts != null) {
             print('setting postMap to currPosts');
-            postMap = currPosts;
+            postMap = currPosts.map((k, v) => MapEntry(k, v));
           }
           print('Post List: $postMap');
           print('curr posts: $currPosts');
-          print(docId);
-          postMap.addAll({docId.toString(): true});
+          print('$docId/${postMap.runtimeType}');
+          postMap.addAll({docId: true});
           print('Post List After add: $postMap');
           print('nothing will print');
           await transaction.update(doc, {'posts': postMap});
@@ -493,7 +493,7 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
     );
   }
 }
-
+/*
 class ProfilePicDialog extends StatefulWidget {
   final String userId;
 
@@ -526,7 +526,7 @@ class _ProfilePicDialogState extends State<ProfilePicDialog> {
         toolbarColor: Colors.deepPurple,
         statusBarColor: Colors.deepPurple,
         activeControlsWidgetColor: Colors.deepPurple,
-        activeWidgetColor: Colors.deepPurple,
+        //activeWidgetColor: Colors.deepPurple,
       ),
     );
 
@@ -633,6 +633,7 @@ class _ProfilePicDialogState extends State<ProfilePicDialog> {
     );
   }
 }
+ */
 
 class ConversationListObject {
   String targetUid;

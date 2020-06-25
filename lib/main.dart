@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:sounds/sounds.dart';
 
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
@@ -70,18 +71,25 @@ class MainAppProvider extends ChangeNotifier {
   ActivityManager activityManager = new ActivityManager();
   List<Post> queue = new List<Post>();
   List<Post> pagePosts;
-  bool isPlaying;
+  bool isPlaying = false;
   String currentPostId;
   Post currentPostObj;
   DirectPost currentDirectPostObj;
   PostType currentPostType;
   AudioPlayer player = new AudioPlayer();
+  SoundPlayer soundPlayer = SoundPlayer.withUI(canSkipBackward: false);
   bool panelOpen = true;
   PostPosition position;
   PostDuration postLength;
 
-  playPost({Post post, DirectPost directPost}) {
-    player = new AudioPlayer();
+  playPost({Post post, DirectPost directPost}) async {
+    if(isPlaying) {
+      player.stop();
+      player.dispose();
+    }
+    player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
+    //soundPlayer.onStopped =  ({wasUser}) => soundPlayer.release();
+    //await soundPlayer.;
     if(post != null) {
       currentPostId = post.id;
       currentPostObj = post;
@@ -90,14 +98,21 @@ class MainAppProvider extends ChangeNotifier {
         queue.removeWhere((p) => p.id == post.id);
       }
       isPlaying = true;
-      player.play(post.audioFileLocation);
+      print('playing: ${post.audioFileLocation}');
+
+      await player.play('${post.audioFileLocation}',).catchError((e) {
+        print('Error playing file: $e');
+      });
+
+      //Track track = Track.fromURL('${post.audioFileLocation}', codec: Codec.fromExtension);
+      //await soundPlayer.play(track);
     }
     if(directPost != null) {
       currentPostId = directPost.id;
       currentDirectPostObj = directPost;
       currentPostType = PostType.DIRECT_POST;
       isPlaying = true;
-      player.play(directPost.audioFileLocation).catchError((e) {
+      await player.play('${directPost.audioFileLocation}').catchError((e) {
         print('error playing post: $e');
       });
     }

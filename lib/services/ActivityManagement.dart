@@ -5,13 +5,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:flutter_sound/ios_quality.dart';
+//import 'package:flutter_sound/flutter_sound.dart';
+import 'package:sounds/sounds.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_sound/android_encoder.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+//import 'package:file_picker/file_picker.dart';
 
 import 'UserManagement.dart';
 
@@ -38,13 +38,15 @@ class PostAudioPlayer {
 }
 
 class ActivityManager {
-  FlutterSound soundManager = new FlutterSound();
+  //FlutterSound soundManager = new FlutterSound();
+  //FlutterSoundRecorder fsRecorder = new FlutterSoundRecorder();
+  SoundRecorder recorder = new SoundRecorder();
   PostAudioPlayer currentPost;
   AudioPlayer currentlyPlayingPlayer;
   List<PostAudioPlayer> timelinePlaylist = new List();
   StreamController playlistStreamController = new StreamController<bool>.broadcast();
   Stream get playlistPlaying => playlistStreamController.stream.asBroadcastStream();
-  StreamSubscription<RecordStatus> recordingSubscription;
+  //StreamSubscription<RecordStatus> recordingSubscription;
 
   bool isLoggedIn() {
     if (FirebaseAuth.instance.currentUser() != null) {
@@ -348,24 +350,36 @@ class ActivityManager {
   }
 
   Future<List<dynamic>> startRecordNewPost() async {
+    print('start recording');
     try {
-      if(recordingSubscription == null) {
-        final appDataDir = await getApplicationDocumentsDirectory();
-        String localPath = appDataDir.path;
-        String extension = Platform.isIOS ? '.m4a' : '.mp3';
-        String filePath = '$localPath/tempAudio$extension';
-        print('File Path: $filePath');
-       // String length
-        String newPostPath = await soundManager.startRecorder('tempAudio$extension', androidEncoder: Platform.isIOS ? null : AndroidEncoder.AAC, bitRate: 100000, iosQuality: IosQuality.HIGH);
-        print('starting Recorded at: $newPostPath');
-        DateTime startRecordDateTime = DateTime.now();
-        recordingSubscription = soundManager.onRecorderStateChanged.listen((e) {
-          String date = DateFormat('hh:mm:ss:SS', 'en_US').format(
-              DateTime.fromMillisecondsSinceEpoch(e.currentPosition.toInt()));
-          print(date);
-        });
-        return [Platform.isIOS ? newPostPath.replaceAll('file://', '') : newPostPath, startRecordDateTime];
+      //await fsRecorder.openAudioSession(focus: AudioFocus.requestFocusAndStopOthers);
+      recorder.initialize();
+      //final appDataDir = await getApplicationDocumentsDirectory();
+      //String localPath = appDataDir.path;
+      //String extension = '.aac';
+      //String filePath = '$localPath/tempAudio$extension';
+      //print('File Path: $filePath');
+
+      //Check if have permissions for microphone or ask
+      if(await Permission.microphone.isUndetermined) {
+        print('asking for mic permissions');
+        await Permission.microphone.request();
       }
+      // String length
+      //await fsRecorder.startRecorder(toFile: filePath, bitRate: 100000, codec: Codec.aacMP4);
+      String tempFilePath = Track.tempFile(Codec.aacMP4);
+      print('TempFilePath: $tempFilePath');
+      /*
+      recorder.onRequestPermissions = (Track track) async {
+        print('requesting permissions');
+        return true;
+      };
+       */
+      await recorder.record(Track.fromFile(tempFilePath));
+      DateTime startRecordDateTime = DateTime.now();
+      print('Recording started at: $startRecordDateTime');
+      return [Platform.isIOS ? tempFilePath.replaceAll('file://', '') : tempFilePath, startRecordDateTime];
+
       return null;
     } catch (e) {
       print('Start recorder error: $e');
@@ -375,18 +389,16 @@ class ActivityManager {
 
   Future<List<dynamic>> stopRecordNewPost(String postPath, DateTime startDateTime) async {
     try {
-      String result = await soundManager.stopRecorder();
-
+      //await fsRecorder.stopRecorder();
+      await recorder.stop();
+      recorder.release();
+      recorder = new SoundRecorder();
       DateTime endRecordDateTime = DateTime.now();
       Duration recordingTime = endRecordDateTime.difference(startDateTime);
 
       int secondsLength = recordingTime.inSeconds;
       print('$startDateTime - $endRecordDateTime');
       print(secondsLength);
-      if(recordingSubscription != null) {
-        recordingSubscription.cancel();
-        recordingSubscription = null;
-      }
       return [postPath, secondsLength];
     } catch (e) {
       print('error stopping recorder: $e');
@@ -980,7 +992,8 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
           textColor: Colors.white,
           child: Center(child: fileName == null ? Text('Choose a file...') : Text(fileName)),
           onPressed: () async {
-            String path = await FilePicker.getFilePath(type: FileType.AUDIO, fileExtension: 'mp3');
+            /*
+            String path = await FilePicker.getFilePath(type: FileType.audio, allowedExtensions: ['mp3', 'aac', 'm4a']);
             File uploadFile = File(path);
             print('Selected File Path: $path');
             print('File: ${uploadFile}: ${await uploadFile.exists()}');
@@ -994,6 +1007,7 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
               fileName = path.split('/').last;
               duration = postDuration;
             });
+             */
           },
         ),
         Center(child: noFileError == null ? Container() : Text(noFileError, style: TextStyle(color: Colors.red),)),

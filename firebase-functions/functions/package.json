@@ -10,13 +10,15 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "8"
+    "node": "10"
   },
   "dependencies": {
-    "firebase-admin": "^8.6.0",
+    "firebase-admin": "^8.12.1",
     "firebase-functions": "^3.3.0",
-	"request-promise": "^4.2.5",
-	"request": "^2.88.0"
+    "request": "^2.88.0",
+    "request-promise": "^4.2.5",
+    "fluent-ffmpeg": "^2.1.2",
+    "ffmpeg-static": "^4.2.3"
   },
   "devDependencies": {
     "eslint": "^5.12.0",
