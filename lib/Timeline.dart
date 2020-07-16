@@ -1,14 +1,20 @@
+import 'dart:io';
 import 'package:Perkl/services/UserManagement.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
 import 'ProfilePage.dart';
 import 'StreamTagPage.dart';
 import 'services/models.dart';
 import 'services/db_services.dart';
 import 'main.dart';
+import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
+import 'package:http/http.dart' as http;
 
 enum TimelineType {
   STREAMTAG,
@@ -36,6 +42,63 @@ class Timeline extends StatelessWidget {
     } else {
       postStream = DBService().streamTimelinePosts(firebaseUser, timelineId: timelineId, userId: userId);
     }
+
+    /*
+    convertFile(Post post) async {
+      String fileLocation = post.audioFileLocation;
+      http.Response downloadedFile = await http.get(fileLocation);
+      var bytes = downloadedFile.bodyBytes;
+      String directory = (await getApplicationDocumentsDirectory()).path;
+      File tempFile = File('$directory/tempInputFile.aac');
+      await tempFile.writeAsBytes(bytes).then((file) {
+        print('File Size: ${file.lengthSync()}');
+      });
+      String inputFilePath = tempFile.path;
+      String outputFilePath = '$directory/outputFile.aac';
+      print('Temp Input FilePath: $inputFilePath');
+      //await FlutterFFmpegConfig().resetStatistics();
+
+      print('try deleting file if exists');
+      try {
+        print('getting output file');
+        File currentOutputFile = File(outputFilePath);
+        print('deleting file');
+        await currentOutputFile.delete();
+        print('file deleted');
+      } catch (e) {
+        print('error deleting file: $e');
+        //return 0;
+      }
+
+      print('getting file info:');
+      await FlutterFFprobe().getMediaInformation(inputFilePath).then((info) {
+        print(info);
+      }).catchError((error) {
+        print('error: $error');
+      });
+
+      FlutterFFmpeg _ffmpeg = new FlutterFFmpeg();
+      await _ffmpeg.execute('-i $inputFilePath $outputFilePath').then((rc) {
+        print('Result from conversion: $rc');
+      });
+
+      print('output file: $outputFilePath/Size: ${File(outputFilePath).lengthSync()}');
+
+      //Upload new file
+      String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(post.datePosted).toString();
+      File newFile = File(outputFilePath);
+      String filename = dateString.toString().replaceAll(new RegExp(r' '), '_');
+      final StorageReference storageRef = FirebaseStorage.instance.ref().child(post.userUID).child(filename);
+      final StorageUploadTask uploadTask = storageRef.putFile(newFile);
+      //Add new download url to post
+      String _fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+      DocumentReference postRef = Firestore.instance.collection('posts').document(post.id);
+      await Firestore.instance.runTransaction((transaction) async {
+        await transaction.update(postRef, {'audioFileLocation': _fileUrl});
+      });
+    }
+    */
+
     return MultiProvider(
       providers: [
         StreamProvider<List<Post>>(create: (_) => postStream),
@@ -181,7 +244,14 @@ class Timeline extends StatelessWidget {
                                     IconButton(icon: Icon(Icons.delete_forever)),
                                     IconButton(icon: Icon(Icons.file_download))
                                   ],
-                                ) : IconButton(icon: Icon(Icons.file_download),)
+                                ) : IconButton(icon: Icon(Icons.file_download),),
+                                /*
+                                IconButton(icon: Icon(Icons.music_note),
+                                  onPressed: () async {
+                                    convertFile(post);
+                                  }
+                                ),
+                                 */
                               ],
                             )
                           ],

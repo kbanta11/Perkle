@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:sounds/sounds.dart';
 
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
@@ -77,19 +76,19 @@ class MainAppProvider extends ChangeNotifier {
   DirectPost currentDirectPostObj;
   PostType currentPostType;
   AudioPlayer player = new AudioPlayer();
-  SoundPlayer soundPlayer = SoundPlayer.withUI(canSkipBackward: false);
+  //SoundPlayer soundPlayer = SoundPlayer.withShadeUI(canSkipBackward: false, playInBackground: true);
   bool panelOpen = true;
   PostPosition position;
   PostDuration postLength;
 
   playPost({Post post, DirectPost directPost}) async {
+
     if(isPlaying) {
       player.stop();
       player.dispose();
     }
     player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
     //soundPlayer.onStopped =  ({wasUser}) => soundPlayer.release();
-    //await soundPlayer.;
     if(post != null) {
       currentPostId = post.id;
       currentPostObj = post;
@@ -104,7 +103,8 @@ class MainAppProvider extends ChangeNotifier {
         print('Error playing file: $e');
       });
 
-      //Track track = Track.fromURL('${post.audioFileLocation}', codec: Codec.fromExtension);
+      //Track track = Track.fromURL('${post.audioFileLocation}');
+      //Track track = Track.fromURL('https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_2MG.mp3');
       //await soundPlayer.play(track);
     }
     if(directPost != null) {
@@ -112,10 +112,12 @@ class MainAppProvider extends ChangeNotifier {
       currentDirectPostObj = directPost;
       currentPostType = PostType.DIRECT_POST;
       isPlaying = true;
+
       await player.play('${directPost.audioFileLocation}').catchError((e) {
         print('error playing post: $e');
       });
     }
+
     player.onPlayerCompletion.listen((_) async {
       stopPost();
       playPostFromQueue();
@@ -128,14 +130,15 @@ class MainAppProvider extends ChangeNotifier {
       position = PostPosition(duration: d);
       notifyListeners();
     });
+
     notifyListeners();
   }
 
   stopPost() {
     isPlaying = false;
-    //player.stop();
+    player.stop();
     player.dispose();
-    //player = new AudioPlayer();
+    player = new AudioPlayer();
     notifyListeners();
   }
 

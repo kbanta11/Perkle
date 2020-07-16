@@ -29,7 +29,7 @@ dependencies:
   image_cropper:
   intl:
   # flutter_sound: ^5.0.0
-  sounds:
+  sounds: ^1.0.0-beta.5
   flutter_launcher_icons:
   flushbar:
   file_picker:
@@ -40,6 +40,8 @@ dependencies:
   font_awesome_flutter:
   marquee:
   permission_handler:
+  flutter_ffmpeg:
+  http:
 
 
   flutter:

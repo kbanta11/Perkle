@@ -242,6 +242,7 @@ exports.getSearchResults = functions.firestore.document('/requests/{id}').onWrit
 	});
 });
 
+/*
 exports.convertAudioFileFormatPosts = functions.firestore.document('/posts/{id}').onWrite(async (change, context) => {
 	let convert = false;
 	let requestData = change.after.data();
@@ -296,3 +297,4 @@ exports.convertAudioFileFormatPosts = functions.firestore.document('/posts/{id}'
         console.log('Not converting file, already proper format');
     }
 });
+*/

@@ -9,7 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
-import 'package:audioplayers/audioplayers.dart';
+//import 'package:audioplayers/audioplayers.dart';
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 
@@ -133,9 +133,9 @@ class _RecordButtonState extends State<RecordButton> {
                 await addPostDialog(context, date, recordingLocation, secondsLength);
               } else {
                 //await showTimer();
-                if(widget.activityManager.currentlyPlayingPlayer != null) {
-                  widget.activityManager.pausePlaying();
-                }
+                //if(widget.activityManager.currentlyPlayingPlayer != null) {
+                //  widget.activityManager.pausePlaying();
+                //}
                 List<dynamic> startRecordVals = await widget.activityManager.startRecordNewPost();
                 String postPath = startRecordVals[0];
                 DateTime startDate = startRecordVals[1];
@@ -409,7 +409,7 @@ Widget topPanel(BuildContext context, ActivityManager activityManager, {String p
   );
 }
  -------------------------------------------*/
-
+/*
 class PlaylistControls extends StatefulWidget {
   ActivityManager activityManager;
 
@@ -463,6 +463,7 @@ class _PlaylistControlsState extends State<PlaylistControls> {
     );
   }
 }
+ */
 
 class UserInfoSection extends StatefulWidget {
   final String userId;

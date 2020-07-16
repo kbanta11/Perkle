@@ -9,12 +9,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:sounds/sounds.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:audioplayers/audioplayers.dart';
+//import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 //import 'package:file_picker/file_picker.dart';
 
 import 'UserManagement.dart';
 
+/*
 class PostAudioPlayer {
   String postAudioUrl;
   bool hasPlayed = false;
@@ -36,14 +37,15 @@ class PostAudioPlayer {
     this.postPlayer.stop();
   }
 }
+*/
 
 class ActivityManager {
   //FlutterSound soundManager = new FlutterSound();
   //FlutterSoundRecorder fsRecorder = new FlutterSoundRecorder();
   SoundRecorder recorder = new SoundRecorder();
-  PostAudioPlayer currentPost;
-  AudioPlayer currentlyPlayingPlayer;
-  List<PostAudioPlayer> timelinePlaylist = new List();
+  //PostAudioPlayer currentPost;
+  //AudioPlayer currentlyPlayingPlayer;
+  //List<PostAudioPlayer> timelinePlaylist = new List();
   StreamController playlistStreamController = new StreamController<bool>.broadcast();
   Stream get playlistPlaying => playlistStreamController.stream.asBroadcastStream();
   //StreamSubscription<RecordStatus> recordingSubscription;
@@ -55,7 +57,7 @@ class ActivityManager {
       return false;
     }
   }
-
+/*
   setCurrentPost(PostAudioPlayer player) {
     if(this.currentPost != null) {
       this.currentPost.stop();
@@ -64,7 +66,7 @@ class ActivityManager {
     this.currentPost = player;
     this.currentlyPlayingPlayer = player.postPlayer;
   }
-
+*/
   addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic> sendToUsers, Map<String, dynamic> addToConversations) async {
     if (isLoggedIn()) {
       print('Starting post add');
@@ -367,7 +369,7 @@ class ActivityManager {
       }
       // String length
       //await fsRecorder.startRecorder(toFile: filePath, bitRate: 100000, codec: Codec.aacMP4);
-      String tempFilePath = Track.tempFile(Codec.aacMP4);
+      String tempFilePath = Track.tempFile(WellKnownMediaFormats.adtsAac);
       print('TempFilePath: $tempFilePath');
       /*
       recorder.onRequestPermissions = (Track track) async {
@@ -375,7 +377,7 @@ class ActivityManager {
         return true;
       };
        */
-      await recorder.record(Track.fromFile(tempFilePath));
+      await recorder.record(Track.fromFile(tempFilePath, mediaFormat: WellKnownMediaFormats.adtsAac));
       DateTime startRecordDateTime = DateTime.now();
       print('Recording started at: $startRecordDateTime');
       return [Platform.isIOS ? tempFilePath.replaceAll('file://', '') : tempFilePath, startRecordDateTime];
@@ -406,6 +408,7 @@ class ActivityManager {
     return null;
   }
 
+  /*
   pausePlaying() async {
     int result = await this.currentPost.postPlayer.pause();
     this.playlistStreamController.add(false);
@@ -449,6 +452,7 @@ class ActivityManager {
     this.pausePlaying();
     this.playlistStreamController.add(false);
   }
+*/
 
   Future<void> followUser(String newFollowUID) async {
     WriteBatch batch = Firestore.instance.batch();
