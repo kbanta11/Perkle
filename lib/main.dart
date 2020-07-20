@@ -1,11 +1,14 @@
 import 'package:Perkl/services/ActivityManagement.dart';
 import 'package:Perkl/services/UserManagement.dart';
+import 'package:Perkl/services/db_services.dart';
 import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:launch_review/launch_review.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:package_info/package_info.dart';
 
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
@@ -17,7 +20,23 @@ void main() async {
   runApp(new MainApp());
 }
 
-class MainApp extends StatelessWidget {
+class MainApp extends StatefulWidget {
+  const MainApp({ Key key }) : super(key: key);
+
+  @override
+  MainAppState createState() => MainAppState();
+}
+
+class MainAppState extends State<MainApp> {
+  Future<bool> updateNeeded() async {
+    int minBuildNumber = await DBService().getConfigMinBuildNumber();
+
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    int buildNumber = int.parse(packageInfo.buildNumber);
+
+    print('Min Version: $minBuildNumber; Current Build Number: $buildNumber');
+    return buildNumber < minBuildNumber;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,17 +47,45 @@ class MainApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         StreamProvider<FirebaseUser>(create: (_) => FirebaseAuth.instance.onAuthStateChanged),
-        ChangeNotifierProvider<MainAppProvider>(create: (_) => MainAppProvider())
+        ChangeNotifierProvider<MainAppProvider>(create: (_) => MainAppProvider()),
+        FutureProvider<bool>(create: (_) => updateNeeded()),
       ],
       child: Consumer<FirebaseUser>(
         builder: (context, currentUser, _) {
-
+          bool promptUpdate = Provider.of<bool>(context);
+          print('Prompt Update: $promptUpdate');
           return MaterialApp(
             title: 'Perkl',
             theme: new ThemeData (
                 primarySwatch: Colors.deepPurple
             ),
-            home: currentUser == null ? Scaffold(body: LoginPage()) : StreamProvider<User>(
+            home: promptUpdate == null ? Center(child: CircularProgressIndicator()) : promptUpdate ? Scaffold(body: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              child: SimpleDialog(
+                contentPadding: EdgeInsets.fromLTRB(10, 15, 10, 5),
+                title: Center(child: Text('Update Required!', style: TextStyle(color: Colors.deepPurple),)),
+                children: <Widget>[
+                  Center(child: Text('It looks like you have an outdated version of our app. You\'ll need to upgrade before you can continue.', style: TextStyle(fontSize: 16),)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      FlatButton(
+                        child: Text('Upgrade Now!', style: TextStyle(color: Colors.white),),
+                        color: Colors.deepPurple,
+                        onPressed: () {
+                          LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
+                        }
+                      )
+                    ],
+                  )
+                ],
+              ),
+            )) : currentUser == null ? Scaffold(body: LoginPage()) : StreamProvider<User>(
               create: (context) => UserManagement().streamCurrentUser(currentUser),
               child: Consumer<User>(
                 builder: (context, user, _) {
@@ -75,7 +122,7 @@ class MainAppProvider extends ChangeNotifier {
   Post currentPostObj;
   DirectPost currentDirectPostObj;
   PostType currentPostType;
-  AudioPlayer player = new AudioPlayer();
+  AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
   //SoundPlayer soundPlayer = SoundPlayer.withShadeUI(canSkipBackward: false, playInBackground: true);
   bool panelOpen = true;
   PostPosition position;
@@ -87,6 +134,13 @@ class MainAppProvider extends ChangeNotifier {
       player.stop();
       player.dispose();
     }
+    if((post != null && post.id == currentPostId) || (directPost != null && directPost.id == currentPostId)) {
+      player.resume();
+      isPlaying = true;
+      notifyListeners();
+      return;
+    }
+
     player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
     //soundPlayer.onStopped =  ({wasUser}) => soundPlayer.release();
     if(post != null) {
@@ -143,6 +197,7 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   pausePost() {
+    print('Pausing...');
     player.pause();
     isPlaying = false;
     notifyListeners();

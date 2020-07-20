@@ -39,7 +39,7 @@ class MainPageTemplate extends StatelessWidget {
                 borderRadius: BorderRadius.all(Radius.circular(25)),
                 panel: TopPanel(showPostButtons: true, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar, searchController: tempProvider.searchTextController),
                 collapsed: TopPanel(showPostButtons: false, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar, searchController: tempProvider.searchTextController,),
-                maxHeight: 250,
+                maxHeight: 265,
                 minHeight: 170,
                 defaultPanelState: mp.panelOpen ? PanelState.OPEN : PanelState.CLOSED,
                 slideDirection: SlideDirection.DOWN,

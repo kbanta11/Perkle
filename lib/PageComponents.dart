@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:Perkl/AccountSettings.dart';
 import 'package:Perkl/FeedbackForm.dart';
 import 'package:Perkl/MainPageTemplate.dart';
 import 'package:Perkl/main.dart';
@@ -186,7 +187,7 @@ class TopPanel extends StatelessWidget {
       }
     }
     return Container(
-      height: 250.0,
+      height: 265.0,
       width: MediaQuery.of(context).size.width,
       decoration: BoxDecoration(
         color: Colors.deepPurple,
@@ -250,7 +251,7 @@ class TopPanel extends StatelessWidget {
               ],
             ),
             showPostButtons != null && !showPostButtons ? Container() : Padding(
-              padding: EdgeInsets.fromLTRB(10, 10, 10, 0),
+              padding: EdgeInsets.fromLTRB(10, 5, 10, 0),
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: <Widget>[
@@ -284,7 +285,7 @@ class TopPanel extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+                padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: <Widget>[
@@ -302,6 +303,41 @@ class TopPanel extends StatelessWidget {
                   ],
                 ),
               )
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                IconButton(
+                    icon: Icon(mp.isPlaying ? Icons.pause : Icons.play_arrow, color: mp.queue.length > 0 || mp.currentPostId != null ? Colors.white : Colors.grey,),
+                    onPressed: () {
+                      if(mp.isPlaying) {
+                        print('pausing post');
+                        mp.pausePost();
+                        return;
+                      }
+                      if(mp.currentPostObj != null) {
+                        mp.playPost(post: mp.currentPostObj);
+                        return;
+                      }
+                      if(mp.currentDirectPostObj != null) {
+                        mp.playPost(directPost: mp.currentDirectPostObj);
+                        return;
+                      }
+                      if(mp.queue.length > 0) {
+                        mp.playPostFromQueue();
+                        return;
+                      }
+                    }
+                ),
+                IconButton(
+                    icon: Icon(Icons.skip_next, color: mp.queue.length > 0 ? Colors.white : Colors.grey),
+                    onPressed: () {
+                      if(mp.isPlaying)
+                        mp.stopPost();
+                      mp.playPostFromQueue();
+                    }
+                )
+              ],
             ),
             Center(
               child: showPostButtons != null && showPostButtons ? Icon(Icons.keyboard_arrow_up, color: Colors.white) : Icon(Icons.keyboard_arrow_down, color: Colors.white,),
@@ -1383,6 +1419,14 @@ Widget mainPopMenu(BuildContext context) {
             builder: (BuildContext context) {
               return FeedbackForm();
             }
+          );
+        }
+        if(value == 3) {
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AccountSettings();
+              }
           );
         }
     }

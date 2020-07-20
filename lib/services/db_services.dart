@@ -6,6 +6,13 @@ import 'models.dart';
 class DBService {
   Firestore _db = Firestore.instance;
 
+  Future<int> getConfigMinBuildNumber() async {
+    int buildNumber = await _db.collection('config').document('config').get().then((snap) {
+      return snap.data['minimum_android_version'];
+    });
+    return buildNumber;
+  }
+
   Future<List<DiscoverTag>> getDiscoverTags() async {
     return await _db.collection('discover').where('type', isEqualTo: 'StreamTag').orderBy('rank').getDocuments().then((QuerySnapshot qs) {
       return qs.documents.map((doc) => DiscoverTag.fromFirestore(doc)).toList();
