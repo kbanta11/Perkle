@@ -8,7 +8,9 @@ class DBService {
 
   Future<int> getConfigMinBuildNumber() async {
     int buildNumber = await _db.collection('config').document('config').get().then((snap) {
-      return snap.data['minimum_android_version'];
+      return snap.data[Platform.isAndroid ? 'minimum_android_version' : 'minimum_ios_version'];
+    }).catchError((e) {
+      print('error: $e');
     });
     return buildNumber;
   }

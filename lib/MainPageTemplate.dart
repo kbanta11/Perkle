@@ -40,7 +40,7 @@ class MainPageTemplate extends StatelessWidget {
                 panel: TopPanel(showPostButtons: true, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar, searchController: tempProvider.searchTextController),
                 collapsed: TopPanel(showPostButtons: false, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar, searchController: tempProvider.searchTextController,),
                 maxHeight: 265,
-                minHeight: 170,
+                minHeight: 185,
                 defaultPanelState: mp.panelOpen ? PanelState.OPEN : PanelState.CLOSED,
                 slideDirection: SlideDirection.DOWN,
                 panelSnapping: true,
@@ -59,7 +59,7 @@ class MainPageTemplate extends StatelessWidget {
                 },
                 body: Column(
                   children: <Widget>[
-                    Container(height: tempProvider.offsetHeight != null ? tempProvider.offsetHeight : mp.panelOpen ? 250 : 170),
+                    Container(height: tempProvider.offsetHeight != null ? tempProvider.offsetHeight : mp.panelOpen ? 265 : 185),
                     Expanded(
                         child: body
                     ),
@@ -101,8 +101,8 @@ class MainTemplateProvider extends ChangeNotifier {
   String searchTerm;
 
   void changeOffsetHeight(double slidePct) {
-    double base = 170;
-    double max = 250;
+    double base = 185;
+    double max = 265;
     double diff = max - base;
     offsetHeight = base + (diff * slidePct);
     notifyListeners();

@@ -32,8 +32,8 @@ class MainAppState extends State<MainApp> {
     int minBuildNumber = await DBService().getConfigMinBuildNumber();
 
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    int buildNumber = int.parse(packageInfo.buildNumber);
-
+    print('Current Build Number: ${packageInfo.buildNumber}/Current Version: ${packageInfo.version}');
+    int buildNumber = int.parse(packageInfo.buildNumber.trim().replaceAll(".", ""));
     print('Min Version: $minBuildNumber; Current Build Number: $buildNumber');
     return buildNumber < minBuildNumber;
   }
