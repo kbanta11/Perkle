@@ -15,7 +15,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -30,7 +30,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -38,13 +38,30 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>We don't really use this, but its required for our audio libraries.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>We don't really use your calendar, but one of our libraries requires it.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We use this to allow you to take a new profile picture.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>We use this info to connect you with your contacts who have the app.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We don't actually use any location data, this is required for one of our libraries.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We don't actually use any location data, this is required for one of our libraries.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This sample uses the microphone to record your speech and convert it to text.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>We also don't use this data, but one of our libraries requires it.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We use this to allow you to select a profile picture from your photo library.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>We use this to allow you to use our app hands-free.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
 		<string>fetch</string>
-		<string>processing</string>
 		<string>remote-notification</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
