@@ -127,6 +127,9 @@ class MainAppProvider extends ChangeNotifier {
   bool panelOpen = true;
   PostPosition position;
   PostDuration postLength;
+  //For showing recording button time
+  bool isRecording = false;
+  Duration recordingTime;
 
   playPost({Post post, DirectPost directPost}) async {
 
@@ -225,5 +228,14 @@ class MainAppProvider extends ChangeNotifier {
 
   setPagePosts(List<Post> posts) {
     pagePosts = posts;
+  }
+
+  changeRecordingStatus() {
+    isRecording = !isRecording;
+    notifyListeners();
+  }
+  setRecordingTime(Duration duration) {
+    recordingTime = duration;
+    notifyListeners();
   }
 }

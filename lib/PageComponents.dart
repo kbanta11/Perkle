@@ -108,6 +108,7 @@ class _RecordButtonState extends State<RecordButton> {
 
   @override
   Widget build(BuildContext context) {
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return Container(
       height: 75.0,
       width:75.0,
@@ -122,6 +123,7 @@ class _RecordButtonState extends State<RecordButton> {
             backgroundColor:  _isRecording ? Colors.transparent : Colors.red,
             onPressed: () async {
               if(_isRecording) {
+                mp.changeRecordingStatus();
                 List<dynamic> stopRecordVals = await widget.activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
                 String recordingLocation = stopRecordVals[0];
                 int secondsLength = stopRecordVals[1];
@@ -137,7 +139,8 @@ class _RecordButtonState extends State<RecordButton> {
                 //if(widget.activityManager.currentlyPlayingPlayer != null) {
                 //  widget.activityManager.pausePlaying();
                 //}
-                List<dynamic> startRecordVals = await widget.activityManager.startRecordNewPost();
+                mp.changeRecordingStatus();
+                List<dynamic> startRecordVals = await widget.activityManager.startRecordNewPost(mp);
                 String postPath = startRecordVals[0];
                 DateTime startDate = startRecordVals[1];
                 setState(() {
@@ -185,6 +188,16 @@ class TopPanel extends StatelessWidget {
           playingPostText = '@${mp.currentDirectPostObj.senderUsername} | ${mp.currentDirectPostObj.messageTitle != null ? mp.currentDirectPostObj.messageTitle : DateFormat('MMMM dd, yyyy hh:mm').format(mp.currentDirectPostObj.datePosted)}';
         }
       }
+    }
+    String getDurationString(Duration duration) {
+      int hours = duration.inHours;
+      int minutes = duration.inMinutes.remainder(60);
+      int seconds = duration.inSeconds.remainder(60);
+      String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
+      String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
+      if(hours > 0)
+        return '$hours:$minutesString:$secondsString';
+      return '$minutesString:$secondsString';
     }
     return Container(
       height: 265.0,
@@ -279,7 +292,12 @@ class TopPanel extends StatelessWidget {
                         },
                       ),
                     ),
-                    RecordButton(activityManager: mp.activityManager,)
+                    Column(
+                      children: <Widget>[
+                        RecordButton(activityManager: mp.activityManager,),
+                        mp.isRecording && mp.recordingTime != null ? Text('${getDurationString(mp.recordingTime)}', style: TextStyle(color: Colors.white)) : Container(),
+                      ],
+                    )
                   ]
               )
             ),

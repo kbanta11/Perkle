@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -23,6 +24,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   String _email;
   String _password;
+  String _errorMessage;
   final Firestore _db = Firestore.instance;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
   bool _redirectOnNotification = true;
@@ -153,14 +155,69 @@ class _LoginPageState extends State<LoginPage> {
                         textColor: Colors.white,
                         elevation: 7.0,
                         onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                          );
                           FirebaseAuth.instance.signInWithEmailAndPassword(
                               email: _email,
                               password: _password
                           ).then((AuthResult authResult) {
+                            Navigator.of(context).pop();
+                            print('Auth Result: $authResult');
                             Navigator.of(context).pushReplacementNamed('/homepage');
                           })
                               .catchError((e) {
-                            print(e);
+                            print('Error Logging In: ${e.code}/${e.message}');
+                            Navigator.of(context).pop();
+                            switch(e.code) {
+                              case "ERROR_INVALID_EMAIL":
+                                _errorMessage = "Your email address is invalid.";
+                                break;
+                              case "ERROR_WRONG_PASSWORD":
+                                _errorMessage = "Your password is incorrect.";
+                                break;
+                              case "ERROR_USER_NOT_FOUND":
+                                _errorMessage = "A user does not exist for this email address.";
+                                break;
+                              case "ERROR_USER_DISABLED":
+                                _errorMessage = "This user has been disabled.";
+                                break;
+                              case "ERROR_TOO_MANY_REQUESTS":
+                                _errorMessage = "Too many failed attempts. Try again later.";
+                                break;
+                              case "ERROR_OPERATION_NOT_ALLOWED":
+                                _errorMessage = "Email and Password login is not enabled.";
+                                break;
+                              default:
+                                _errorMessage = "An undefined Error happened.";
+                            }
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return SimpleDialog(
+                                  title: Center(child: Text('Error Logging In')),
+                                  children: [
+                                    Center(child: Text(_errorMessage, textAlign: TextAlign.center,)),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: <Widget>[
+                                        FlatButton(
+                                          child: Text('OK', style: TextStyle(color: Colors.deepPurple)),
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                        )
+                                      ],
+                                    )
+                                  ],
+                                );
+                              }
+                            );
                           });
                         },
                         shape: RoundedRectangleBorder(

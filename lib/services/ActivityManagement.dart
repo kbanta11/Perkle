@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:provider/provider.dart';
 //import 'package:flutter_sound/flutter_sound.dart';
 import 'package:sounds/sounds.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 //import 'package:file_picker/file_picker.dart';
 
+import '../main.dart';
 import 'UserManagement.dart';
 
 /*
@@ -351,7 +354,7 @@ class ActivityManager {
     }
   }
 
-  Future<List<dynamic>> startRecordNewPost() async {
+  Future<List<dynamic>> startRecordNewPost(MainAppProvider mp) async {
     print('start recording');
     try {
       //await fsRecorder.openAudioSession(focus: AudioFocus.requestFocusAndStopOthers);
@@ -378,6 +381,9 @@ class ActivityManager {
       };
        */
       await recorder.record(Track.fromFile(tempFilePath, mediaFormat: WellKnownMediaFormats.adtsAac));
+      recorder.dispositionStream().listen((disposition) {
+        mp.setRecordingTime(disposition.duration);
+      });
       DateTime startRecordDateTime = DateTime.now();
       print('Recording started at: $startRecordDateTime');
       return [Platform.isIOS ? tempFilePath.replaceAll('file://', '') : tempFilePath, startRecordDateTime];
@@ -645,6 +651,8 @@ class _AddPostDialogState extends State<AddPostDialog> {
   int page = 0;
   bool _addToTimeline = true;
   bool _sendAsGroup = false;
+  bool _isPlayingRecorder = false;
+  AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
   Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
   Map<String, dynamic> _addToConversations = new Map<String, dynamic>();
 
@@ -654,6 +662,40 @@ class _AddPostDialogState extends State<AddPostDialog> {
 
     Widget page0 = Column(
         children: <Widget>[
+          //Add place to play back last recording
+          Center(
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.deepPurple,
+              ),
+              height: 50,
+              width: 50,
+              child: InkWell(
+                borderRadius: BorderRadius.all(Radius.circular(25)),
+                child: Icon(_isPlayingRecorder ? Icons.pause : Icons.play_arrow, color: Colors.white,),
+                onTap: () {
+                  if(_isPlayingRecorder) {
+                    player.pause();
+                    setState(() {
+                      _isPlayingRecorder = false;
+                    });
+                  } else {
+                    player.play(widget.recordingLocation, isLocal: true);
+                    player.onPlayerCompletion.listen((event) {
+                      setState(() {
+                        _isPlayingRecorder = false;
+                      });
+                    });
+                    setState(() {
+                      _isPlayingRecorder = true;
+                    });
+                  }
+                },
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
           Text('Post Title (optional)'),
           Container(
               width: 700.0,
@@ -1078,6 +1120,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
 
   @override
   Widget build(BuildContext context) {
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return SimpleDialog(
       contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
       title: Center(child: Text('New Message',
@@ -1120,7 +1163,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                     print('date before dialog: $date');
                     //await addPostDialog(context, date, recordingLocation, secondsLength);
                   } else {
-                    List<dynamic> startRecordVals = await activityManager.startRecordNewPost();
+                    List<dynamic> startRecordVals = await activityManager.startRecordNewPost(mp);
                     String postPath = startRecordVals[0];
                     DateTime startDate = startRecordVals[1];
                     setState(() {
