@@ -45,7 +45,7 @@ class PostAudioPlayer {
 class ActivityManager {
   //FlutterSound soundManager = new FlutterSound();
   //FlutterSoundRecorder fsRecorder = new FlutterSoundRecorder();
-  SoundRecorder recorder = new SoundRecorder();
+  SoundRecorder recorder = new SoundRecorder(playInBackground: true);
   //PostAudioPlayer currentPost;
   //AudioPlayer currentlyPlayingPlayer;
   //List<PostAudioPlayer> timelinePlaylist = new List();
@@ -1112,10 +1112,12 @@ class DirectMessageDialog extends StatefulWidget {
 class _DirectMessageDialogState extends State<DirectMessageDialog> {
   String _messageTitle;
   bool _isRecording = false;
+  bool _isPlaybackRecording = false;
   String _postAudioPath;
   DateTime _startRecordDate;
   int _secondsLength;
   ActivityManager activityManager = new ActivityManager();
+  AudioPlayer audioPlayer = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
   bool _isLoading = false;
 
   @override
@@ -1143,36 +1145,67 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                 )
             ),
             SizedBox(height: 20.0),
-            FloatingActionButton(
-                backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
-                child: Icon(Icons.mic),
-                heroTag: null,
-                onPressed: () async {
-                  if(_isRecording) {
-                    List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-                    String recordingLocation = stopRecordVals[0];
-                    int secondsLength = stopRecordVals[1];
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                FloatingActionButton(
+                    backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
+                    child: Icon(Icons.mic),
+                    heroTag: null,
+                    onPressed: () async {
+                      if(_isRecording) {
+                        List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+                        String recordingLocation = stopRecordVals[0];
+                        int secondsLength = stopRecordVals[1];
 
-                    print('$recordingLocation -/- Length: $secondsLength');
-                    setState(() {
-                      _isRecording = !_isRecording;
-                      _secondsLength = secondsLength;
-                    });
-                    print('getting date');
-                    DateTime date = new DateTime.now();
-                    print('date before dialog: $date');
-                    //await addPostDialog(context, date, recordingLocation, secondsLength);
-                  } else {
-                    List<dynamic> startRecordVals = await activityManager.startRecordNewPost(mp);
-                    String postPath = startRecordVals[0];
-                    DateTime startDate = startRecordVals[1];
-                    setState(() {
-                      _isRecording = !_isRecording;
-                      _postAudioPath = postPath;
-                      _startRecordDate = startDate;
-                    });
-                  }
-                }
+                        print('$recordingLocation -/- Length: $secondsLength');
+                        setState(() {
+                          _isRecording = !_isRecording;
+                          _secondsLength = secondsLength;
+                        });
+                        print('getting date');
+                        DateTime date = new DateTime.now();
+                        print('date before dialog: $date');
+                        //await addPostDialog(context, date, recordingLocation, secondsLength);
+                      } else {
+                        List<dynamic> startRecordVals = await activityManager.startRecordNewPost(mp);
+                        String postPath = startRecordVals[0];
+                        DateTime startDate = startRecordVals[1];
+                        setState(() {
+                          _isRecording = !_isRecording;
+                          _postAudioPath = postPath;
+                          _startRecordDate = startDate;
+                        });
+                      }
+                    }
+                ),
+                SizedBox(width: 50),
+                FloatingActionButton(
+                  heroTag: 2,
+                  backgroundColor: _postAudioPath == null || _isRecording ? Colors.grey : _isPlaybackRecording ? Colors.red : Colors.deepPurple,
+                  child: Icon(_isPlaybackRecording ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                  onPressed: () {
+                    if(_postAudioPath == null || _isRecording)
+                      return;
+                    if(_isPlaybackRecording) {
+                      audioPlayer.pause();
+                      setState(() {
+                        _isPlaybackRecording = false;
+                      });
+                    } else {
+                      audioPlayer.play(_postAudioPath, isLocal: true);
+                      audioPlayer.onPlayerCompletion.listen((event) {
+                        setState(() {
+                          _isPlaybackRecording = false;
+                        });
+                      });
+                      setState(() {
+                        _isPlaybackRecording = true;
+                      });
+                    }
+                  },
+                )
+              ]
             ),
             SizedBox(height: 10.0),
             Center(
@@ -1191,12 +1224,13 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                       }
                   ),
                   _isLoading ? Container() : FlatButton(
-                    child: Text('Send'),
+                    child: Text('Send', style: TextStyle(color: _postAudioPath != null && _secondsLength != null ? Colors.white : Colors.grey)),
+                    color: _postAudioPath != null && _secondsLength != null ? Colors.deepPurple : Colors.transparent,
                     onPressed: () async {
-                      setState(() {
-                        _isLoading = true;
-                      });
                       if(_postAudioPath != null && _secondsLength != null){
+                        setState(() {
+                          _isLoading = true;
+                        });
                         if(widget.conversationId != null) {
                           await activityManager.sendDirectPost(_messageTitle, _postAudioPath, _secondsLength, conversationId: widget.conversationId);
                           Navigator.of(context).pop();

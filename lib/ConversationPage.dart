@@ -365,6 +365,8 @@ class ConversationPageMobile extends StatelessWidget {
         builder: (context, postList, _) {
           User user = Provider.of<User>(context);
           return MainPageTemplate(
+            isConversation: true,
+            conversationId: conversationId,
             bottomNavIndex: 2,
             body: postList == null ? Center(child: CircularProgressIndicator()) : ListView(
               children: postList.map((post) {

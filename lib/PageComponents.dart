@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 //import 'package:audioplayers/audioplayers.dart';
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock/wakelock.dart';
 
 import 'ProfilePage.dart';
 import 'SearchPage.dart';
@@ -97,21 +98,12 @@ class _RecordButtonState extends State<RecordButton> {
   String _postAudioPath;
   DateTime _startRecordDate;
 
-  Future<void> showTimer() async {
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return TimerDialog();
-      }
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return Container(
-      height: 75.0,
-      width:75.0,
+      height: _isRecording ? 65.0 : 75.0,
+      width:_isRecording ? 65.0 : 75.0,
       child: FittedBox(
         child: FloatingActionButton(
           heroTag: null,
@@ -123,6 +115,7 @@ class _RecordButtonState extends State<RecordButton> {
             backgroundColor:  _isRecording ? Colors.transparent : Colors.red,
             onPressed: () async {
               if(_isRecording) {
+                Wakelock.disable();
                 mp.changeRecordingStatus();
                 List<dynamic> stopRecordVals = await widget.activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
                 String recordingLocation = stopRecordVals[0];
@@ -139,6 +132,7 @@ class _RecordButtonState extends State<RecordButton> {
                 //if(widget.activityManager.currentlyPlayingPlayer != null) {
                 //  widget.activityManager.pausePlaying();
                 //}
+                Wakelock.enable();
                 mp.changeRecordingStatus();
                 List<dynamic> startRecordVals = await widget.activityManager.startRecordNewPost(mp);
                 String postPath = startRecordVals[0];

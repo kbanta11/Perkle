@@ -222,7 +222,8 @@ exports.getSearchResults = functions.firestore.document('/requests/{id}').onWrit
 					}
 				}
 			},
-			"sort": [{"followerCount": {"order": "desc"}}]
+			"sort": [{"followerCount": {"order": "desc"}}],
+			"size": 50,
 		},
 		json: true
 	};

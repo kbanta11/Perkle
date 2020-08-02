@@ -476,6 +476,8 @@ PODS:
     - Flutter
   - SwiftyGif (5.3.0)
   - TOCropViewController (2.5.3)
+  - wakelock (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - audioplayers (from `.symlinks/plugins/audioplayers/ios`)
@@ -504,6 +506,7 @@ DEPENDENCIES:
   - path_provider_macos (from `.symlinks/plugins/path_provider_macos/ios`)
   - permission_handler (from `.symlinks/plugins/permission_handler/ios`)
   - sounds (from `.symlinks/plugins/sounds/ios`)
+  - wakelock (from `.symlinks/plugins/wakelock/ios`)
 
 SPEC REPOS:
   trunk:
@@ -594,6 +597,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/permission_handler/ios"
   sounds:
     :path: ".symlinks/plugins/sounds/ios"
+  wakelock:
+    :path: ".symlinks/plugins/wakelock/ios"
 
 SPEC CHECKSUMS:
   abseil: 6c8eb7892aefa08d929b39f9bb108e5367e3228f
@@ -655,6 +660,7 @@ SPEC CHECKSUMS:
   sounds: 8931411efc6013ed55ffec79513cfdff67090e83
   SwiftyGif: e466e86c660d343357ab944a819a101c4127cb40
   TOCropViewController: 20a14b6a7a098308bf369e7c8d700dc983a974e6
+  wakelock: 0d4a70faf8950410735e3f61fb15d517c8a6efc4
 
 PODFILE CHECKSUM: eac4fe81592560d2bbef561b4cf57551f616c1f1
 

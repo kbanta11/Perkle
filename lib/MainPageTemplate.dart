@@ -2,6 +2,7 @@ import 'package:Perkl/DiscoverPage.dart';
 import 'package:Perkl/ListPage.dart';
 import 'package:Perkl/ProfilePage.dart';
 import 'package:Perkl/main.dart';
+import 'package:Perkl/services/ActivityManagement.dart';
 import 'package:Perkl/services/UserManagement.dart';
 import 'package:Perkl/services/models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,13 +15,16 @@ import 'PageComponents.dart';
 
 class MainPageTemplate extends StatelessWidget {
   Widget body;
+  ActivityManager _activityManager = new ActivityManager();
   int bottomNavIndex;
   bool noBottomNavSelected;
   bool showSearchBar = false;
   String searchRequestId;
   String pageTitle;
+  bool isConversation = false;
+  String conversationId;
 
-  MainPageTemplate({this.body, this.bottomNavIndex, this.noBottomNavSelected, this.showSearchBar, this.searchRequestId, this.pageTitle});
+  MainPageTemplate({this.body, this.bottomNavIndex, this.noBottomNavSelected, this.showSearchBar, this.searchRequestId, this.pageTitle, this.isConversation, this.conversationId});
 
   @override
   build(BuildContext context) {
@@ -88,6 +92,15 @@ class MainPageTemplate extends StatelessWidget {
                   ],
                 ),
               ),
+              floatingActionButton:isConversation != null && isConversation ? Padding(
+                padding: EdgeInsets.only(bottom: 50),
+                child: FloatingActionButton(
+                  child: Icon(Icons.send, color: Colors.white),
+                  onPressed: () async {
+                    await _activityManager.sendDirectPostDialog(context, conversationId: conversationId);
+                  },
+                ),
+              ) : Container(),
             );
           }
       ),
