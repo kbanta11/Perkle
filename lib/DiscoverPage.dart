@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:podcast_search/podcast_search.dart';
 
 import 'ConversationPage.dart';
 import 'MainPageTemplate.dart';
@@ -13,6 +14,7 @@ import 'HomePage.dart';
 import 'ProfilePage.dart';
 import 'ListPage.dart';
 import 'Timeline.dart';
+import 'DiscoverPodcasts.dart';
 
 import 'main.dart';
 import 'services/UserManagement.dart';
@@ -394,6 +396,19 @@ class DiscoverPageMobile extends StatelessWidget {
                             pageProvider.selectCategory('Pods');
                           },
                         ),
+                        FlatButton(
+                          child: Text('People',
+                            style: TextStyle(color: pageProvider.selectedCat == 'People' ? Colors.white : Colors.deepPurple),
+                          ),
+                          color: pageProvider.selectedCat == 'People' ? Colors.deepPurple : Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                            side: BorderSide(color: Colors.deepPurple),
+                          ),
+                          onPressed: () {
+                            pageProvider.selectCategory('People');
+                          },
+                        ),
                       ]
                   ),
                   pageProvider.selectedCat == 'Tags' ? Expanded(
@@ -422,8 +437,7 @@ class DiscoverPageMobile extends StatelessWidget {
                         )
                       ],
                     ),
-                  )
-                      : Expanded(
+                  ) : pageProvider.selectedCat == 'People' ? Expanded(
                     child: StreamProvider<List<String>>(
                       create: (context) => DBService().streamDiscoverPods(),
                       child: Consumer<List<String>>(
@@ -482,6 +496,8 @@ class DiscoverPageMobile extends StatelessWidget {
                         }
                       )
                     )
+                  ) : Expanded(
+                    child: DiscoverPodcasts(),
                   ),
                 ],
               ),
@@ -505,4 +521,6 @@ class DiscoverPageMobileProvider extends ChangeNotifier {
     selectedTag = value;
     notifyListeners();
   }
+
+
 }

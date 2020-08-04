@@ -44,6 +44,8 @@ dependencies:
   http:
   package_info:
   launch_review:
+  podcast_search:
+  flutter_html:
 
 
   flutter:

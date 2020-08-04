@@ -181,6 +181,9 @@ class TopPanel extends StatelessWidget {
         if(mp.currentDirectPostObj != null) {
           playingPostText = '@${mp.currentDirectPostObj.senderUsername} | ${mp.currentDirectPostObj.messageTitle != null ? mp.currentDirectPostObj.messageTitle : DateFormat('MMMM dd, yyyy hh:mm').format(mp.currentDirectPostObj.datePosted)}';
         }
+        if(mp.currentPodcastEpisode != null){
+          playingPostText = '${mp.currentPodcastEpisode.author} | ${mp.currentPodcastEpisode.title}';
+        }
       }
     }
     String getDurationString(Duration duration) {
@@ -333,6 +336,10 @@ class TopPanel extends StatelessWidget {
                       }
                       if(mp.currentDirectPostObj != null) {
                         mp.playPost(directPost: mp.currentDirectPostObj);
+                        return;
+                      }
+                      if(mp.currentPodcastEpisode != null) {
+                        mp.playPost(episode: mp.currentPodcastEpisode);
                         return;
                       }
                       if(mp.queue.length > 0) {

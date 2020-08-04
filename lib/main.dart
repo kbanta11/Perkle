@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:package_info/package_info.dart';
+import 'package:podcast_search/podcast_search.dart';
 
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
@@ -109,7 +110,8 @@ class MainAppState extends State<MainApp> {
 
 enum PostType {
   POST,
-  DIRECT_POST
+  DIRECT_POST,
+  PODCAST_EPISODE,
 }
 
 class MainAppProvider extends ChangeNotifier {
@@ -121,6 +123,7 @@ class MainAppProvider extends ChangeNotifier {
   String currentPostId;
   Post currentPostObj;
   DirectPost currentDirectPostObj;
+  Episode currentPodcastEpisode;
   PostType currentPostType;
   AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
   //SoundPlayer soundPlayer = SoundPlayer.withShadeUI(canSkipBackward: false, playInBackground: true);
@@ -131,13 +134,13 @@ class MainAppProvider extends ChangeNotifier {
   bool isRecording = false;
   Duration recordingTime;
 
-  playPost({Post post, DirectPost directPost}) async {
+  playPost({Post post, DirectPost directPost, Episode episode}) async {
 
     if(isPlaying) {
       player.stop();
       player.dispose();
     }
-    if((post != null && post.id == currentPostId) || (directPost != null && directPost.id == currentPostId)) {
+    if((post != null && post.id == currentPostId) || (directPost != null && directPost.id == currentPostId) || (episode != null && episode.contentUrl == currentPostId)) {
       player.resume();
       isPlaying = true;
       notifyListeners();
@@ -172,6 +175,16 @@ class MainAppProvider extends ChangeNotifier {
 
       await player.play('${directPost.audioFileLocation}').catchError((e) {
         print('error playing post: $e');
+      });
+    }
+    if(episode != null) {
+      currentPostId = episode.contentUrl;
+      currentPodcastEpisode = episode;
+      currentPostType = PostType.PODCAST_EPISODE;
+      isPlaying = true;
+
+      await player.play(episode.contentUrl).catchError((e) {
+        print('error playing podcast: $e');
       });
     }
 
