@@ -5,12 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:podcast_search/podcast_search.dart';
 
 import 'ProfilePage.dart';
-import 'PageComponents.dart';
-import 'ListPage.dart';
-import 'HomePage.dart';
-import 'DiscoverPage.dart';
+import 'PodcastPage.dart';
 import 'MainPageTemplate.dart';
 
 import 'services/UserManagement.dart';
@@ -232,119 +230,204 @@ class SearchPageMobile extends StatelessWidget {
     FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
+        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        ChangeNotifierProvider<SearchPageProvider>(create: (_) => SearchPageProvider()),
       ],
       child: Consumer<User>(
         builder: (context, currentUser, _) {
+          SearchPageProvider spp = Provider.of<SearchPageProvider>(context);
           return MainPageTemplate(
             bottomNavIndex: 1,
             noBottomNavSelected: true,
             showSearchBar: true,
             searchRequestId: searchRequestDoc.documentID,
-            body: StreamBuilder(
-                stream: searchRequestDoc.snapshots(),
-                builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-                  List<String> results;
-                  if(snapshot.data.data == null)
-                    return Center(child: Text('There are no results for this search...'));
-                  print('Snapshot: $snapshot/Snapshot term: ${snapshot.data.data['searchTerm']}/Results: ${snapshot.data.data["results"]}');
-                  results = snapshot.data.data['results'] == null ? null : snapshot.data.data['results'].map<String>((value) => value.toString()).toList();
-                  print('Query Results: $results');
+            body: Column(
+              children: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    FlatButton(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)), side: BorderSide(color: Colors.deepPurple, width: 2)),
+                      child: Text('People', style: TextStyle(color: spp.type == SearchType.PEOPLE ? Colors.white : Colors.deepPurple)),
+                      color: spp.type == SearchType.PEOPLE ? Colors.deepPurple : Colors.transparent,
+                      onPressed: () {
+                        spp.changeSearchType(SearchType.PEOPLE);
+                      },
+                    ),
+                    FlatButton(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)), side: BorderSide(color: Colors.deepPurple, width: 2)),
+                      child: Text('Podcasts', style: TextStyle(color: spp.type == SearchType.PODCASTS ? Colors.white : Colors.deepPurple)),
+                      color: spp.type == SearchType.PODCASTS ? Colors.deepPurple : Colors.transparent,
+                      onPressed: () {
+                        spp.changeSearchType(SearchType.PODCASTS);
+                      }
+                    )
+                  ]
+                ),
+                Expanded(
+                  child: StreamBuilder(
+                      stream: searchRequestDoc.snapshots(),
+                      builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> asyncSearchDocSnap) {
+                        if(spp.type == SearchType.PODCASTS && asyncSearchDocSnap.hasData) {
+                          if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data == null)
+                            return Center(child: CircularProgressIndicator());
+                          return FutureBuilder<SearchResult>(
+                            future: Search().search(asyncSearchDocSnap.data.data['searchTerm'], limit: 50),
+                            builder: (context, AsyncSnapshot<SearchResult> searchResultSnap) {
+                              if(!searchResultSnap.hasData)
+                                return Center(child: Text('Sorry...No results for this search'));
+                              return ListView(
+                                children: searchResultSnap.data.items.map((Item item) {
+                                  return ListTile(
+                                    leading: Container(
+                                      height: 50,
+                                      width: 50,
+                                      decoration: BoxDecoration(
+                                          color: Colors.deepPurple,
+                                          image: item.artworkUrl60 == null ? null : DecorationImage(
+                                              image: NetworkImage(item.artworkUrl60)
+                                          )
+                                      ),
+                                    ),
+                                    title: Text(item.trackName),
+                                    onTap: () async {
+                                      showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return Center(child: CircularProgressIndicator());
+                                          }
+                                      );
+                                      Podcast podcast = await Podcast.loadFeed(url: item.feedUrl);
+                                      Navigator.of(context).pop();
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (context) => PodcastPage(podcast),
+                                      ));
+                                    },
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          );
+                        }
+
+                        List<String> results;
+                        if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data == null)
+                          return Center(child: Text('There are no results for this search...'));
+                        print('Snapshot: $asyncSearchDocSnap/Snapshot term: ${asyncSearchDocSnap.data.data['searchTerm']}/Results: ${asyncSearchDocSnap.data.data["results"]}');
+                        results = asyncSearchDocSnap.data.data['results'] == null ? null : asyncSearchDocSnap.data.data['results'].map<String>((value) => value.toString()).toList();
+                        print('Query Results: $results');
 
 
-                  if(results == null)
-                    return Center(child: CircularProgressIndicator());
+                        if(results == null)
+                          return Center(child: CircularProgressIndicator());
 
-                  if(results.length == 0)
-                    return Center(child: Text('There are no results for this search...'));
+                        if(results.length == 0)
+                          return Center(child: Text('There are no results for this search...'));
 
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Oops! We Messed Something Up... We\'re Sorry!'));
-                    //return Text('Error: ${snapshot.error}');
-                  }
+                        if (asyncSearchDocSnap.hasError) {
+                          return Center(child: Text('Oops! We Messed Something Up... We\'re Sorry!'));
+                          //return Text('Error: ${snapshot.error}');
+                        }
 
-                  if(snapshot == null || snapshot.data == null)
-                    return Container();
-                  switch (snapshot.connectionState) {
-                    case ConnectionState.waiting:
-                      return Center(child: CircularProgressIndicator());
-                    default:
-                      return ListView(
-                        children: snapshot.data['results'].map<Widget>((userId) {
-                          print(userId);
-                          return StreamBuilder<User>(
-                              stream: Firestore.instance.collection('users').document(userId).snapshots().map((snap) => User.fromFirestore(snap)),
-                              builder: (BuildContext context, AsyncSnapshot<User> userSnap) {
-                                if(!snapshot.hasData)
-                                  return Container();
-                                User user = userSnap.data;
-                                Widget followButton = IconButton(
-                                    icon: Icon(Icons.person_add),
-                                    color: Colors.deepPurple,
-                                    onPressed: () {
-                                      ActivityManager().followUser(userId);
-                                      print('now following ${user.username}');
+                        if(asyncSearchDocSnap == null || asyncSearchDocSnap.data == null)
+                          return Container();
+                        switch (asyncSearchDocSnap.connectionState) {
+                          case ConnectionState.waiting:
+                            return Center(child: CircularProgressIndicator());
+                          default:
+                            return ListView(
+                              children: asyncSearchDocSnap.data['results'].map<Widget>((userId) {
+                                print(userId);
+                                return StreamBuilder<User>(
+                                    stream: Firestore.instance.collection('users').document(userId).snapshots().map((snap) => User.fromFirestore(snap)),
+                                    builder: (BuildContext context, AsyncSnapshot<User> userSnap) {
+                                      if(!asyncSearchDocSnap.hasData)
+                                        return Container();
+                                      User user = userSnap.data;
+                                      Widget followButton = IconButton(
+                                          icon: Icon(Icons.person_add),
+                                          color: Colors.deepPurple,
+                                          onPressed: () {
+                                            ActivityManager().followUser(userId);
+                                            print('now following ${user.username}');
+                                          }
+                                      );
+
+                                      return user == null ? Container() : Column(
+                                          children: <Widget>[
+                                            ListTile(
+                                                leading: user == null || user.profilePicUrl == null  ? Container(
+                                                    height: 50.0,
+                                                    width: 50.0,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: Colors.deepPurple,
+                                                    )
+                                                ) : Container(
+                                                    height: 50.0,
+                                                    width: 50.0,
+                                                    decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: Colors.deepPurple,
+                                                        image: DecorationImage(
+                                                            fit: BoxFit.cover,
+                                                            image: NetworkImage(user.profilePicUrl)
+                                                        )
+                                                    )
+                                                ),
+                                                title: Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    children: <Widget>[
+                                                      Expanded(
+                                                          child: Text(user.username)
+                                                      ),
+                                                      Container(
+                                                          height: 40.0,
+                                                          width: 40.0,
+                                                          child: currentUser == null || user == null || currentUser.uid == user.uid || currentUser.following.contains(user.uid) ? Container() : followButton
+                                                      )
+                                                    ]
+                                                ),
+                                                onTap: () {
+                                                  print(
+                                                      'go to user profile: ${user.username}');
+                                                  Navigator.push(context, MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        ProfilePageMobile(
+                                                          userId: user.uid,),
+                                                  ));
+                                                }
+                                            ),
+                                            Divider(height: 5.0),
+                                          ]
+                                      );
                                     }
                                 );
-
-                                return user == null ? Container() : Column(
-                                    children: <Widget>[
-                                      ListTile(
-                                          leading: user == null || user.profilePicUrl == null  ? Container(
-                                              height: 50.0,
-                                              width: 50.0,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.deepPurple,
-                                              )
-                                          ) : Container(
-                                              height: 50.0,
-                                              width: 50.0,
-                                              decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Colors.deepPurple,
-                                                  image: DecorationImage(
-                                                      fit: BoxFit.cover,
-                                                      image: NetworkImage(user.profilePicUrl)
-                                                  )
-                                              )
-                                          ),
-                                          title: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                              children: <Widget>[
-                                                Expanded(
-                                                    child: Text(user.username)
-                                                ),
-                                                Container(
-                                                    height: 40.0,
-                                                    width: 40.0,
-                                                    child: currentUser == null || user == null || currentUser.uid == user.uid || currentUser.following.contains(user.uid) ? Container() : followButton
-                                                )
-                                              ]
-                                          ),
-                                          onTap: () {
-                                            print(
-                                                'go to user profile: ${user.username}');
-                                            Navigator.push(context, MaterialPageRoute(
-                                              builder: (context) =>
-                                                  ProfilePageMobile(
-                                                    userId: user.uid,),
-                                            ));
-                                          }
-                                      ),
-                                      Divider(height: 5.0),
-                                    ]
-                                );
-                              }
-                          );
-                        }).toList(),
-                      );
-                  }
-                }
+                              }).toList(),
+                            );
+                        }
+                      }
+                  ),
+                )
+              ],
             ),
           );
         },
       ),
     );
+  }
+}
+
+enum SearchType {
+  PEOPLE,
+  PODCASTS
+}
+
+class SearchPageProvider extends ChangeNotifier {
+  SearchType type = SearchType.PEOPLE;
+
+  changeSearchType(SearchType newType) {
+    type = newType;
+    notifyListeners();
   }
 }

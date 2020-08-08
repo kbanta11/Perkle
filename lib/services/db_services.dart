@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:podcast_search/podcast_search.dart';
+import 'package:intl/intl.dart';
 import 'dart:io';
 import 'models.dart';
 
@@ -67,6 +70,14 @@ class DBService {
     });
   }
 
+  Stream<List<EpisodeReply>> streamEpisodeReplies(String uniqueId) {
+    print('Unique ID: $uniqueId');
+    return _db.collection('episode-replies').where("unique_id", isEqualTo: uniqueId).orderBy("reply_date", descending: true).snapshots().map((qs) {
+      print('Number of Replies: ${qs.documents.length}');
+      return qs.documents.map((doc) => EpisodeReply.fromFirestore(doc)).toList();
+    });
+  }
+
   Future<void> updateDeviceToken(String userToken, String uid) async {
     var tokens = _db
         .collection('users')
@@ -105,5 +116,42 @@ class DBService {
       'datesent': DateTime.now(),
     }));
     return;
+  }
+
+  Future<void> postEpisodeReply({Episode episode, Podcast podcast, String filePath, Duration replyLength, DateTime replyDate, User user, String replyTitle}) async {
+    String episodeId = episode.guid != null ? episode.guid : episode.link;
+    String fileUrlString;
+
+    //upload file to firebase storage
+    if(filePath != null) {
+      //Get audio file
+      File audioFile = File(filePath);
+      String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(replyDate).toString();
+      final StorageReference storageRef = FirebaseStorage.instance.ref().child(user.uid).child('episode-replies').child('$episodeId-$dateString');
+      final StorageUploadTask uploadTask = storageRef.putFile(audioFile);
+      String _fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+      fileUrlString = _fileUrl.toString();
+    }
+
+    //add document to "episode-replies" collection, key on episode ID (guid/link)
+    DocumentReference replyRef = _db.collection('episode-replies').document();
+
+    await _db.runTransaction((transaction) async {
+      await transaction.set(replyRef, {
+        'id': replyRef.documentID,
+        'unique_id': episodeId,
+        'podcast_name': podcast.title,
+        'episode_name': episode.title,
+        'episode_date': episode.publicationDate,
+        'posting_username': user.username,
+        'posting_uid': user.uid,
+        'reply_title': replyTitle,
+        'reply_date': replyDate,
+        'reply_ms': replyLength.inMilliseconds,
+        'audioFileLocation': fileUrlString,
+      });
+    });
+
+    //Make sure to update username change function to also update replies
   }
 }

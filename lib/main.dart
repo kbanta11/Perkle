@@ -16,6 +16,7 @@ import 'SignUpPage.dart';
 import 'HomePage.dart';
 import 'SearchPage.dart';
 import 'Dashboard.dart';
+import 'ReplyToEpisode.dart';
 
 void main() async {
   runApp(new MainApp());
@@ -108,22 +109,14 @@ class MainAppState extends State<MainApp> {
   }
 }
 
-enum PostType {
-  POST,
-  DIRECT_POST,
-  PODCAST_EPISODE,
-}
-
 class MainAppProvider extends ChangeNotifier {
   bool showLoadingDialog = false;
   ActivityManager activityManager = new ActivityManager();
-  List<Post> queue = new List<Post>();
+  List<PostPodItem> queue = new List<PostPodItem>();
   List<Post> pagePosts;
   bool isPlaying = false;
-  String currentPostId;
-  Post currentPostObj;
-  DirectPost currentDirectPostObj;
-  Episode currentPodcastEpisode;
+  PostPodItem currentPostPodItem;
+  String currentPostPodId;
   PostType currentPostType;
   AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
   //SoundPlayer soundPlayer = SoundPlayer.withShadeUI(canSkipBackward: false, playInBackground: true);
@@ -134,13 +127,14 @@ class MainAppProvider extends ChangeNotifier {
   bool isRecording = false;
   Duration recordingTime;
 
-  playPost({Post post, DirectPost directPost, Episode episode}) async {
+  playPost(PostPodItem newPostPod) async {
 
     if(isPlaying) {
       player.stop();
       player.dispose();
     }
-    if((post != null && post.id == currentPostId) || (directPost != null && directPost.id == currentPostId) || (episode != null && episode.contentUrl == currentPostId)) {
+
+    if(currentPostPodItem != null && currentPostPodItem.id == newPostPod.id && currentPostPodItem.type == newPostPod.type) {
       player.resume();
       isPlaying = true;
       notifyListeners();
@@ -149,66 +143,66 @@ class MainAppProvider extends ChangeNotifier {
 
     player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
     //soundPlayer.onStopped =  ({wasUser}) => soundPlayer.release();
-    if(post != null) {
-      currentPostId = post.id;
-      currentPostObj = post;
-      currentPostType = PostType.POST;
-      if(queue.where((p) => p.id == post.id).length > 0) {
-        queue.removeWhere((p) => p.id == post.id);
-      }
-      isPlaying = true;
-      print('playing: ${post.audioFileLocation}');
 
-      await player.play('${post.audioFileLocation}',).catchError((e) {
-        print('Error playing file: $e');
-      });
-
-      //Track track = Track.fromURL('${post.audioFileLocation}');
-      //Track track = Track.fromURL('https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_2MG.mp3');
-      //await soundPlayer.play(track);
+    currentPostPodItem = newPostPod;
+    currentPostType = newPostPod.type;
+    currentPostPodId = newPostPod.id;
+    isPlaying = true;
+    if(queue.where((PostPodItem p) => p.id == newPostPod.id).length > 0) {
+      queue.removeWhere((p) => p.id == newPostPod.id);
     }
-    if(directPost != null) {
-      currentPostId = directPost.id;
-      currentDirectPostObj = directPost;
-      currentPostType = PostType.DIRECT_POST;
-      isPlaying = true;
-
-      await player.play('${directPost.audioFileLocation}').catchError((e) {
-        print('error playing post: $e');
-      });
-    }
-    if(episode != null) {
-      currentPostId = episode.contentUrl;
-      currentPodcastEpisode = episode;
-      currentPostType = PostType.PODCAST_EPISODE;
-      isPlaying = true;
-
-      await player.play(episode.contentUrl).catchError((e) {
-        print('error playing podcast: $e');
-      });
-    }
+    await player.play(newPostPod.audioUrl).catchError((e) {
+      print('Error playing post: $e');
+    });
 
     player.onPlayerCompletion.listen((_) async {
       stopPost();
       playPostFromQueue();
     });
+    /*
     player.onDurationChanged.listen((d) {
       postLength = PostDuration(duration: d);
-      notifyListeners();
+      //notifyListeners();
     });
     player.onAudioPositionChanged.listen((d) {
       position = PostPosition(duration: d);
-      notifyListeners();
+      //notifyListeners();
     });
+     */
 
     notifyListeners();
   }
 
+  skipAhead() async {
+    if(currentPostPodItem != null) {
+      Duration duration = Duration(milliseconds: await player.getDuration());
+      Duration position = Duration(milliseconds: await player.getCurrentPosition());
+      print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
+      if(position.inSeconds + 30 >= duration.inSeconds)
+        player.seek(Duration(seconds: duration.inSeconds - 15));
+      else
+        player.seek(Duration(seconds: position.inSeconds + 30));
+    }
+  }
+
+  skipBack() async {
+    if(currentPostPodItem != null) {
+      Duration duration = Duration(milliseconds: await player.getDuration());
+      Duration position = Duration(milliseconds: await player.getCurrentPosition());
+      print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
+      if(position.inSeconds - 30 <= 0)
+        player.seek(Duration(seconds: 0));
+      else
+        player.seek(Duration(seconds: position.inSeconds - 30));
+    }
+  }
+
   stopPost() {
     isPlaying = false;
+    currentPostPodItem = null;
     player.stop();
     player.dispose();
-    player = new AudioPlayer();
+    player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
     notifyListeners();
   }
 
@@ -224,18 +218,22 @@ class MainAppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  addPostToQueue(Post post) {
+  addPostToQueue(PostPodItem post) {
     queue.add(post);
-    print('Queue Length: ${queue.length}');
+    notifyListeners();
+  }
+
+  removeFromQueue(PostPodItem post) {
+    queue.removeWhere((element) => element.id == post.id);
     notifyListeners();
   }
 
   playPostFromQueue() async {
     await new Future.delayed(const Duration(seconds : 2));
     if(queue.length > 0) {
-      Post currentPost = queue.removeAt(0);
+      PostPodItem currentPost = queue.removeAt(0);
       print('playing next post: ${currentPost.id}');
-      playPost(post: currentPost);
+      playPost(currentPost);
     }
   }
 
@@ -250,5 +248,17 @@ class MainAppProvider extends ChangeNotifier {
   setRecordingTime(Duration duration) {
     recordingTime = duration;
     notifyListeners();
+  }
+
+  replyToEpisode(Episode episode, Podcast podcast, BuildContext context) {
+    if(isPlaying) {
+      pausePost();
+    }
+    showDialog(
+      context: context,
+      builder: (context) {
+       return ReplyToEpisodeDialog(episode, podcast);
+      }
+    );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:podcast_search/podcast_search.dart';
 //import 'package:html_unescape/html_unescape.dart';
 import 'UserManagement.dart';
 import 'ActivityManagement.dart';
@@ -247,5 +248,109 @@ class PostDuration {
     if(hours > 0)
       return '$hours:$minutesString:$secondsString';
     return '$minutesString:$secondsString';
+  }
+}
+
+enum PostType {
+  POST,
+  DIRECT_POST,
+  PODCAST_EPISODE,
+  EPISODE_REPLY,
+}
+
+class PostPodItem {
+  String id;
+  PostType type;
+  Post post;
+  DirectPost directPost;
+  Episode episode;
+  EpisodeReply episodeReply;
+  String audioUrl;
+  String displayText;
+
+  PostPodItem({this.id, this.type, this.post, this.directPost, this.episode, this.audioUrl, this.displayText, this.episodeReply});
+
+  factory PostPodItem.fromPost(Post post) {
+    return PostPodItem(
+      id: post.id,
+      type: PostType.POST,
+      post: post,
+      audioUrl: post.audioFileLocation,
+      displayText: '@${post.username} | ${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'
+    );
+  }
+
+  factory PostPodItem.fromDirectPost(DirectPost post) {
+    return PostPodItem(
+      id: post.id,
+      type: PostType.DIRECT_POST,
+      directPost: post,
+      audioUrl: post.audioFileLocation,
+      displayText: '@${post.senderUsername} | ${post.messageTitle != null ? post.messageTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'
+    );
+  }
+
+  factory PostPodItem.fromEpisode(Episode episode) {
+    return PostPodItem(
+      id: episode.guid != null ? episode.guid : episode.link,
+      type: PostType.PODCAST_EPISODE,
+      episode: episode,
+      audioUrl: episode.contentUrl,
+      displayText: '${episode.author} | ${episode.title}'
+    );
+  }
+
+  factory PostPodItem.fromEpisodeReply(EpisodeReply reply) {
+    return PostPodItem(
+      id: reply.id,
+      type: PostType.EPISODE_REPLY,
+      episodeReply: reply,
+      audioUrl: reply.audioFileLocation,
+      displayText: '${reply.posterUsername} | ${reply.replyTitle != null ? reply.replyTitle : DateFormat("MMMM dd, yyyy @HH:mm").format(reply.replyDate).toString()}'
+    );
+  }
+}
+
+class EpisodeReply {
+  String id;
+  String uniqueId;
+  String episodeName;
+  DateTime episodeDate;
+  String podcastName;
+  String audioFileLocation;
+  String posterUid;
+  String posterUsername;
+  DateTime replyDate;
+  Duration replyDuration;
+  String replyTitle;
+
+  EpisodeReply({
+    this.id,
+    this.uniqueId,
+    this.episodeName,
+    this.episodeDate,
+    this.podcastName,
+    this.audioFileLocation,
+    this.posterUid,
+    this.posterUsername,
+    this.replyDate,
+    this.replyDuration,
+    this.replyTitle
+  });
+
+  factory EpisodeReply.fromFirestore(DocumentSnapshot snap) {
+    return EpisodeReply(
+      id: snap.documentID,
+      uniqueId: snap.data['unique_id'],
+      episodeName: snap.data['episode_name'],
+      episodeDate: DateTime.fromMillisecondsSinceEpoch(snap.data['episode_date'].millisecondsSinceEpoch),
+      podcastName: snap.data['podcast_name'],
+      audioFileLocation: snap.data['audioFileLocation'],
+      posterUid: snap.data['posting_uid'],
+      posterUsername: snap.data['posting_username'],
+      replyDate: DateTime.fromMillisecondsSinceEpoch(snap.data['reply_date'].millisecondsSinceEpoch),
+      replyDuration: Duration(milliseconds: snap.data['reply_ms']),
+      replyTitle: snap.data['reply_title'],
+    );
   }
 }

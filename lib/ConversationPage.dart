@@ -418,12 +418,12 @@ class ConversationPageMobile extends StatelessWidget {
                               width: 35,
                               decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: mp.currentPostId == post.id ? Colors.red : Colors.deepPurple
+                                  color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
                               ),
-                              child: Center(child: FaIcon(mp.currentPostId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                              child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                             ),
                             onTap: () {
-                              mp.isPlaying != null && mp.isPlaying && mp.currentPostId == post.id ? mp.pausePost() : mp.playPost(directPost: post);
+                              mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));
                             },
                           ),
                           Text(post.getLengthString())

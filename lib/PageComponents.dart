@@ -21,6 +21,7 @@ import 'HomePage.dart';
 import 'StreamTagPage.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
+import 'QueuePage.dart';
 
 class TimerDialog extends StatefulWidget {
   @override _TimerDialogState createState() => _TimerDialogState();
@@ -174,16 +175,8 @@ class TopPanel extends StatelessWidget {
       searchController = new TextEditingController();
     String playingPostText = '';
     if(mp != null) {
-      if(mp.currentPostId != null) {
-        if(mp.currentPostObj != null) {
-          playingPostText = '@${mp.currentPostObj.username} | ${mp.currentPostObj.postTitle != null ? mp.currentPostObj.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(mp.currentPostObj.datePosted)}';
-        }
-        if(mp.currentDirectPostObj != null) {
-          playingPostText = '@${mp.currentDirectPostObj.senderUsername} | ${mp.currentDirectPostObj.messageTitle != null ? mp.currentDirectPostObj.messageTitle : DateFormat('MMMM dd, yyyy hh:mm').format(mp.currentDirectPostObj.datePosted)}';
-        }
-        if(mp.currentPodcastEpisode != null){
-          playingPostText = '${mp.currentPodcastEpisode.author} | ${mp.currentPodcastEpisode.title}';
-        }
+      if(mp.currentPostPodItem != null) {
+        playingPostText = mp.currentPostPodItem.displayText;
       }
     }
     String getDurationString(Duration duration) {
@@ -314,7 +307,25 @@ class TopPanel extends StatelessWidget {
                       ) : Container()
                     ),
                     SizedBox(width: 5),
-                    mp.position == null || mp.postLength == null ? Container() : Text('${mp.position.getPostPosition()}/${mp.postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16)),
+                    StreamBuilder(
+                      stream: mp.player.onDurationChanged,
+                      builder: (context, AsyncSnapshot<Duration> durationSnap) {
+                        Duration duration = durationSnap.data;
+                        return StreamBuilder(
+                          stream: mp.player.onAudioPositionChanged,
+                          builder: (context, AsyncSnapshot<Duration> positionSnap) {
+                            Duration position = positionSnap.data;
+                            print('Duration: $duration/Position: $position');
+                            if (duration == null || position == null)
+                              return Container();
+                            return Text('${getDurationString(
+                                position)}/${getDurationString(duration)}',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 16));
+                          });
+                      },
+                    ),
+                    //mp.position == null || mp.postLength == null ? Container() : Text('${mp.position.getPostPosition()}/${mp.postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ],
                 ),
               )
@@ -323,23 +334,31 @@ class TopPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 IconButton(
-                    icon: Icon(mp.isPlaying ? Icons.pause : Icons.play_arrow, color: mp.queue.length > 0 || mp.currentPostId != null ? Colors.white : Colors.grey,),
+                  icon: Icon(Icons.queue_music, color: mp.queue.length > 0 ? Colors.white : Colors.grey),
+                  onPressed: () {
+                    //Go to Queue page
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) =>
+                          QueuePage(),
+                    ));
+                  }
+                ),
+                IconButton(
+                    icon: Icon(Icons.replay_30, color: mp.currentPostPodItem != null ? Colors.white : Colors.grey),
+                    onPressed: () async {
+                      await mp.skipBack();
+                    }
+                ),
+                IconButton(
+                    icon: Icon(mp.isPlaying ? Icons.pause : Icons.play_arrow, color: mp.queue.length > 0 || mp.currentPostPodItem != null ? Colors.white : Colors.grey,),
                     onPressed: () {
                       if(mp.isPlaying) {
                         print('pausing post');
                         mp.pausePost();
                         return;
                       }
-                      if(mp.currentPostObj != null) {
-                        mp.playPost(post: mp.currentPostObj);
-                        return;
-                      }
-                      if(mp.currentDirectPostObj != null) {
-                        mp.playPost(directPost: mp.currentDirectPostObj);
-                        return;
-                      }
-                      if(mp.currentPodcastEpisode != null) {
-                        mp.playPost(episode: mp.currentPodcastEpisode);
+                      if(mp.currentPostPodItem != null) {
+                        mp.playPost(mp.currentPostPodItem);
                         return;
                       }
                       if(mp.queue.length > 0) {
@@ -347,6 +366,12 @@ class TopPanel extends StatelessWidget {
                         return;
                       }
                     }
+                ),
+                IconButton(
+                  icon: Icon(Icons.forward_30, color: mp.currentPostPodItem != null ? Colors.white : Colors.grey),
+                  onPressed: () async {
+                    await mp.skipAhead();
+                  }
                 ),
                 IconButton(
                     icon: Icon(Icons.skip_next, color: mp.queue.length > 0 ? Colors.white : Colors.grey),

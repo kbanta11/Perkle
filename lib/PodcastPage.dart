@@ -8,6 +8,8 @@ import 'package:podcast_search/podcast_search.dart';
 import 'package:flutter_html/flutter_html.dart';
 
 import 'MainPageTemplate.dart';
+import 'EpisodePage.dart';
+import 'services/models.dart';
 
 class PodcastPage extends StatelessWidget {
   Podcast podcast;
@@ -63,30 +65,94 @@ class PodcastPage extends StatelessWidget {
                     ep.author = podcast.title;
                   return ListTile(
                     title: Text(ep.title),
-                    subtitle: Text('${DateFormat().format(ep.publicationDate)}'),
-                    trailing: Column(
-                      children: <Widget>[
-                        InkWell(
-                          child: Container(
-                            height: 35,
-                            width: 35,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: mp.currentPostId == ep.contentUrl ? Colors.red : Colors.deepPurple,
+                    subtitle: Text('${ep.publicationDate != null ? DateFormat().format(ep.publicationDate) : ''}'),
+                    trailing: Container(
+                      width: 85,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                          children: <Widget>[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                InkWell(
+                                    child: Container(
+                                      height: 35,
+                                      width: 35,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: mp.currentPostPodId == (ep.guid == null ? ep.link : ep.guid) ? Colors.red : Colors.deepPurple,
+                                      ),
+                                      child: Center(child: FaIcon(mp.currentPostPodId == (ep.guid == null ? ep.link : ep.guid) && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                    ),
+                                    onTap: () {
+                                      if(mp.currentPostPodId == (ep.guid == null ? ep.link : ep.guid) && mp.isPlaying) {
+                                        mp.pausePost();
+                                        return;
+                                      }
+                                      mp.playPost(PostPodItem.fromEpisode(ep));
+                                    }
+                                ),
+                                SizedBox(width: 5),
+                                InkWell(
+                                    child: Container(
+                                      height: 35,
+                                      width: 35,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: mp.queue.where((item) => item.id == (ep.guid == null ? ep.link : ep.guid)).length > 0  ? Colors.grey : Colors.deepPurple,
+                                      ),
+                                      child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                    ),
+                                    onTap: () {
+                                      if(mp.queue.where((item) => item.id == (ep.guid == null ? ep.link : ep.guid)).length == 0)
+                                        mp.addPostToQueue(PostPodItem.fromEpisode(ep));
+                                    }
+                                )
+                              ],
                             ),
-                            child: Center(child: FaIcon(mp.currentPostId == ep.contentUrl && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
-                          ),
-                          onTap: () {
-                            if(mp.currentPostId == ep.contentUrl && mp.isPlaying) {
-                              mp.pausePost();
-                              return;
-                            }
-                            mp.playPost(episode: ep);
-                          }
-                        ),
-                        ep.duration == null ? Text('') : Text(Duration(seconds: ep.duration).inSeconds.toString()),
-                      ]
+                            ep.duration == null ? Text('') : Text(Duration(seconds: ep.duration).inSeconds.toString()),
+                          ]
+                      )
                     ),
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return SimpleDialog(
+                            title: Center(child: Text(podcast.title)),
+                            contentPadding: EdgeInsets.all(10),
+                            children: <Widget>[
+                              Text(ep.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              SingleChildScrollView(
+                                child: Html(
+                                  data: ep.description,
+                                )
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: <Widget>[
+                                  FlatButton(
+                                    child: Text('Cancel'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    }
+                                  ),
+                                  FlatButton(
+                                    child: Text('Go to episode', style: TextStyle(color: Colors.white)),
+                                    color: Colors.deepPurple,
+                                    onPressed: () {
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (context) => EpisodePage(ep, podcast),
+                                      ));
+                                    },
+                                  )
+                                ],
+                              )
+                            ],
+                          );
+                        }
+                      );
+                    },
                   );
                 }).toList(),
               )
