@@ -451,6 +451,7 @@ class DiscoverPageMobile extends StatelessWidget {
                                 builder: (context, user, _) {
                                   return user == null ? Container()
                                       : Card(
+                                    elevation: 5,
                                     margin: EdgeInsets.all(5),
                                     child: Padding(
                                       padding: EdgeInsets.all(5),
@@ -515,7 +516,7 @@ class DiscoverPageMobile extends StatelessWidget {
 }
 
 class DiscoverPageMobileProvider extends ChangeNotifier {
-  String selectedCat = 'Tags';
+  String selectedCat = 'Pods';
   String selectedTag;
 
   void selectCategory(String value) {

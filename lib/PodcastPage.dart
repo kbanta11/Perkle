@@ -25,6 +25,7 @@ class PodcastPage extends StatelessWidget {
       body: Column(
           children: <Widget>[
             Card(
+              elevation: 5,
               margin: EdgeInsets.all(5),
               child: Padding(
                 padding: EdgeInsets.all(5),
@@ -70,6 +71,7 @@ class PodcastPage extends StatelessWidget {
                   if(ep.author == null)
                     ep.author = podcast.title;
                   return Card(
+                    elevation: 5,
                     color: Colors.deepPurple[50],
                     margin: EdgeInsets.all(5),
                     child: Padding(

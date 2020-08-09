@@ -130,6 +130,7 @@ class Timeline extends StatelessWidget {
                 child: Consumer<User>(
                   builder: (context, poster, _) {
                     return Card(
+                      elevation: 5,
                       color: Colors.deepPurple[50],
                       margin: EdgeInsets.all(5),
                       child: Padding(

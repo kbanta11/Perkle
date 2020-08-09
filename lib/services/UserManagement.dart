@@ -12,7 +12,7 @@ import 'models.dart';
 class UserManagement {
   Firestore _db = Firestore.instance;
 
-  Future<void> storeNewUser(user, context, {username}) async {
+  Future<void> storeNewUser(user, {username}) async {
     //print('Storing new user data');
     Firestore.instance.collection('/timelines').add({'type': 'UserMainFeed', 'userUID': user.uid}).then((doc) {
       String timelineId = doc.documentID;
@@ -35,7 +35,12 @@ class UserManagement {
   }
 
   Stream<User> streamCurrentUser(FirebaseUser user) {
+    if(user == null)
+      return null;
     return _db.collection('users').document(user.uid).snapshots().map((snap) {
+      if(snap == null || snap.data == null)
+        return null;
+      print('user snap data: ${snap.data}');
       return User.fromFirestore(snap);
     });
   }
@@ -110,7 +115,7 @@ class UserManagement {
     FirebaseUser user = await FirebaseAuth.instance.currentUser().then((user) {
       return user;
     });
-    print('User UID: $user.uid--------------');
+    //print('User UID: $user.uid--------------');
     return await Firestore.instance.collection('users').document(user.uid).get().then((snapshot) {
       return snapshot.exists;
     });
@@ -247,7 +252,13 @@ class _UsernameDialogState extends State<UsernameDialog> {
             } else if (_validateUsernameError != null) {
               usernameError(context);
             } else {
-              UserManagement().updateUser(context, {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return Center(child: CircularProgressIndicator());
+                }
+              );
+              await UserManagement().updateUser(context, {
                 'username': _username,
                 'usernameCaseInsensitive': _username.toLowerCase(),
               });

@@ -54,6 +54,7 @@ class MainAppState extends State<MainApp> {
       ],
       child: Consumer<FirebaseUser>(
         builder: (context, currentUser, _) {
+
           bool promptUpdate = Provider.of<bool>(context);
           print('Prompt Update: $promptUpdate');
           return MaterialApp(

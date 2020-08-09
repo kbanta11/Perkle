@@ -96,7 +96,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   password: _password
                               ).then((signedInUser) {
                                 FirebaseUser newUser = signedInUser.user;
-                                UserManagement().storeNewUser(newUser, context, username: _username);
+                                UserManagement().storeNewUser(newUser, username: _username);
                               }).catchError((e) {
                                 print('Error: ${e.code}');
                                 if(e.code == 'ERROR_EMAIL_ALREADY_IN_USE'){
@@ -198,7 +198,7 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
       if (user != null) {
         if (!userDocCreated) {
           print('creating user document');
-          UserManagement().storeNewUser(currentUser, context);
+          UserManagement().storeNewUser(currentUser);
         } else {
           Navigator.of(context).pushReplacementNamed('/homepage');
         }

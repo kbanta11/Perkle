@@ -239,7 +239,7 @@ class ConversationListPageMobile extends StatelessWidget {
                 });
 
                 return Card(
-                  color: Colors.lightBlue[50],
+                  elevation: 5,
                   margin: EdgeInsets.all(5),
                   child: Padding(
                     padding: EdgeInsets.all(5),

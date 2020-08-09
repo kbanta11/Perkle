@@ -431,6 +431,7 @@ class ConversationPageMobile extends StatelessWidget {
                       );
 
                       return Card(
+                        elevation: 5,
                         color: Colors.deepPurple[50],
                         margin: EdgeInsets.all(5),
                         child: Padding(

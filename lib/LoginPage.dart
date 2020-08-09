@@ -259,6 +259,7 @@ class _GoogleSignInSection extends StatefulWidget {
 class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
   bool _success;
   String _userID;
+  bool _isLoading = false;
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -270,25 +271,21 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
             color: Colors.white,
             textColor: Colors.deepPurple,
             onPressed: () async {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return Center(
-                    child: Container(
-                      height: 50.0,
-                      width: 50.0,
-                      child: CircularProgressIndicator(),
-                    )
-                  );
-                }
-              );
-              _signInWithGoogle(context).then((_) {
-                Navigator.of(context).pop();
+              setState(() {
+                _isLoading = true;
               });
+              await _signInWithGoogle();
+              setState(() {
+                _isLoading = false;
+              });
+              Navigator.of(context).pushReplacementNamed('/homepage');
             },
             child: Container(
               width: 200.0,
-              child: Center(
+              child: _isLoading ? Center(child: Padding(
+                padding: EdgeInsets.all(5),
+                child: CircularProgressIndicator(),
+              )) : Center(
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -309,7 +306,7 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
   }
 
   // Example code of how to sign in with google.
-  Future<void> _signInWithGoogle(BuildContext context) async {
+  Future<bool> _signInWithGoogle() async {
     bool userDocCreated;
 
     print('Starting Google sign in');
@@ -335,28 +332,16 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
     userDocCreated = await UserManagement().userAlreadyCreated();
     print('User exists: $userDocCreated------------------');
 
-    setState(() {
-      if (user != null) {
-        _success = true;
-        _userID = user.uid;
-        print('userid: $_userID-------------');
-        if (!userDocCreated) {
-          print('creating user document');
-          UserManagement().storeNewUser(currentUser, context).then((value) {
-            print('closing loading dialog');
-            Navigator.of(context).pop();
-            print('Pushing to homepage');
-            Navigator.of(context).pushReplacementNamed('/homepage');
-          });
-        } else {
-          print('closing loading dialog');
-          Navigator.of(context).pop();
-          Navigator.of(context).pushReplacementNamed('/homepage');
-        }
-      } else {
-        _success = false;
-        Navigator.of(context).pop();
+    if (user != null) {
+      _success = true;
+      _userID = user.uid;
+      if (!userDocCreated) {
+        print('creating user document');
+        await UserManagement().storeNewUser(currentUser);
       }
-    });
+    } else {
+      _success = false;
+    }
+    return _success;
   }
 }

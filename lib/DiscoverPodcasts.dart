@@ -56,8 +56,8 @@ class DiscoverPodcasts extends StatelessWidget {
                           return dpp.podcasts == null ? Center(child: CircularProgressIndicator()) : ListView(
                             children: dpp.podcasts.map((pod) {
                               return Card(
-                                color: Colors.lightBlue[50],
                                 margin: EdgeInsets.all(5),
+                                elevation: 5,
                                 child: Padding(
                                   padding: EdgeInsets.all(5),
                                   child: ListTile(

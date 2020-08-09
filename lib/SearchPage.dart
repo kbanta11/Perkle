@@ -278,31 +278,37 @@ class SearchPageMobile extends StatelessWidget {
                                 return Center(child: Text('Sorry...No results for this search'));
                               return ListView(
                                 children: searchResultSnap.data.items.map((Item item) {
-                                  return ListTile(
-                                    leading: Container(
-                                      height: 50,
-                                      width: 50,
-                                      decoration: BoxDecoration(
-                                          color: Colors.deepPurple,
-                                          image: item.artworkUrl60 == null ? null : DecorationImage(
-                                              image: NetworkImage(item.artworkUrl60)
-                                          )
-                                      ),
-                                    ),
-                                    title: Text(item.trackName),
-                                    onTap: () async {
-                                      showDialog(
-                                          context: context,
-                                          builder: (context) {
-                                            return Center(child: CircularProgressIndicator());
-                                          }
-                                      );
-                                      Podcast podcast = await Podcast.loadFeed(url: item.feedUrl);
-                                      Navigator.of(context).pop();
-                                      Navigator.push(context, MaterialPageRoute(
-                                        builder: (context) => PodcastPage(podcast),
-                                      ));
-                                    },
+                                  return Card(
+                                    margin: EdgeInsets.all(5),
+                                    child: Padding(
+                                      padding: EdgeInsets.all(5),
+                                      child: ListTile(
+                                        leading: Container(
+                                          height: 50,
+                                          width: 50,
+                                          decoration: BoxDecoration(
+                                              color: Colors.deepPurple,
+                                              image: item.artworkUrl60 == null ? null : DecorationImage(
+                                                  image: NetworkImage(item.artworkUrl60)
+                                              )
+                                          ),
+                                        ),
+                                        title: Text(item.trackName),
+                                        onTap: () async {
+                                          showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return Center(child: CircularProgressIndicator());
+                                              }
+                                          );
+                                          Podcast podcast = await Podcast.loadFeed(url: item.feedUrl);
+                                          Navigator.of(context).pop();
+                                          Navigator.push(context, MaterialPageRoute(
+                                            builder: (context) => PodcastPage(podcast),
+                                          ));
+                                        },
+                                      )
+                                    )
                                   );
                                 }).toList(),
                               );
@@ -353,53 +359,54 @@ class SearchPageMobile extends StatelessWidget {
                                           }
                                       );
 
-                                      return user == null ? Container() : Column(
-                                          children: <Widget>[
-                                            ListTile(
-                                                leading: user == null || user.profilePicUrl == null  ? Container(
-                                                    height: 50.0,
-                                                    width: 50.0,
-                                                    decoration: BoxDecoration(
+                                      return user == null ? Container() : Card(
+                                        margin: EdgeInsets.all(5),
+                                        child: Padding(
+                                          padding: EdgeInsets.all(5),
+                                          child: ListTile(
+                                              leading: user == null || user.profilePicUrl == null  ? Container(
+                                                  height: 50.0,
+                                                  width: 50.0,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.deepPurple,
+                                                  )
+                                              ) : Container(
+                                                  height: 50.0,
+                                                  width: 50.0,
+                                                  decoration: BoxDecoration(
                                                       shape: BoxShape.circle,
                                                       color: Colors.deepPurple,
-                                                    )
-                                                ) : Container(
-                                                    height: 50.0,
-                                                    width: 50.0,
-                                                    decoration: BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: Colors.deepPurple,
-                                                        image: DecorationImage(
-                                                            fit: BoxFit.cover,
-                                                            image: NetworkImage(user.profilePicUrl)
-                                                        )
-                                                    )
-                                                ),
-                                                title: Row(
-                                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                                    children: <Widget>[
-                                                      Expanded(
-                                                          child: Text(user.username)
-                                                      ),
-                                                      Container(
-                                                          height: 40.0,
-                                                          width: 40.0,
-                                                          child: currentUser == null || user == null || currentUser.uid == user.uid || currentUser.following.contains(user.uid) ? Container() : followButton
+                                                      image: DecorationImage(
+                                                          fit: BoxFit.cover,
+                                                          image: NetworkImage(user.profilePicUrl)
                                                       )
-                                                    ]
-                                                ),
-                                                onTap: () {
-                                                  print(
-                                                      'go to user profile: ${user.username}');
-                                                  Navigator.push(context, MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        ProfilePageMobile(
-                                                          userId: user.uid,),
-                                                  ));
-                                                }
-                                            ),
-                                            Divider(height: 5.0),
-                                          ]
+                                                  )
+                                              ),
+                                              title: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  children: <Widget>[
+                                                    Expanded(
+                                                        child: Text(user.username)
+                                                    ),
+                                                    Container(
+                                                        height: 40.0,
+                                                        width: 40.0,
+                                                        child: currentUser == null || user == null || currentUser.uid == user.uid || currentUser.following.contains(user.uid) ? Container() : followButton
+                                                    )
+                                                  ]
+                                              ),
+                                              onTap: () {
+                                                print(
+                                                    'go to user profile: ${user.username}');
+                                                Navigator.push(context, MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      ProfilePageMobile(
+                                                        userId: user.uid,),
+                                                ));
+                                              }
+                                          ),
+                                        )
                                       );
                                     }
                                 );

@@ -39,6 +39,7 @@ class EpisodePage extends StatelessWidget {
       body: Column(
         children: <Widget>[
           Card(
+            elevation: 5,
             margin: EdgeInsets.all(5),
             child: Padding(
               padding: EdgeInsets.all(0),
@@ -151,6 +152,7 @@ class EpisodePage extends StatelessWidget {
                 return ListView(
                   children: replyList.map((reply) {
                     return Card(
+                      elevation: 5,
                       color: Colors.deepPurple[50],
                       margin: EdgeInsets.all(5),
                       child: Padding(

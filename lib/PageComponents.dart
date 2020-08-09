@@ -740,6 +740,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
       );
 
       return Card(
+        elevation: 5,
         margin: EdgeInsets.all(5),
         child: Padding(
           padding: EdgeInsets.all(5),

@@ -216,7 +216,8 @@ class HomePageMobileState extends State<HomePageMobile> {
   _saveDeviceToken() async {
     // Get the current user
     String uid = await FirebaseAuth.instance.currentUser().then((user) {
-      return user.uid;
+      if(user != null)
+        return user.uid;
     });
     // FirebaseUser user = await _auth.currentUser();
 
@@ -235,7 +236,7 @@ class HomePageMobileState extends State<HomePageMobile> {
     //WidgetsBinding.instance.addPostFrameCallback((_) async {
     //  await _showUsernameDialog(context);
     //});
-    print('Skipping checking username');
+    //print('Skipping checking username');
     _saveDeviceToken();
   }
 
@@ -243,18 +244,32 @@ class HomePageMobileState extends State<HomePageMobile> {
   build(BuildContext context) {
     FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    return MultiProvider(
-      providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
-      ],
-      child: Consumer<User>(
-        builder: (context, user, _) {
-          return user == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
+    return StreamBuilder(
+      stream: UserManagement().streamCurrentUser(firebaseUser),
+        builder: (context, AsyncSnapshot<User> userSnap) {
+          User user = userSnap.data;
+          if(user == null)
+            return Center(child: CircularProgressIndicator());
+          if(user.username == null || user.username.length == 0)
+            return Scaffold(
+              body: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: WillPopScope(
+                  onWillPop: () async => false,
+                  child: UsernameDialog(),
+                ),
+              ),
+            );
+          return MainPageTemplate(
               bottomNavIndex: 0,
               body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
           );
         }
-      ),
     );
   }
 }
