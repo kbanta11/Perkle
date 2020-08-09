@@ -238,52 +238,54 @@ class ConversationListPageMobile extends StatelessWidget {
                   }
                 });
 
-                return Column(
-                  children: <Widget>[
-                    ListTile(
-                      leading: StreamProvider<User>(
-                        create: (context) => UserManagement().streamUserDoc(firstOtherUid),
-                        child: Consumer<User>(
-                          builder: (context, firstUser, _) {
-                            if(firstUser == null || firstUser.profilePicUrl == null)
-                              return Container(
-                                  height: 60.0,
-                                  width: 60.0,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.deepPurple,
-                                  )
-                              );
-                            return Container(
-                                height: 60.0,
-                                width: 60.0,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.deepPurple,
-                                  image: DecorationImage(
-                                    fit: BoxFit.cover,
-                                    image: NetworkImage(firstUser.profilePicUrl),
-                                  ),
-                                )
-                            );
-                          },
-                        )
-                      ),
-                      title: Text('$titleText', style: TextStyle(fontSize: 18)),
-                      trailing: FaIcon(unreadPosts > 0 ? FontAwesomeIcons.solidComments : FontAwesomeIcons.comments,
-                        color: Colors.deepPurple,
-                        size: 24,
-                      ),
-                      onTap: () {
-                        //print('go to conversation: ${convoItem.targetUsername} (${convoItem.conversationId})');
-                        DBService().markConversationRead(conversation.id, firebaseUser.uid);
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => ConversationPageMobile(conversationId: conversation.id),
-                        ));
-                      }
-                    ),
-                    Divider(height: 15, thickness: 1,)
-                  ]
+                return Card(
+                  color: Colors.lightBlue[50],
+                  margin: EdgeInsets.all(5),
+                  child: Padding(
+                    padding: EdgeInsets.all(5),
+                    child: ListTile(
+                        leading: StreamProvider<User>(
+                            create: (context) => UserManagement().streamUserDoc(firstOtherUid),
+                            child: Consumer<User>(
+                              builder: (context, firstUser, _) {
+                                if(firstUser == null || firstUser.profilePicUrl == null)
+                                  return Container(
+                                      height: 60.0,
+                                      width: 60.0,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.deepPurple,
+                                      )
+                                  );
+                                return Container(
+                                    height: 60.0,
+                                    width: 60.0,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.deepPurple,
+                                      image: DecorationImage(
+                                        fit: BoxFit.cover,
+                                        image: NetworkImage(firstUser.profilePicUrl),
+                                      ),
+                                    )
+                                );
+                              },
+                            )
+                        ),
+                        title: Text('$titleText', style: TextStyle(fontSize: 18)),
+                        trailing: FaIcon(unreadPosts > 0 ? FontAwesomeIcons.solidComments : FontAwesomeIcons.comments,
+                          color: Colors.deepPurple,
+                          size: 24,
+                        ),
+                        onTap: () {
+                          //print('go to conversation: ${convoItem.targetUsername} (${convoItem.conversationId})');
+                          DBService().markConversationRead(conversation.id, firebaseUser.uid);
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => ConversationPageMobile(conversationId: conversation.id),
+                          ));
+                        }
+                    )
+                  )
                 );
               }).toList(),
             ),

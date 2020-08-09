@@ -739,53 +739,59 @@ class _UserInfoSectionState extends State<UserInfoSection> {
           }
       );
 
-      return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          mainAxisSize: MainAxisSize.max,
-          children: <Widget>[
-            Padding(
-                child: profilePic,
-                padding: EdgeInsets.fromLTRB(5.0, 5.0, 0.0, 0.0)
-            ), //Profile Pic with or without add photo if own profile
-            SizedBox(width: 5.0),
-            Expanded(
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    SizedBox(height: 10.0),
-                    StreamBuilder(
-                        stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
-                        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                          //print(snapshot.data.toString());
-                          if (!snapshot.hasData) {
-                            return Text('@',
-                              style: TextStyle(fontSize: 18.0),
-                            );
-                          }
+      return Card(
+        margin: EdgeInsets.all(5),
+        child: Padding(
+          padding: EdgeInsets.all(5),
+          child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisSize: MainAxisSize.max,
+              children: <Widget>[
+                Padding(
+                    child: profilePic,
+                    padding: EdgeInsets.fromLTRB(5.0, 5.0, 0.0, 0.0)
+                ), //Profile Pic with or without add photo if own profile
+                SizedBox(width: 5.0),
+                Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        SizedBox(height: 10.0),
+                        StreamBuilder(
+                            stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
+                            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                              //print(snapshot.data.toString());
+                              if (!snapshot.hasData) {
+                                return Text('@',
+                                  style: TextStyle(fontSize: 18.0),
+                                );
+                              }
 
-                          String username = snapshot.data.documents.first.data['username'].toString();
-                          if(username == null || username == 'null')
-                            username = '@';
+                              String username = snapshot.data.documents.first.data['username'].toString();
+                              if(username == null || username == 'null')
+                                username = '@';
 
-                          return Text('@$username',
-                            style: TextStyle(
-                              fontSize: 18.0,
-                            ),
-                          );
-                        }
-                    ),
-                    BioTextSection(userId: widget.userId),
-                  ]
-              ),
-            ),
-            Padding(
-                child: floatingRightButtons,
-                padding: EdgeInsets.fromLTRB(0.0, 5.0, 5.0, 0.0)
-            ),
-          ].where((item) => item != null).toList()
+                              return Text('@$username',
+                                style: TextStyle(
+                                  fontSize: 18.0,
+                                ),
+                              );
+                            }
+                        ),
+                        BioTextSection(userId: widget.userId),
+                      ]
+                  ),
+                ),
+                Padding(
+                    child: floatingRightButtons,
+                    padding: EdgeInsets.fromLTRB(0.0, 5.0, 5.0, 0.0)
+                ),
+              ].where((item) => item != null).toList()
+          )
+        )
       );
     }
   }

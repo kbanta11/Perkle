@@ -55,31 +55,38 @@ class DiscoverPodcasts extends StatelessWidget {
                           print('Podcasts Num: ${dpp.podcasts == null ? '' : dpp.podcasts.length}');
                           return dpp.podcasts == null ? Center(child: CircularProgressIndicator()) : ListView(
                             children: dpp.podcasts.map((pod) {
-                              return ListTile(
-                                leading: Container(
-                                  height: 50,
-                                  width: 50,
-                                  decoration: pod != null && pod.collectionName != null ? BoxDecoration(
-                                      image: DecorationImage(image: NetworkImage(pod.artworkUrl60), fit: BoxFit.cover)
-                                  ) : BoxDecoration(
-                                    color: Colors.deepPurple,
-                                  ),
-                                  child: pod == null || pod.artworkUrl60 == null ? Text('${pod.collectionName.substring(0, 1)}') : Container(),
+                              return Card(
+                                color: Colors.lightBlue[50],
+                                margin: EdgeInsets.all(5),
+                                child: Padding(
+                                  padding: EdgeInsets.all(5),
+                                  child: ListTile(
+                                    leading: Container(
+                                      height: 50,
+                                      width: 50,
+                                      decoration: pod != null && pod.collectionName != null ? BoxDecoration(
+                                          image: DecorationImage(image: NetworkImage(pod.artworkUrl60), fit: BoxFit.cover)
+                                      ) : BoxDecoration(
+                                        color: Colors.deepPurple,
+                                      ),
+                                      child: pod == null || pod.artworkUrl60 == null ? Text('${pod.collectionName.substring(0, 1)}') : Container(),
+                                    ),
+                                    title: Text(pod.collectionName, style: TextStyle(fontSize: 16)),
+                                    onTap: () async {
+                                      showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return Center(child: CircularProgressIndicator());
+                                          }
+                                      );
+                                      Podcast goToPodcast = await Podcast.loadFeed(url: pod.feedUrl);
+                                      Navigator.of(context).pop();
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (context) => PodcastPage(goToPodcast),
+                                      ));
+                                    },
+                                  )
                                 ),
-                                title: Text(pod.collectionName, style: TextStyle(fontSize: 16)),
-                                onTap: () async {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) {
-                                      return Center(child: CircularProgressIndicator());
-                                    }
-                                  );
-                                  Podcast goToPodcast = await Podcast.loadFeed(url: pod.feedUrl);
-                                  Navigator.of(context).pop();
-                                  Navigator.push(context, MaterialPageRoute(
-                                    builder: (context) => PodcastPage(goToPodcast),
-                                  ));
-                                },
                               );
                             }).toList(),
                           );

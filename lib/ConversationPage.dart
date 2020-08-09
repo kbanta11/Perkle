@@ -430,16 +430,18 @@ class ConversationPageMobile extends StatelessWidget {
                         ],
                       );
 
-                      return Column(
-                        children: <Widget>[
-                          ListTile(
+                      return Card(
+                        color: Colors.deepPurple[50],
+                        margin: EdgeInsets.all(5),
+                        child: Padding(
+                          padding: EdgeInsets.all(5),
+                          child: ListTile(
                             leading: user.uid == sender.uid ? playColumn : picButton,
                             trailing: user.uid == sender.uid ? picButton : playColumn,
                             title: Text(post.messageTitle ?? DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted).toString(), style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left),
                             subtitle: Text('@${post.senderUsername}', style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left,),
                           ),
-                          Divider(height: 10, thickness: 1,)
-                        ],
+                        )
                       );
                     },
                   ),

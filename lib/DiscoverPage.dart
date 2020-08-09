@@ -450,44 +450,50 @@ class DiscoverPageMobile extends StatelessWidget {
                               child: Consumer<User>(
                                 builder: (context, user, _) {
                                   return user == null ? Container()
-                                      : ListTile(
-                                    //Leading of list tile for pods
-                                    leading: user.profilePicUrl != null ? Container(
-                                        height: 50.0,
-                                        width: 50.0,
-                                        decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.deepPurple,
-                                            image: DecorationImage(
-                                                fit: BoxFit.cover,
-                                                image: NetworkImage(user.profilePicUrl)
+                                      : Card(
+                                    margin: EdgeInsets.all(5),
+                                    child: Padding(
+                                      padding: EdgeInsets.all(5),
+                                      child: ListTile(
+                                        //Leading of list tile for pods
+                                        leading: user.profilePicUrl != null ? Container(
+                                            height: 50.0,
+                                            width: 50.0,
+                                            decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.deepPurple,
+                                                image: DecorationImage(
+                                                    fit: BoxFit.cover,
+                                                    image: NetworkImage(user.profilePicUrl)
+                                                )
                                             )
-                                        )
-                                    ) : Container(
-                                        height: 50.0,
-                                        width: 50.0,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.deepPurple,
-                                        )
-                                    ),
-                                    title: Text('${user.username}', style: TextStyle(fontSize: 18)),
-                                    trailing: Container(
-                                      width: 50,
-                                      child: Row(
-                                        children: <Widget>[
-                                          FaIcon(FontAwesomeIcons.users, color: Colors.black),
-                                          SizedBox(width: 5),
-                                          Text('${user.followers != null ? user.followers.length.toString() : '0'}', style: TextStyle(fontSize: 18))
-                                        ],
+                                        ) : Container(
+                                            height: 50.0,
+                                            width: 50.0,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.deepPurple,
+                                            )
+                                        ),
+                                        title: Text('${user.username}', style: TextStyle(fontSize: 18)),
+                                        trailing: Container(
+                                          width: 50,
+                                          child: Row(
+                                            children: <Widget>[
+                                              FaIcon(FontAwesomeIcons.users, color: Colors.black),
+                                              SizedBox(width: 5),
+                                              Text('${user.followers != null ? user.followers.length.toString() : '0'}', style: TextStyle(fontSize: 18))
+                                            ],
+                                          ),
+                                        ),
+                                        onTap: () {
+                                          Navigator.push(context, MaterialPageRoute(
+                                            builder: (context) =>
+                                                ProfilePageMobile(userId: user.uid,),
+                                          ));
+                                        },
                                       ),
                                     ),
-                                    onTap: () {
-                                      Navigator.push(context, MaterialPageRoute(
-                                        builder: (context) =>
-                                            ProfilePageMobile(userId: user.uid,),
-                                      ));
-                                    },
                                   );
                                 }
                               )

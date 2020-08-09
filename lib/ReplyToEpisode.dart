@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:wakelock/wakelock.dart';
 import 'package:sounds/sounds.dart';
 import 'services/models.dart';
 import 'services/db_services.dart';
@@ -132,6 +133,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
   }
   
   startRecording() async {
+    Wakelock.enable();
     recorder.initialize();
     //final appDataDir = await getApplicationDocumentsDirectory();
     //String localPath = appDataDir.path;
@@ -158,6 +160,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
   }
   
   stopRecording() {
+    Wakelock.disable();
     _isRecording = false;
     recorder.stop();
     //replyLength = recorder.duration;

@@ -129,6 +129,26 @@ exports.usernameFanOut = functions.firestore.document('/users/{uid}').onWrite(as
 		}).catch(err => {
 			console.log('Error getting user posts: ' + err);
 		});
+
+		//Update username on all podcast episode replies from sender
+        await db.collection('episode-replies').where('posting_uid', '==', userId).get().then(snapshot => {
+            if(snapshot.empty) {
+                console.log('User has no podcast replies');
+                return;
+            }
+
+            snapshot.forEach(doc => {
+                let transaction = db.runTransaction(t => {
+                    return t.get(doc.ref).then(_doc => {
+                        t.update(_doc.ref, {posting_username: usernameAfter});
+                        return;
+                    });
+                });
+            });
+            return;
+        }).catch(err => {
+            console.log('Error getting direct user posts: ' + err);
+        });
 	}
 	return 1;
 });
@@ -241,6 +261,20 @@ exports.getSearchResults = functions.firestore.document('/requests/{id}').onWrit
 			"results": resultIDs
 		}, {merge: true});
 	});
+});
+
+exports.updateTopUsers = functions.pubsub.schedule('every 30 minutes').onRun( async (context) => {
+    await db.collection('requests').doc('discover').get().then(snapshot => {
+        db.runTransaction(t => {
+            return t.get(snapshot.ref).then(doc => {
+                t.update(snapshot.ref, {searchDate: new Date()});
+                return;
+            });
+        });
+        return;
+    }).catch(err => {
+        console.log('Error getting updated users: ' + err);
+    });
 });
 
 /*

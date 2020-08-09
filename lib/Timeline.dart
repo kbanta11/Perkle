@@ -129,9 +129,12 @@ class Timeline extends StatelessWidget {
                 create: (context) => UserManagement().streamUserDoc(post.userUID),
                 child: Consumer<User>(
                   builder: (context, poster, _) {
-                    return Column(
-                      children: <Widget>[
-                        ExpansionTile(
+                    return Card(
+                      color: Colors.deepPurple[50],
+                      margin: EdgeInsets.all(5),
+                      child: Padding(
+                        padding: EdgeInsets.all(5),
+                        child: ExpansionTile(
                           leading: poster == null || poster.profilePicUrl == null ? Container(
                             height: 60.0,
                             width: 60.0,
@@ -149,25 +152,25 @@ class Timeline extends StatelessWidget {
                               },
                             ),
                           ) : Container(
-                            height: 60.0,
-                            width: 60.0,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.deepPurple,
-                              image: DecorationImage(
-                                fit: BoxFit.cover,
-                                image: NetworkImage(poster.profilePicUrl),
+                              height: 60.0,
+                              width: 60.0,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.deepPurple,
+                                image: DecorationImage(
+                                  fit: BoxFit.cover,
+                                  image: NetworkImage(poster.profilePicUrl),
+                                ),
                               ),
-                            ),
-                            child: InkWell(
-                              child: Container(),
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(
-                                  builder: (context) =>
-                                      ProfilePageMobile(userId: post.userUID,),
-                                ));
-                              },
-                            )
+                              child: InkWell(
+                                child: Container(),
+                                onTap: () {
+                                  Navigator.push(context, MaterialPageRoute(
+                                    builder: (context) =>
+                                        ProfilePageMobile(userId: post.userUID,),
+                                  ));
+                                },
+                              )
                           ),
                           title: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,12 +232,12 @@ class Timeline extends StatelessWidget {
                                   child: post.streamList != null && post.streamList.length > 0 ? Wrap(
                                     spacing: 8,
                                     children: post.streamList.map((tag) => InkWell(
-                                      child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
-                                      onTap: () {
-                                        Navigator.push(context, MaterialPageRoute(
-                                            builder: (context) => StreamTagPageMobile(tag: tag,)
-                                        ));
-                                      }
+                                        child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
+                                        onTap: () {
+                                          Navigator.push(context, MaterialPageRoute(
+                                              builder: (context) => StreamTagPageMobile(tag: tag,)
+                                          ));
+                                        }
                                     )).toList(),
                                   ) : Container(),
                                 ),
@@ -256,8 +259,7 @@ class Timeline extends StatelessWidget {
                             )
                           ],
                         ),
-                        Divider(height: 10, thickness: 1,)
-                      ],
+                      ),
                     );
                   },
                 ),
