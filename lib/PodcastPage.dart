@@ -102,7 +102,7 @@ class PodcastPage extends StatelessWidget {
                                               mp.pausePost();
                                               return;
                                             }
-                                            mp.playPost(PostPodItem.fromEpisode(ep));
+                                            mp.playPost(PostPodItem.fromEpisode(ep, podcast));
                                           }
                                       ),
                                       SizedBox(width: 5),
@@ -118,7 +118,7 @@ class PodcastPage extends StatelessWidget {
                                           ),
                                           onTap: () {
                                             if(mp.queue.where((item) => item.id == (ep.guid == null ? ep.link : ep.guid)).length == 0)
-                                              mp.addPostToQueue(PostPodItem.fromEpisode(ep));
+                                              mp.addPostToQueue(PostPodItem.fromEpisode(ep, podcast));
                                           }
                                       )
                                     ],
@@ -131,38 +131,7 @@ class PodcastPage extends StatelessWidget {
                           showDialog(
                               context: context,
                               builder: (context) {
-                                return SimpleDialog(
-                                  title: Center(child: Text(podcast.title)),
-                                  contentPadding: EdgeInsets.all(10),
-                                  children: <Widget>[
-                                    Text(ep.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                    SingleChildScrollView(
-                                        child: Html(
-                                          data: ep.description,
-                                        )
-                                    ),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: <Widget>[
-                                        FlatButton(
-                                            child: Text('Cancel'),
-                                            onPressed: () {
-                                              Navigator.of(context).pop();
-                                            }
-                                        ),
-                                        FlatButton(
-                                          child: Text('Go to episode', style: TextStyle(color: Colors.white)),
-                                          color: Colors.deepPurple,
-                                          onPressed: () {
-                                            Navigator.push(context, MaterialPageRoute(
-                                              builder: (context) => EpisodePage(ep, podcast),
-                                            ));
-                                          },
-                                        )
-                                      ],
-                                    )
-                                  ],
-                                );
+                                return EpisodeDialog(ep: ep, podcast: podcast);
                               }
                           );
                         },
@@ -174,6 +143,48 @@ class PodcastPage extends StatelessWidget {
             )
           ]
       ),
+    );
+  }
+}
+
+class EpisodeDialog extends StatelessWidget {
+  Episode ep;
+  Podcast podcast;
+
+  EpisodeDialog({this.ep, this.podcast});
+  @override
+  build(BuildContext context) {
+    return SimpleDialog(
+      title: Center(child: Text(podcast.title)),
+      contentPadding: EdgeInsets.all(10),
+      children: <Widget>[
+        Text(ep.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        SingleChildScrollView(
+            child: Html(
+              data: ep.description,
+            )
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            FlatButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                }
+            ),
+            FlatButton(
+              child: Text('Go to episode', style: TextStyle(color: Colors.white)),
+              color: Colors.deepPurple,
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (context) => EpisodePage(ep, podcast),
+                ));
+              },
+            )
+          ],
+        )
+      ],
     );
   }
 }

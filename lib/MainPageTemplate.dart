@@ -41,8 +41,8 @@ class MainPageTemplate extends StatelessWidget {
             return Scaffold(
               body: SlidingUpPanel(
                 borderRadius: BorderRadius.all(Radius.circular(25)),
-                panel: TopPanel(showPostButtons: true, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar, searchController: tempProvider.searchTextController),
-                collapsed: TopPanel(showPostButtons: false, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar, searchController: tempProvider.searchTextController,),
+                panel: TopPanel(showPostButtons: true, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar,),
+                collapsed: TopPanel(showPostButtons: false, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar,),
                 maxHeight: 265,
                 minHeight: 185,
                 defaultPanelState: mp.panelOpen ? PanelState.OPEN : PanelState.CLOSED,
@@ -110,7 +110,6 @@ class MainPageTemplate extends StatelessWidget {
 
 class MainTemplateProvider extends ChangeNotifier {
   double offsetHeight;
-  TextEditingController searchTextController = new TextEditingController();
   String searchTerm;
 
   void changeOffsetHeight(double slidePct) {
@@ -123,9 +122,6 @@ class MainTemplateProvider extends ChangeNotifier {
 
   void setSearchTerm(String value) {
     searchTerm = value;
-    searchTextController.text = value;
-    if(value != null)
-      searchTextController.selection = TextSelection.fromPosition(TextPosition(offset: value.length));
     notifyListeners();
   }
 }

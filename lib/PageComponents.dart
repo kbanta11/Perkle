@@ -157,7 +157,7 @@ class TopPanel extends StatelessWidget {
   String searchRequestId;
   String pageTitle;
   bool showPostButtons = true;
-  TextEditingController searchController;
+  TextEditingController searchController = new TextEditingController();
 
   TopPanel({
     this.showSearchBar,
@@ -171,8 +171,7 @@ class TopPanel extends StatelessWidget {
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     MainTemplateProvider templateProvider = Provider.of<MainTemplateProvider>(context);
-    if(searchController == null)
-      searchController = new TextEditingController();
+
     String playingPostText = '';
     if(mp != null) {
       if(mp.currentPostPodItem != null) {

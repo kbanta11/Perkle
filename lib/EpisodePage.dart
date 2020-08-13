@@ -10,6 +10,7 @@ import 'services/models.dart';
 import 'services/db_services.dart';
 import 'services/UserManagement.dart';
 import 'ProfilePage.dart';
+import 'PodcastPage.dart';
 
 class EpisodePage extends StatelessWidget {
   Episode _episode;
@@ -49,17 +50,24 @@ class EpisodePage extends StatelessWidget {
                         padding: EdgeInsets.all(10),
                         child: Column(
                           children: <Widget>[
-                            Container(
-                                height: 120,
-                                width: 120,
-                                decoration: _podcast.image != null ?  BoxDecoration(
-                                    image: DecorationImage(
-                                        image: NetworkImage(_podcast.image),
-                                        fit: BoxFit.cover
-                                    )
-                                ) : BoxDecoration(
-                                    color: Colors.deepPurple
-                                )
+                            InkWell(
+                              child: Container(
+                                  height: 120,
+                                  width: 120,
+                                  decoration: _podcast.image != null ?  BoxDecoration(
+                                      image: DecorationImage(
+                                          image: NetworkImage(_podcast.image),
+                                          fit: BoxFit.cover
+                                      )
+                                  ) : BoxDecoration(
+                                      color: Colors.deepPurple
+                                  )
+                              ),
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(
+                                  builder: (context) => PodcastPage(_podcast),
+                                ));
+                              },
                             ),
                             SizedBox(height: 10,),
                             Row(
@@ -94,7 +102,7 @@ class EpisodePage extends StatelessWidget {
                                     if(mp.isPlaying && mp.currentPostPodId == (_episode.guid == null ? _episode.link : _episode.guid))
                                       mp.pausePost();
                                     else
-                                      mp.playPost(PostPodItem.fromEpisode(_episode));
+                                      mp.playPost(PostPodItem.fromEpisode(_episode, _podcast));
                                   },
                                 ),
                                 SizedBox(width: 5),
@@ -110,7 +118,7 @@ class EpisodePage extends StatelessWidget {
                                   ),
                                   onTap: () {
                                     if(mp.queue.where((PostPodItem p) => p.id == (_episode.guid != null ? _episode.guid : _episode.link)).length <= 0)
-                                      mp.addPostToQueue(PostPodItem.fromEpisode(_episode));
+                                      mp.addPostToQueue(PostPodItem.fromEpisode(_episode, _podcast));
                                   },
                                 ),
                               ],
@@ -208,7 +216,7 @@ class EpisodePage extends StatelessWidget {
                                         child: Center(child: FaIcon(mp.currentPostPodId == reply.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                       ),
                                       onTap: () {
-                                        mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == reply.id ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply));
+                                        mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == reply.id ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
                                       },
                                     ),
                                     SizedBox(width: 5,),
@@ -224,7 +232,7 @@ class EpisodePage extends StatelessWidget {
                                       ),
                                       onTap: () {
                                         if(mp.queue.where((p) => p.id == reply.id).length <= 0)
-                                          mp.addPostToQueue(PostPodItem.fromEpisodeReply(reply));
+                                          mp.addPostToQueue(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
                                       },
                                     )
                                   ],

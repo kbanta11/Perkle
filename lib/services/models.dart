@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:podcast_search/podcast_search.dart';
@@ -264,11 +265,45 @@ class PostPodItem {
   Post post;
   DirectPost directPost;
   Episode episode;
+  Podcast podcast;
   EpisodeReply episodeReply;
   String audioUrl;
   String displayText;
 
-  PostPodItem({this.id, this.type, this.post, this.directPost, this.episode, this.audioUrl, this.displayText, this.episodeReply});
+  PostPodItem({this.id, this.type, this.post, this.directPost, this.episode, this.audioUrl, this.displayText, this.episodeReply, this.podcast});
+
+  Widget titleText() {
+    if(type == PostType.POST) {
+      return Text(post.postTitle ?? DateFormat("MMMM dd, yyyy").format(post.datePosted).toString());
+    }
+    if(type == PostType.DIRECT_POST) {
+      return Text(directPost.messageTitle ?? DateFormat("MMMM dd, yyyy").format(directPost.datePosted).toString());
+    }
+    if(type == PostType.PODCAST_EPISODE) {
+      return Text(episode.title);
+    }
+    if(type == PostType.EPISODE_REPLY) {
+      return Text(episodeReply.replyTitle ?? DateFormat("MMMM dd, yyyy").format(episodeReply.replyDate).toString());
+    }
+    return Text('Error Finding Title!');
+  }
+
+  Widget subtitleText() {
+    if(type == PostType.POST) {
+      return Text('@${post.username}');
+    }
+    if(type == PostType.DIRECT_POST) {
+      return Text('@${directPost.senderUsername}');
+    }
+    if(type == PostType.PODCAST_EPISODE) {
+      return Text(episode.author);
+    }
+    if(type == PostType.EPISODE_REPLY) {
+      return Text(episodeReply.posterUsername);
+    }
+    return Text('Error getting username!');
+  }
+
 
   factory PostPodItem.fromPost(Post post) {
     return PostPodItem(
@@ -290,21 +325,24 @@ class PostPodItem {
     );
   }
 
-  factory PostPodItem.fromEpisode(Episode episode) {
+  factory PostPodItem.fromEpisode(Episode episode, Podcast podcast) {
     return PostPodItem(
       id: episode.guid != null ? episode.guid : episode.link,
       type: PostType.PODCAST_EPISODE,
       episode: episode,
       audioUrl: episode.contentUrl,
-      displayText: '${episode.author} | ${episode.title}'
+      displayText: '${episode.author} | ${episode.title}',
+      podcast: podcast,
     );
   }
 
-  factory PostPodItem.fromEpisodeReply(EpisodeReply reply) {
+  factory PostPodItem.fromEpisodeReply(EpisodeReply reply, Episode ep, Podcast podcast) {
     return PostPodItem(
       id: reply.id,
       type: PostType.EPISODE_REPLY,
       episodeReply: reply,
+      episode: ep,
+      podcast: podcast,
       audioUrl: reply.audioFileLocation,
       displayText: '${reply.posterUsername} | ${reply.replyTitle != null ? reply.replyTitle : DateFormat("MMMM dd, yyyy @HH:mm").format(reply.replyDate).toString()}'
     );
