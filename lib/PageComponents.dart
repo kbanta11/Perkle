@@ -724,7 +724,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
                               await showDialog(
                                context: context,
                                builder: (BuildContext context) {
-                                 return Container(); //ProfilePicDialog(userId: widget.userId);
+                                 return ProfilePicDialog(userId: widget.userId);
                                }
                               ).then((_) {
                                 setState(() {});

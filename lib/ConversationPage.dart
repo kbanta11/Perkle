@@ -441,6 +441,9 @@ class ConversationPageMobile extends StatelessWidget {
                             trailing: user.uid == sender.uid ? picButton : playColumn,
                             title: Text(post.messageTitle ?? DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted).toString(), style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left),
                             subtitle: Text('@${post.senderUsername}', style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left,),
+                            onTap: () async {
+                              await ActivityManager().sendDirectPostDialog(context, conversationId: conversationId);
+                            },
                           ),
                         )
                       );

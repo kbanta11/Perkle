@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-//import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'models.dart';
 
@@ -504,7 +504,7 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
     );
   }
 }
-/*
+
 class ProfilePicDialog extends StatefulWidget {
   final String userId;
 
@@ -644,7 +644,7 @@ class _ProfilePicDialogState extends State<ProfilePicDialog> {
     );
   }
 }
- */
+
 
 class ConversationListObject {
   String targetUid;
