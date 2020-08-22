@@ -12,6 +12,7 @@ import 'services/models.dart';
 import 'services/db_services.dart';
 import 'services/UserManagement.dart';
 import 'main.dart';
+import 'PageComponents.dart';
 
 class ReplyToEpisodeDialog extends StatelessWidget {
   Episode _episode;
@@ -39,18 +40,26 @@ class ReplyToEpisodeDialog extends StatelessWidget {
               Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    FloatingActionButton(
-                        backgroundColor: rep._isRecording ? Colors.red : Colors.deepPurple,
-                        child: Icon(Icons.mic),
-                        heroTag: null,
-                        onPressed: () async {
-                          if(rep._isRecording) {
-                            rep.stopRecording();
-                            //await addPostDialog(context, date, recordingLocation, secondsLength);
-                          } else {
-                            rep.startRecording();
-                          }
-                        }
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        rep._isRecording ? RecordingPulse(maxSize: 56.0) : Container(),
+                        FloatingActionButton(
+                            backgroundColor: rep._isRecording ? Colors.transparent : Colors.deepPurple,
+                            child: Icon(Icons.mic, color: rep._isRecording ? Colors.red : Colors.white),
+                            elevation: rep._isRecording ? 0.0 : 5.0,
+                            shape: CircleBorder(side: BorderSide(color: rep._isRecording ? Colors.red : Colors.deepPurple)),
+                            heroTag: null,
+                            onPressed: () async {
+                              if(rep._isRecording) {
+                                rep.stopRecording();
+                                //await addPostDialog(context, date, recordingLocation, secondsLength);
+                              } else {
+                                rep.startRecording();
+                              }
+                            }
+                        )
+                      ]
                     ),
                     SizedBox(width: 50),
                     FloatingActionButton(

@@ -127,9 +127,10 @@ class MainAppProvider extends ChangeNotifier {
   //For showing recording button time
   bool isRecording = false;
   Duration recordingTime;
+  String _postAudioPath;
+  DateTime _startRecordDate;
 
   playPost(PostPodItem newPostPod) async {
-
     if(isPlaying) {
       player.stop();
       player.dispose();
@@ -178,7 +179,7 @@ class MainAppProvider extends ChangeNotifier {
     if(currentPostPodItem != null) {
       Duration duration = Duration(milliseconds: await player.getDuration());
       Duration position = Duration(milliseconds: await player.getCurrentPosition());
-      print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
+      //print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
       if(position.inSeconds + 30 >= duration.inSeconds)
         player.seek(Duration(seconds: duration.inSeconds - 15));
       else
@@ -190,7 +191,7 @@ class MainAppProvider extends ChangeNotifier {
     if(currentPostPodItem != null) {
       Duration duration = Duration(milliseconds: await player.getDuration());
       Duration position = Duration(milliseconds: await player.getCurrentPosition());
-      print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
+      //print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
       if(position.inSeconds - 30 <= 0)
         player.seek(Duration(seconds: 0));
       else
@@ -208,7 +209,7 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   pausePost() {
-    print('Pausing...');
+    //print('Pausing...');
     player.pause();
     isPlaying = false;
     notifyListeners();
@@ -233,7 +234,7 @@ class MainAppProvider extends ChangeNotifier {
     await new Future.delayed(const Duration(seconds : 2));
     if(queue.length > 0) {
       PostPodItem currentPost = queue.removeAt(0);
-      print('playing next post: ${currentPost.id}');
+      //print('playing next post: ${currentPost.id}');
       playPost(currentPost);
     }
   }
@@ -246,6 +247,34 @@ class MainAppProvider extends ChangeNotifier {
     isRecording = !isRecording;
     notifyListeners();
   }
+
+  startRecording() async {
+    isRecording = true;
+    List<dynamic> startRecordVals = await activityManager.startRecordNewPost(this);
+    String postPath = startRecordVals[0];
+    DateTime startDate = startRecordVals[1];
+    _postAudioPath = postPath;
+    _startRecordDate = startDate;
+    notifyListeners();
+  }
+
+  stopRecording(BuildContext context) async {
+    isRecording = false;
+    List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+    String recordingLocation = stopRecordVals[0];
+    int secondsLength = stopRecordVals[1];
+    print('$recordingLocation -/- Length: $secondsLength');
+    DateTime date = new DateTime.now();
+    notifyListeners();
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AddPostDialog(date: date, recordingLocation: recordingLocation, secondsLength: secondsLength,);
+      }
+    );
+    notifyListeners();
+  }
+
   setRecordingTime(Duration duration) {
     recordingTime = duration;
     notifyListeners();

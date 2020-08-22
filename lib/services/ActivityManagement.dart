@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:Perkl/MainPageTemplate.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +18,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../main.dart';
 import 'UserManagement.dart';
+import '../PageComponents.dart';
 
 /*
 class PostAudioPlayer {
@@ -618,20 +620,6 @@ List<String> processTagString(String postTags) {
 }
 
 // Add Post dialog
-Future<void> addPostDialog(BuildContext context, DateTime date, String recordingLocation, int secondsLength) async {
-  print('starting set date format');
-  String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(date);
-  print(dateString);
-  String _postTitle;
-  String _postTags;
-
-  showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AddPostDialog(date: date, recordingLocation: recordingLocation, secondsLength: secondsLength,);
-      }
-  );
-}
 
 class AddPostDialog extends StatefulWidget {
   DateTime date;
@@ -945,7 +933,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                     });
                     _sendToUsers.removeWhere((key, value) => value == false);
                     _addToConversations.removeWhere((key, value) => value == false);
-                    print('Sending to: $_sendToUsers / As Group: $_sendAsGroup / Add to Timeline: $_addToTimeline');
+                    //print('Sending to: $_sendToUsers / As Group: $_sendAsGroup / Add to Timeline: $_addToTimeline');
                     await ActivityManager().addPost(context, {"postTitle": _postTitle,
                       "localRecordingLocation": widget.recordingLocation,
                       "date": widget.date,
@@ -1087,7 +1075,7 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
                     "secondsLength": duration.inSeconds,
                     "streamList": tagList,
                   }, true, false, null, null);
-                  print('Post added');
+                  //print('Post added');
                 }
               },
             ),
@@ -1121,6 +1109,12 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
   bool _isLoading = false;
 
   @override
+  dispose() {
+    activityManager.recorder.release();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return SimpleDialog(
@@ -1148,36 +1142,44 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                FloatingActionButton(
-                    backgroundColor: _isRecording ? Colors.red : Colors.deepPurple,
-                    child: Icon(Icons.mic),
-                    heroTag: null,
-                    onPressed: () async {
-                      if(_isRecording) {
-                        List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-                        String recordingLocation = stopRecordVals[0];
-                        int secondsLength = stopRecordVals[1];
+                Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    _isRecording ? RecordingPulse(maxSize: 56.0,) : Container(),
+                    FloatingActionButton(
+                        backgroundColor: _isRecording ? Colors.transparent : Colors.deepPurple,
+                        child: Icon(Icons.mic, color: _isRecording ? Colors.red : Colors.white,),
+                        shape: CircleBorder(side: BorderSide(color: _isRecording ? Colors.red : Colors.deepPurple)),
+                        heroTag: null,
+                        elevation: _isRecording ? 0.0 : 5.0,
+                        onPressed: () async {
+                          if(_isRecording) {
+                            List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+                            String recordingLocation = stopRecordVals[0];
+                            int secondsLength = stopRecordVals[1];
 
-                        print('$recordingLocation -/- Length: $secondsLength');
-                        setState(() {
-                          _isRecording = !_isRecording;
-                          _secondsLength = secondsLength;
-                        });
-                        print('getting date');
-                        DateTime date = new DateTime.now();
-                        print('date before dialog: $date');
-                        //await addPostDialog(context, date, recordingLocation, secondsLength);
-                      } else {
-                        List<dynamic> startRecordVals = await activityManager.startRecordNewPost(mp);
-                        String postPath = startRecordVals[0];
-                        DateTime startDate = startRecordVals[1];
-                        setState(() {
-                          _isRecording = !_isRecording;
-                          _postAudioPath = postPath;
-                          _startRecordDate = startDate;
-                        });
-                      }
-                    }
+                            print('$recordingLocation -/- Length: $secondsLength');
+                            setState(() {
+                              _isRecording = !_isRecording;
+                              _secondsLength = secondsLength;
+                            });
+                            print('getting date');
+                            DateTime date = new DateTime.now();
+                            print('date before dialog: $date');
+                            //await addPostDialog(context, date, recordingLocation, secondsLength);
+                          } else {
+                            List<dynamic> startRecordVals = await activityManager.startRecordNewPost(mp);
+                            String postPath = startRecordVals[0];
+                            DateTime startDate = startRecordVals[1];
+                            setState(() {
+                              _isRecording = !_isRecording;
+                              _postAudioPath = postPath;
+                              _startRecordDate = startDate;
+                            });
+                          }
+                        }
+                    )
+                  ],
                 ),
                 SizedBox(width: 50),
                 FloatingActionButton(

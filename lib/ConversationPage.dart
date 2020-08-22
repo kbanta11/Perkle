@@ -349,8 +349,9 @@ class _ConversationPageState extends State<ConversationPage> {
 //New Version
 class ConversationPageMobile extends StatelessWidget {
   String conversationId;
+  String pageTitle;
 
-  ConversationPageMobile({this.conversationId});
+  ConversationPageMobile({this.conversationId, this.pageTitle});
 
   @override
   build(BuildContext context) {
@@ -368,6 +369,7 @@ class ConversationPageMobile extends StatelessWidget {
             isConversation: true,
             conversationId: conversationId,
             bottomNavIndex: 2,
+            pageTitle: pageTitle,
             body: postList == null ? Center(child: CircularProgressIndicator()) : ListView(
               children: postList.map((post) {
                 return StreamProvider<User>(

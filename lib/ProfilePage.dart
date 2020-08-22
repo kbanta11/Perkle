@@ -110,7 +110,7 @@ class ProfilePageMobile extends StatelessWidget {
                 bottomNavIndex: 3,
                 body: Column(
                   children: <Widget>[
-                    UserInfoSection(userId: userId),
+                    UserInfoSection(user: user),
                     Expanded(
                       child: Timeline(userId: user.uid, type: TimelineType.USER)
                     )

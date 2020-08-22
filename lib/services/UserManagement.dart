@@ -40,7 +40,7 @@ class UserManagement {
     return _db.collection('users').document(user.uid).snapshots().map((snap) {
       if(snap == null || snap.data == null)
         return null;
-      print('user snap data: ${snap.data}');
+      //print('user snap data: ${snap.data}');
       return User.fromFirestore(snap);
     });
   }
@@ -63,7 +63,7 @@ class UserManagement {
         });
       });
     } else {
-      Navigator.of(context).pushReplacementNamed('/landingpage');
+      Navigator.of(context).pushNamedAndRemoveUntil('/landingpage', (Route<dynamic> route) => false);
     }
   }
 

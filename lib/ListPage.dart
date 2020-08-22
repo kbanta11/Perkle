@@ -281,7 +281,7 @@ class ConversationListPageMobile extends StatelessWidget {
                           //print('go to conversation: ${convoItem.targetUsername} (${convoItem.conversationId})');
                           DBService().markConversationRead(conversation.id, firebaseUser.uid);
                           Navigator.push(context, MaterialPageRoute(
-                            builder: (context) => ConversationPageMobile(conversationId: conversation.id),
+                            builder: (context) => ConversationPageMobile(conversationId: conversation.id, pageTitle: titleText),
                           ));
                         }
                     )

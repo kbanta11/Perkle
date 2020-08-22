@@ -34,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
   _checkLoggedIn() async {
     FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
     if(currentUser != null)
-      Navigator.push(context, MaterialPageRoute(
+      Navigator.pushReplacement(context, MaterialPageRoute(
         builder: (context) => HomePageMobile(redirectOnNotification: true,),
       ));
   }
@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
           onTap: (flushbar) {
             String conversationId = message['data']['conversationId'];
             if(conversationId != null){
-              Navigator.push(context, MaterialPageRoute(
+              Navigator.pushReplacement(context, MaterialPageRoute(
                 builder: (context) => ConversationPageMobile(conversationId: conversationId),
               ));
             }
@@ -77,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
         String conversationId = message['data']['conversationId'];
         print('Conversation id: ' + conversationId);
         if(conversationId != null && _redirectOnNotification){
-          Navigator.push(context, MaterialPageRoute(
+          Navigator.pushReplacement(context, MaterialPageRoute(
             builder: (context) => ConversationPageMobile(conversationId: conversationId),
           )).then((_) {
             _redirectOnNotification = false;
@@ -90,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
         String conversationId = message['data']['conversationId'];
         print('Conversation id: ' + conversationId);
         if(conversationId != null && _redirectOnNotification){
-          Navigator.push(context, MaterialPageRoute(
+          Navigator.pushReplacement(context, MaterialPageRoute(
             builder: (context) => ConversationPageMobile(conversationId: conversationId),
           )).then((_) {
             _redirectOnNotification = false;

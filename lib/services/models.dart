@@ -392,3 +392,8 @@ class EpisodeReply {
     );
   }
 }
+
+enum UserListType {
+  FOLLOWERS,
+  FOLLOWING
+}

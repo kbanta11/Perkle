@@ -51,12 +51,12 @@ class MainPageTemplate extends StatelessWidget {
                 onPanelOpened: () {
                   tempProvider.changeOffsetHeight(1);
                   mp.updatePanelState();
-                  print('Panel opened: ${mp.panelOpen}');
+                  //print('Panel opened: ${mp.panelOpen}');
                 },
                 onPanelClosed: () {
                   tempProvider.changeOffsetHeight(0);
                   mp.updatePanelState();
-                  print('Panel closed: ${mp.panelOpen}');
+                  //print('Panel closed: ${mp.panelOpen}');
                 },
                 onPanelSlide: (slidePct) {
                   tempProvider.changeOffsetHeight(slidePct);

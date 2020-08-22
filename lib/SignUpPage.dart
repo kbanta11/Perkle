@@ -200,7 +200,7 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
           print('creating user document');
           UserManagement().storeNewUser(currentUser);
         } else {
-          Navigator.of(context).pushReplacementNamed('/homepage');
+          Navigator.of(context).pushNamedAndRemoveUntil('/homepage', (Route<dynamic> route) => false);
         }
       }
     });

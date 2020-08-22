@@ -10,7 +10,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
-//import 'package:audioplayers/audioplayers.dart';
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock/wakelock.dart';
@@ -19,6 +18,7 @@ import 'ProfilePage.dart';
 import 'SearchPage.dart';
 import 'HomePage.dart';
 import 'StreamTagPage.dart';
+import 'UserList.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'QueuePage.dart';
@@ -86,67 +86,49 @@ class _TimerDialogState extends State<TimerDialog> {
 }
 
 class RecordButton extends StatefulWidget {
-  ActivityManager activityManager;
-
-  RecordButton({Key key, @required this.activityManager}) : super(key: key);
 
   @override
   _RecordButtonState createState() => _RecordButtonState();
 }
 
 class _RecordButtonState extends State<RecordButton> {
-  bool _isRecording = false;
-  String _postAudioPath;
-  DateTime _startRecordDate;
 
   @override
   Widget build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    return Container(
-      height: _isRecording ? 65.0 : 75.0,
-      width:_isRecording ? 65.0 : 75.0,
-      child: FittedBox(
-        child: FloatingActionButton(
-          heroTag: null,
-          shape: CircleBorder(side: BorderSide(color: Colors.red)),
-            child: Icon(
-              Icons.mic,
-              color: _isRecording ? Colors.red : Colors.white,
-            ),
-            backgroundColor:  _isRecording ? Colors.transparent : Colors.red,
-            onPressed: () async {
-              if(_isRecording) {
-                Wakelock.disable();
-                mp.changeRecordingStatus();
-                List<dynamic> stopRecordVals = await widget.activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-                String recordingLocation = stopRecordVals[0];
-                int secondsLength = stopRecordVals[1];
-
-                print('$recordingLocation -/- Length: $secondsLength');
-                setState(() {
-                  _isRecording = !_isRecording;
-                });
-                DateTime date = new DateTime.now();
-                await addPostDialog(context, date, recordingLocation, secondsLength);
-              } else {
-                //await showTimer();
-                //if(widget.activityManager.currentlyPlayingPlayer != null) {
-                //  widget.activityManager.pausePlaying();
-                //}
-                Wakelock.enable();
-                mp.changeRecordingStatus();
-                List<dynamic> startRecordVals = await widget.activityManager.startRecordNewPost(mp);
-                String postPath = startRecordVals[0];
-                DateTime startDate = startRecordVals[1];
-                setState(() {
-                  _isRecording = !_isRecording;
-                  _postAudioPath = postPath;
-                  _startRecordDate = startDate;
-                });
-              }
-            }
-        )
+    return Stack(
+      alignment: Alignment.center,
+      children: <Widget>[
+        mp.isRecording ? RecordingPulse(maxSize: 65.0,) : Container(),
+        Container(
+          height: mp.isRecording ? 65.0 : 75.0,
+          width:mp.isRecording ? 65.0 : 75.0,
+          child: FittedBox(
+              child: FloatingActionButton(
+                  heroTag: null,
+                  shape: CircleBorder(side: BorderSide(color: Colors.red)),
+                  child: Icon(
+                    Icons.mic,
+                    color: mp.isRecording ? Colors.red : Colors.white,
+                  ),
+                  backgroundColor:  mp.isRecording ? Colors.transparent : Colors.red,
+                  onPressed: () async {
+                    if(mp.isRecording) {
+                      Wakelock.disable();
+                      mp.stopRecording(context);
+                    } else {
+                      //await showTimer();
+                      //if(widget.activityManager.currentlyPlayingPlayer != null) {
+                      //  widget.activityManager.pausePlaying();
+                      //}
+                      Wakelock.enable();
+                      mp.startRecording();
+                    }
+                  }
+              )
+          )
       )
+      ],
     );
   }
 }
@@ -214,7 +196,7 @@ class TopPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
-                    mainPopMenu(context),
+                    MainPopMenu(),
                     Expanded(
                       child: showSearchBar != null && showSearchBar ? Padding(
                           padding: EdgeInsets.only(left: 20.0),
@@ -283,7 +265,7 @@ class TopPanel extends StatelessWidget {
                     ),
                     Column(
                       children: <Widget>[
-                        RecordButton(activityManager: mp.activityManager,),
+                        RecordButton(),
                         mp.isRecording && mp.recordingTime != null ? Text('${getDurationString(mp.recordingTime)}', style: TextStyle(color: Colors.white)) : Container(),
                       ],
                     )
@@ -314,7 +296,7 @@ class TopPanel extends StatelessWidget {
                           stream: mp.player.onAudioPositionChanged,
                           builder: (context, AsyncSnapshot<Duration> positionSnap) {
                             Duration position = positionSnap.data;
-                            print('Duration: $duration/Position: $position');
+                            //print('Duration: $duration/Position: $position');
                             if (duration == null || position == null)
                               return Container();
                             return Text('${getDurationString(
@@ -352,7 +334,7 @@ class TopPanel extends StatelessWidget {
                     icon: Icon(mp.isPlaying ? Icons.pause : Icons.play_arrow, color: mp.queue.length > 0 || mp.currentPostPodItem != null ? Colors.white : Colors.grey,),
                     onPressed: () {
                       if(mp.isPlaying) {
-                        print('pausing post');
+                        //print('pausing post');
                         mp.pausePost();
                         return;
                       }
@@ -545,9 +527,9 @@ class _PlaylistControlsState extends State<PlaylistControls> {
  */
 
 class UserInfoSection extends StatefulWidget {
-  final String userId;
+  final User user;
 
-  UserInfoSection({Key key, @required this.userId}) : super(key: key);
+  UserInfoSection({Key key, @required this.user}) : super(key: key);
 
   @override
   _UserInfoSectionState createState() => _UserInfoSectionState();
@@ -568,230 +550,282 @@ class _UserInfoSectionState extends State<UserInfoSection> {
 
     @override
     void initState() {
-      Stream picStream = Firestore.instance.collection('users').document(widget.userId).snapshots();
       super.initState();
     }
 
     @override
     Widget build(BuildContext context) {
-      Widget floatingRightButtons = FutureBuilder(
-          future: _isCurrentUser(widget.userId),
+      FirebaseUser currentUser = Provider.of<FirebaseUser>(context);
+
+      Widget editMessageButton(User user, FirebaseUser currentUser) {
+        if(user.uid != currentUser.uid) {
+          //Send Message Button
+          return ButtonTheme(
+            height: 25,
+            minWidth: 50,
+            child: FlatButton(
+              child: Text('Message'),
+              padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+              shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+              color: Colors.deepPurple,
+              textColor: Colors.white,
+              onPressed: () async {
+                String currentUsername;
+                String currentUserId;
+                await UserManagement().getUserData().then((docRef) async {
+                  currentUserId = docRef.documentID;
+                  await docRef.get().then((snapshot) {
+                    currentUsername = snapshot.data['username'].toString();
+                  });
+                });
+                await activityManager.sendDirectPostDialog(context, memberMap: {widget.user.uid: widget.user.username, currentUserId: currentUsername});
+              }
+            )
+          );
+        }
+        return ButtonTheme(
+          height: 25,
+          minWidth: 50,
+          child: OutlineButton(
+            child: Text('Edit Profile'),
+            padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+            shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+            borderSide: BorderSide(
+              color: Colors.deepPurple,
+            ),
+            textColor: Colors.deepPurple,
+            onPressed: () {
+              showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return UpdateProfileDialog();
+                  });
+            }
+          )
+        );
+      }
+
+      //Left button under profile description: Follow/Unfollow if not own profile
+      Widget followUnfollowButton = FutureBuilder(
+          future: _isCurrentUser(widget.user.uid),
           initialData: false,
           builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-            if(!snapshot.data)
-              return Center(
-                  child: Container(
-                      height: 45.0,
-                      width: 45.0,
-                      child: FloatingActionButton(
-                        backgroundColor: Colors.deepPurple,
-                        child: Icon(Icons.mail_outline),
-                        heroTag: null,
-                        onPressed: () async {
-                          String currentUsername;
-                          String currentUserId;
-                          await UserManagement().getUserData().then((docRef) async {
-                            currentUserId = docRef.documentID;
-                            await docRef.get().then((snapshot) {
-                              currentUsername = snapshot.data['username'].toString();
-                            });
-                          });
-                          await Firestore.instance.collection('users').document(widget.userId).get().then((DocumentSnapshot snapshot) async {
-                            String username = snapshot.data['username'].toString();
-                            await activityManager.sendDirectPostDialog(context, memberMap: {widget.userId: username, currentUserId: currentUsername});
-                          });
-                        },
-                      )
-                  )
+            if(snapshot.data) {
+              return Container();
+            } else {
+              return StreamBuilder(
+                stream: Firestore.instance.collection('/users').document(currentUser.uid).snapshots(),
+                builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+                  // print('$currentUserId ----::---- ${snapshot.data}');
+                  bool isFollowing = false;
+                  Map<dynamic, dynamic> following;
+                  if(snapshot.hasData) {
+                    switch (snapshot.connectionState) {
+                      case ConnectionState.waiting:
+                        return SizedBox();
+                      default:
+                        following = snapshot.data['following'];
+
+                        // print(following == null);
+                        if(following != null) {
+                          // print('user has following list');
+                          // print('User already followed: ${following.containsKey(widget.userId)}');
+                          isFollowing = following.containsKey(widget.user.uid);
+                        }
+
+                        if(isFollowing){
+                          return ButtonTheme(
+                              height: 25,
+                              minWidth: 50,
+                              child: OutlineButton(
+                                child: Text('Unfollow'),
+                                padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                                borderSide: BorderSide(
+                                  color: Colors.deepPurple,
+                                ),
+                                textColor: Colors.deepPurple,
+                                onPressed: () async {
+                                  ActivityManager().unfollowUser(widget.user.uid);
+                                },
+                              )
+                          );
+                        }
+                    }
+                  }
+                  return ButtonTheme(
+                    height: 25,
+                    minWidth: 50,
+                    child: FlatButton(
+                      child: Text('Follow'),
+                      padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                      shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                      color: Colors.deepPurple,
+                      textColor: Colors.white,
+                      onPressed: () async {
+                        ActivityManager().followUser(widget.user.uid);
+                      },
+                    ),
+                  );
+                },
               );
-            return Center(
+            }
+          }
+      );
+
+      Widget profileImage(User user) {
+          if(user != null && user.profilePicUrl != null) {
+            return Container(
+              height: 75.0,
+              width: 75.0,
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.deepPurple,
+                  image: DecorationImage(
+                    fit: BoxFit.cover,
+                    image: NetworkImage(user.profilePicUrl),
+                  )
+              ),
+            );
+        }
+        return Container(
+          height: 75.0,
+          width: 75.0,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.deepPurple,
+          ),
+        );
+      }
+
+      Widget profilePic(User user, FirebaseUser currentUser) {
+        if(user.uid != currentUser.uid) {
+          return profileImage(user);
+        }
+        return Stack(
+          children: <Widget>[
+            profileImage(user),
+            Positioned(
+                bottom: 0.0,
+                right: 0.0,
                 child: Container(
-                    height: 45.0,
-                    width: 45.0,
-                    child: FloatingActionButton(
-                        child: Icon(Icons.edit),
-                        backgroundColor: Colors.deepPurple,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        onPressed: () {
-                          showDialog(
+                    height: 20.0,
+                    width: 20.0,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.deepPurpleAccent),
+                      boxShadow: [BoxShadow(
+                        offset: Offset(-1.0, -1.0),
+                        blurRadius: 2.5,
+                      )],
+                    ),
+                    child: RawMaterialButton(
+                        shape: CircleBorder(),
+                        child: Icon(Icons.add_a_photo,
+                          color: Colors.deepPurpleAccent,
+                          size: 12.5,
+                        ),
+                        fillColor: Colors.white,
+                        onPressed: () async {
+                          await showDialog(
                               context: context,
                               builder: (BuildContext context) {
-                                return UpdateProfileDialog();
-                              });
+                                return ProfilePicDialog(userId: user.uid);
+                              }
+                          ).then((_) {
+                            setState(() {});
+                          });
                         }
                     )
                 )
-            );
-          }
-      );
-
-      Widget profileImage = StreamBuilder(
-        stream: Firestore.instance.collection('users').document(widget.userId).snapshots(),
-        builder: (context, snapshot) {
-          if(snapshot.hasData) {
-            //print('Pic URL: ${snapshot.data['profilePicUrl']}');
-            if(snapshot.data['profilePicUrl'] != null) {
-              String profilePicUrl = snapshot.data['profilePicUrl'].toString();
-              return Container(
-                height: 75.0,
-                width: 75.0,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.deepPurple,
-                    image: DecorationImage(
-                      fit: BoxFit.cover,
-                      image: NetworkImage(profilePicUrl),
-                    )
-                ),
-              );
-            }
-          }
-          return Container(
-            height: 75.0,
-            width: 75.0,
-            decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.deepPurple,
             ),
-          );
-        }
-      );
-
-      Widget profilePic = FutureBuilder(
-          future: _isCurrentUser(widget.userId),
-          initialData: false,
-          builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-            if(!snapshot.data){
-              //print('not logged in user profile pic');
-              return profileImage;
-            }
-            //print('logged in user profile pic');
-            return Stack(
-              children: <Widget>[
-                StreamBuilder(
-                    stream: Firestore.instance.collection('users').document(widget.userId).snapshots(),
-                    builder: (context, snapshot) {
-                      if(snapshot.hasData) {
-                        //print('Pic URL: ${snapshot.data['profilePicUrl']}');
-                        if(snapshot.data['profilePicUrl'] != null) {
-                          String profilePicUrl = snapshot.data['profilePicUrl'].toString();
-                          return Container(
-                            height: 75.0,
-                            width: 75.0,
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.deepPurple,
-                                image: DecorationImage(
-                                  fit: BoxFit.cover,
-                                  image: NetworkImage(profilePicUrl),
-                                )
-                            ),
-                          );
-                        }
-                      }
-                      return Container(
-                        height: 75.0,
-                        width: 75.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.deepPurple,
-                        ),
-                      );
-                    }
-                ),
-                Positioned(
-                    bottom: 0.0,
-                    right: 0.0,
-                    child: Container(
-                        height: 20.0,
-                        width: 20.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.deepPurpleAccent),
-                          boxShadow: [BoxShadow(
-                            offset: Offset(-1.0, -1.0),
-                            blurRadius: 2.5,
-                          )],
-                        ),
-                        child: RawMaterialButton(
-                            shape: CircleBorder(),
-                            child: Icon(Icons.add_a_photo,
-                              color: Colors.deepPurpleAccent,
-                              size: 12.5,
-                            ),
-                            fillColor: Colors.white,
-                            onPressed: () async {
-                              await showDialog(
-                               context: context,
-                               builder: (BuildContext context) {
-                                 return ProfilePicDialog(userId: widget.userId);
-                               }
-                              ).then((_) {
-                                setState(() {});
-                              });
-                            }
-                        )
-                    )
-                ),
-              ],
-            );
-          }
-      );
+          ],
+        );
+      }
 
       return Card(
-        elevation: 5,
-        margin: EdgeInsets.all(5),
-        child: Padding(
-          padding: EdgeInsets.all(5),
-          child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize: MainAxisSize.max,
-              children: <Widget>[
-                Padding(
-                    child: profilePic,
-                    padding: EdgeInsets.fromLTRB(5.0, 5.0, 0.0, 0.0)
-                ), //Profile Pic with or without add photo if own profile
-                SizedBox(width: 5.0),
-                Expanded(
-                  child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        SizedBox(height: 10.0),
-                        StreamBuilder(
-                            stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
-                            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                              //print(snapshot.data.toString());
-                              if (!snapshot.hasData) {
-                                return Text('@',
-                                  style: TextStyle(fontSize: 18.0),
-                                );
-                              }
-
-                              String username = snapshot.data.documents.first.data['username'].toString();
-                              if(username == null || username == 'null')
-                                username = '@';
-
-                              return Text('@$username',
-                                style: TextStyle(
-                                  fontSize: 18.0,
+          elevation: 5,
+          margin: EdgeInsets.all(5),
+          child: Padding(
+              padding: EdgeInsets.all(5),
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.max,
+                  children: <Widget>[
+                    Padding(
+                        child: profilePic(widget.user, currentUser),
+                        padding: EdgeInsets.fromLTRB(5.0, 5.0, 0.0, 0.0)
+                    ), //Profile Pic with or without add photo if own profile
+                    SizedBox(width: 5.0),
+                    Expanded(
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            SizedBox(height: 10.0),
+                            Text('@${widget.user.username ?? ''}',
+                              style: TextStyle(
+                                fontSize: 18.0,
+                              ),
+                            ),
+                            BioTextSection(userId: widget.user.uid),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [followUnfollowButton, editMessageButton(widget.user, currentUser)]
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: <Widget>[
+                                Column(
+                                  children: <Widget>[
+                                    InkWell(
+                                      child: Text('${widget.user.followers == null ? 0 : widget.user.followers.length}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepPurpleAccent)),
+                                      onTap: () {
+                                        if(widget.user.followers != null && widget.user.followers.length > 0) {
+                                          Navigator.push(context, MaterialPageRoute(
+                                            builder: (context) =>
+                                                UserList(widget.user.followers, UserListType.FOLLOWERS),
+                                          ));
+                                        }
+                                      },
+                                    ),
+                                    Text('Followers'),
+                                  ],
                                 ),
-                              );
-                            }
-                        ),
-                        BioTextSection(userId: widget.userId),
-                      ]
-                  ),
-                ),
-                Padding(
-                    child: floatingRightButtons,
-                    padding: EdgeInsets.fromLTRB(0.0, 5.0, 5.0, 0.0)
-                ),
-              ].where((item) => item != null).toList()
+                                Column(
+                                  children: <Widget>[
+                                    InkWell(
+                                      child: Text('${widget.user.following == null ? 0 : widget.user.following.length}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepPurpleAccent)),
+                                      onTap: () {
+                                        if(widget.user.following != null && widget.user.following.length > 0) {
+                                          Navigator.push(context, MaterialPageRoute(
+                                            builder: (context) =>
+                                                UserList(widget.user.following, UserListType.FOLLOWING),
+                                          ));
+                                        }
+                                      }
+                                    ),
+                                    Text('Following'),
+                                  ],
+                                ),
+                                Column(
+                                  children: <Widget>[
+                                    InkWell(
+                                      child: Text('${widget.user.posts == null ? 0 : widget.user.posts.length}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepPurpleAccent)),
+                                    ),
+                                    Text('Posts'),
+                                  ],
+                                ),
+                              ]
+                            )
+                          ]
+                      ),
+                    ),
+                  ].where((item) => item != null).toList()
+              )
           )
-        )
       );
     }
   }
@@ -835,74 +869,6 @@ class _BioTextSectionState extends State<BioTextSection> {
 
   @override
   Widget build(BuildContext context) {
-    Widget leftButton = FutureBuilder(
-      future: _isCurrentUser(widget.userId),
-      initialData: false,
-      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-        if(snapshot.data) {
-          return Container();
-        } else {
-          return StreamBuilder(
-            stream: Firestore.instance.collection('/users').document(currentUserId).snapshots(),
-            builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-              // print('$currentUserId ----::---- ${snapshot.data}');
-              bool isFollowing = false;
-              Map<dynamic, dynamic> following;
-              if(snapshot.hasData) {
-                switch (snapshot.connectionState) {
-                  case ConnectionState.waiting:
-                    return SizedBox();
-                  default:
-                    following = snapshot.data['following'];
-
-                    // print(following == null);
-                    if(following != null) {
-                      // print('user has following list');
-                      // print('User already followed: ${following.containsKey(widget.userId)}');
-                      isFollowing = following.containsKey(widget.userId);
-                    }
-
-                    if(isFollowing){
-                      return OutlineButton(
-                        child: Text('Unfollow'),
-                        padding: EdgeInsets.all(0.0),
-                        shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-                        borderSide: BorderSide(
-                          color: Colors.deepPurple,
-                        ),
-                        textColor: Colors.deepPurple,
-                        onPressed: () async {
-                          ActivityManager().unfollowUser(widget.userId);
-                        },
-                      );
-                    } else {
-                      return FlatButton(
-                        child: Text('Follow'),
-                        padding: EdgeInsets.all(0.0),
-                        shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-                        color: Colors.deepPurple,
-                        textColor: Colors.white,
-                        onPressed: () async {
-                          ActivityManager().followUser(widget.userId);
-                        },
-                      );
-                    }
-                }
-              } else {
-                return FlatButton(
-                  child: Text('Unfollow'),
-                  padding: EdgeInsets.all(0.0),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onPressed: () async {
-                    ActivityManager().unfollowUser(widget.userId);
-                  }
-                );
-              }
-            },
-          );
-        }
-      }
-    );
 
     return Container(
       //width: 200.0,
@@ -928,17 +894,59 @@ class _BioTextSectionState extends State<BioTextSection> {
                     maxLines: 5,
                     textAlign: TextAlign.left,
                   ),
-                  Row(
-                      children: <Widget>[
-                        leftButton,
-                      ]
-                  )
                 ]
             );
 
             return content;
           }
       ),
+    );
+  }
+}
+
+class ProfilePic extends StatelessWidget {
+  User user;
+
+  ProfilePic(this.user);
+
+  @override
+  build(BuildContext context) {
+    return user == null || user.profilePicUrl == null ? Container(
+      height: 60.0,
+      width: 60.0,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.deepPurple,
+      ),
+      child: InkWell(
+        child: Container(),
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) =>
+                ProfilePageMobile(userId: user.uid,),
+          ));
+        },
+      ),
+    ) : Container(
+        height: 60.0,
+        width: 60.0,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.deepPurple,
+          image: DecorationImage(
+            fit: BoxFit.cover,
+            image: NetworkImage(user.profilePicUrl),
+          ),
+        ),
+        child: InkWell(
+          child: Container(),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (context) =>
+                  ProfilePageMobile(userId: user.uid,),
+            ));
+          },
+        )
     );
   }
 }
@@ -1391,96 +1399,109 @@ class _TimelineListItemState extends State<TimelineListItem> {
 -------------------------------------------*/
 
 
-Widget mainPopMenu(BuildContext context) {
-  return PopupMenuButton(
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          child: Text('Logout'),
-          value: 1,
-        ),
-        PopupMenuItem(
-          child: Text('Feedback'),
-          value: 2
-        ),
-        PopupMenuItem(
-          child: Text('Account Settings'),
-          value: 3,
-        )
-      ],
-    child: FutureBuilder(
-        future: FirebaseAuth.instance.currentUser(),
-        builder: (context, snapshot) {
-          if(snapshot.hasData){
-            String _userId = snapshot.data.uid;
-            return StreamBuilder(
-                stream: Firestore.instance.collection('users').document(_userId).snapshots(),
-                builder: (context, snapshot) {
-                  if(snapshot.hasData) {
-                    String profilePicUrl = snapshot.data['profilePicUrl'];
-                    if(profilePicUrl != null)
+class MainPopMenu extends StatelessWidget {
+  @override
+  build(BuildContext context) {
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    return PopupMenuButton(
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            child: Text('Logout'),
+            value: 1,
+          ),
+          PopupMenuItem(
+              child: Text('Feedback'),
+              value: 2
+          ),
+          PopupMenuItem(
+            child: Text('Account Settings'),
+            value: 3,
+          )
+        ],
+        child: Navigator.canPop(context) ? IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            if(Navigator.canPop(context)) {
+              Navigator.of(context).pop();
+            } else {
+              mp.notifyListeners();
+            }
+          },
+        ) : FutureBuilder(
+            future: FirebaseAuth.instance.currentUser(),
+            builder: (context, snapshot) {
+              if(snapshot.hasData){
+                String _userId = snapshot.data.uid;
+                return StreamBuilder(
+                    stream: Firestore.instance.collection('users').document(_userId).snapshots(),
+                    builder: (context, snapshot) {
+                      if(snapshot.hasData) {
+                        String profilePicUrl = snapshot.data['profilePicUrl'];
+                        if(profilePicUrl != null)
+                          return Container(
+                            height: 40.0,
+                            width: 40.0,
+                            decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                image: DecorationImage(
+                                  fit: BoxFit.cover,
+                                  image: NetworkImage(profilePicUrl.toString()),
+                                )
+                            ),
+                          );
+                      }
                       return Container(
                         height: 40.0,
                         width: 40.0,
                         decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            image: DecorationImage(
-                              fit: BoxFit.cover,
-                              image: NetworkImage(profilePicUrl.toString()),
-                            )
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          // image: DecorationImage()
                         ),
                       );
-                  }
-                  return Container(
-                    height: 40.0,
-                    width: 40.0,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      // image: DecorationImage()
-                    ),
-                  );
+                    }
+                );
+              }
+              return Container(
+                height: 40.0,
+                width: 40.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  // image: DecorationImage()
+                ),
+              );
+            }
+        ),
+        onSelected: (value) {
+          if(value == 1){
+            FirebaseAuth.instance.signOut().then((value) {
+              Navigator.of(context).pushNamedAndRemoveUntil('/landingpage', (Route<dynamic> route) => false);
+            })
+                .catchError((e) {
+              print(e);
+            });
+          }
+          if(value == 2) {
+            showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return FeedbackForm();
                 }
             );
           }
-          return Container(
-            height: 40.0,
-            width: 40.0,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              // image: DecorationImage()
-            ),
-          );
+          if(value == 3) {
+            showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AccountSettings();
+                }
+            );
+          }
         }
-    ),
-    onSelected: (value) {
-        if(value == 1){
-          FirebaseAuth.instance.signOut().then((value) {
-            Navigator.of(context).pushReplacementNamed('/landingpage');
-          })
-              .catchError((e) {
-            print(e);
-          });
-        }
-        if(value == 2) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return FeedbackForm();
-            }
-          );
-        }
-        if(value == 3) {
-          showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AccountSettings();
-              }
-          );
-        }
-    }
-  );
+    );
+  }
 }
 
 //Bottom Navigation Bar
@@ -1567,4 +1588,47 @@ Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager 
         backgroundColor: Colors.transparent,
       )
   );
+}
+
+class RecordingPulse extends StatefulWidget {
+  double maxSize;
+
+  RecordingPulse({Key key, @required this.maxSize}) : super(key: key);
+
+  @override
+  _RecordingPulseState createState() => new _RecordingPulseState();
+}
+
+class _RecordingPulseState extends State<RecordingPulse> with SingleTickerProviderStateMixin {
+  AnimationController _animationController;
+  Animation _animation;
+
+  @override
+  initState() {
+    _animationController = AnimationController(vsync:this, duration: Duration(seconds: 2));
+    _animationController.repeat();
+    _animation =  Tween(begin: 2.0, end: widget.maxSize).animate(_animationController)..addListener((){
+      setState(() {
+
+      });
+    });
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  build(BuildContext context) {
+    return Container(
+      height: _animation.value,
+      width: _animation.value,
+      decoration: ShapeDecoration(
+        shape: CircleBorder(side: BorderSide(color: Colors.red, width: 2)),
+      ),
+    );
+  }
 }
