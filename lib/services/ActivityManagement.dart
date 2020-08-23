@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 //import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:wakelock/wakelock.dart';
 //import 'package:file_picker/file_picker.dart';
 
 import '../main.dart';
@@ -382,6 +383,7 @@ class ActivityManager {
         return true;
       };
        */
+      Wakelock.enable();
       await recorder.record(Track.fromFile(tempFilePath, mediaFormat: WellKnownMediaFormats.adtsAac));
       recorder.dispositionStream().listen((disposition) {
         mp.setRecordingTime(disposition.duration);
@@ -398,6 +400,7 @@ class ActivityManager {
   }
 
   Future<List<dynamic>> stopRecordNewPost(String postPath, DateTime startDateTime) async {
+    Wakelock.disable();
     try {
       //await fsRecorder.stopRecorder();
       await recorder.stop();
@@ -607,6 +610,17 @@ class ActivityManager {
 
     batch.commit();
   }
+
+  String getDurationString(Duration duration) {
+    int hours = duration.inHours;
+    int minutes = duration.inMinutes.remainder(60);
+    int seconds = duration.inSeconds.remainder(60);
+    String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
+    String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
+    if(hours > 0)
+      return '$hours:$minutesString:$secondsString';
+    return '$minutesString:$secondsString';
+  }
 }
 
 List<String> processTagString(String postTags) {
@@ -684,12 +698,11 @@ class _AddPostDialogState extends State<AddPostDialog> {
             ),
           ),
           SizedBox(height: 10),
-          Text('Post Title (optional)'),
           Container(
               width: 700.0,
               child: TextField(
                   decoration: InputDecoration(
-                    hintText: _postTitle == null ? dateString : _postTitle,
+                    hintText: _postTitle == null ? 'Post Title (Optional)' : _postTitle,
                   ),
                   onChanged: (value) {
                     //print(_postTitle);
@@ -698,7 +711,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
               )
           ),
           SizedBox(height: 20.0),
-          Text('Stream Tags (separated by \'#\')'),
+          Text('Stream Tags (separated by \'#\')', style: TextStyle(fontSize: 16)),
           Container(
             width: 700.0,
             child: TextField(
@@ -727,8 +740,9 @@ class _AddPostDialogState extends State<AddPostDialog> {
                 },
               ),
               FlatButton(
+                color: Colors.deepPurple,
                 child: Text('Send To...'),
-                textColor: Colors.deepPurple,
+                textColor: Colors.white,
                 onPressed: () {
                   String postError;
                   String postErrorTitle;
@@ -915,8 +929,10 @@ class _AddPostDialogState extends State<AddPostDialog> {
               }
             ),
             FlatButton(
+              color: Colors.deepPurple,
                 child: Text('Add Post'),
-                textColor: Colors.deepPurple,
+
+                textColor: Colors.white,
                 onPressed: () async {
                     List<String> tagList = processTagString(_postTags);
                     print({"postTitle": _postTitle,
@@ -951,6 +967,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
     );
 
     return SimpleDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
       contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
       title: Center(child: Text(page == 0 ? 'Add New Post' : 'Send To',
           style: TextStyle(color: Colors.deepPurple)
@@ -1118,6 +1135,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
   Widget build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return SimpleDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
       contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
       title: Center(child: Text('New Message',
           style: TextStyle(color: Colors.deepPurple),
@@ -1126,7 +1144,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
       children: <Widget>[
         _isLoading ? Center(child: Container(height: 75.0, width: 75.0, child: CircularProgressIndicator())) : Column(
           children: <Widget>[
-            Text('Message Title', style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
             Container(
                 width: 700.0,
                 child: TextField(
@@ -1211,9 +1229,9 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
             ),
             SizedBox(height: 10.0),
             Center(
-              child: _postAudioPath == null ? Text('Audio Recording Missing',
+              child: _postAudioPath == null || mp.recordingTime == null ? Text('Audio Recording Missing',
                 style: TextStyle(color: Colors.red),
-              ) : null,
+              ) : Text(ActivityManager().getDurationString(mp.recordingTime)),
             ),
             SizedBox(height: 10.0),
             Row(

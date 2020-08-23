@@ -113,6 +113,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.16.2"
+  dart_rss:
+    dependency: transitive
+    description:
+      name: dart_rss
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.1.0"
   device_info:
     dependency: transitive
     description:
@@ -120,6 +127,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.4.2+4"
+  dio:
+    dependency: transitive
+    description:
+      name: dio
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "3.0.10"
   fading_edge_scrollview:
     dependency: transitive
     description:
@@ -523,10 +537,10 @@ packages:
   podcast_search:
     dependency: "direct main"
     description:
-      name: podcast_search
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.3.1"
+      path: "/Users/kbant/Documents/podcast_search"
+      relative: false
+    source: path
+    version: "0.3.6"
   process:
     dependency: transitive
     description:
@@ -672,13 +686,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.1.4+2"
-  webfeed:
-    dependency: transitive
-    description:
-      name: webfeed
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.4.2"
   webview_flutter:
     dependency: transitive
     description:

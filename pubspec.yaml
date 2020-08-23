@@ -45,6 +45,7 @@ dependencies:
   package_info:
   launch_review:
   podcast_search:
+    path: /Users/kbant/Documents/podcast_search
   flutter_html:
 
 

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'package:flutter_html/flutter_html.dart';
 
+import 'services/ActivityManagement.dart';
 import 'MainPageTemplate.dart';
 import 'EpisodePage.dart';
 import 'services/models.dart';
@@ -123,7 +124,7 @@ class PodcastPage extends StatelessWidget {
                                       )
                                     ],
                                   ),
-                                  ep.duration == null ? Text('') : Text(Duration(seconds: ep.duration).inSeconds.toString()),
+                                  ep.duration == null ? Text('') : Text(ActivityManager().getDurationString(ep.duration)),
                                 ]
                             )
                         ),

@@ -5,7 +5,6 @@ import 'package:podcast_search/podcast_search.dart';
 import 'PodcastPage.dart';
 
 class DiscoverPodcasts extends StatelessWidget {
-  Genre genres = new Genre();
 
   @override
   build(BuildContext context) {
@@ -21,25 +20,25 @@ class DiscoverPodcasts extends StatelessWidget {
                     icon: Icon(Icons.arrow_drop_down),
                     items: [
                       DropdownMenuItem(child: Text('All'), value: null),
-                      DropdownMenuItem(child: Text('Arts'), value: genres.arts),
-                      DropdownMenuItem(child: Text('Business'), value: genres.business),
-                      DropdownMenuItem(child: Text('Comedy'), value: genres.comedy),
-                      DropdownMenuItem(child: Text('Education'), value: genres.education),
-                      DropdownMenuItem(child: Text('Fiction'), value: genres.fiction),
-                      DropdownMenuItem(child: Text('Government'), value: genres.government),
-                      DropdownMenuItem(child: Text('Health & Fitness'), value: genres.health_fitness),
-                      DropdownMenuItem(child: Text('History'), value: genres.history),
-                      DropdownMenuItem(child: Text('Kids & Family'), value: genres.kids_family),
-                      DropdownMenuItem(child: Text('Leisure'), value: genres.leisure),
-                      DropdownMenuItem(child: Text('Music'), value: genres.music),
-                      DropdownMenuItem(child: Text('News'), value: genres.news),
-                      DropdownMenuItem(child: Text('Religion & Spirituality'), value: genres.religion_spirituality),
-                      DropdownMenuItem(child: Text('Science'), value: genres.science),
-                      DropdownMenuItem(child: Text('Society & Culture'), value: genres.society_culture),
-                      DropdownMenuItem(child: Text('Sports'), value: genres.sports),
-                      DropdownMenuItem(child: Text('TV & Film'), value: genres.tv_film),
-                      DropdownMenuItem(child: Text('Technology'), value: genres.technology),
-                      DropdownMenuItem(child: Text('True Crime'), value: genres.true_crime)
+                      DropdownMenuItem(child: Text(Genre.ARTS.name), value: Genre.ARTS),
+                      DropdownMenuItem(child: Text(Genre.BUSINESS.name), value: Genre.BUSINESS),
+                      DropdownMenuItem(child: Text(Genre.COMEDY.name), value: Genre.COMEDY),
+                      DropdownMenuItem(child: Text(Genre.EDUCATION.name), value: Genre.EDUCATION),
+                      DropdownMenuItem(child: Text(Genre.FICTION.name), value: Genre.FICTION),
+                      DropdownMenuItem(child: Text(Genre.GOVERNMENT.name), value: Genre.GOVERNMENT),
+                      DropdownMenuItem(child: Text(Genre.HEALTH_FITNESS.name), value: Genre.HEALTH_FITNESS),
+                      DropdownMenuItem(child: Text(Genre.HISTORY.name), value: Genre.HISTORY),
+                      DropdownMenuItem(child: Text(Genre.KIDS_FAMILY.name), value: Genre.KIDS_FAMILY),
+                      DropdownMenuItem(child: Text(Genre.LEISURE.name), value: Genre.LEISURE),
+                      DropdownMenuItem(child: Text(Genre.MUSIC.name), value: Genre.MUSIC),
+                      DropdownMenuItem(child: Text(Genre.NEWS.name), value: Genre.NEWS),
+                      DropdownMenuItem(child: Text(Genre.RELIGION_SPIRITUALITY.name), value: Genre.RELIGION_SPIRITUALITY),
+                      DropdownMenuItem(child: Text(Genre.SCIENCE.name), value: Genre.SCIENCE),
+                      DropdownMenuItem(child: Text(Genre.SOCIETY_CULTURE.name), value: Genre.SOCIETY_CULTURE),
+                      DropdownMenuItem(child: Text(Genre.SPORTS.name), value: Genre.SPORTS),
+                      DropdownMenuItem(child: Text(Genre.TV_FILM.name), value: Genre.TV_FILM),
+                      DropdownMenuItem(child: Text(Genre.TECHNOLOGY.name), value: Genre.TECHNOLOGY),
+                      DropdownMenuItem(child: Text(Genre.TRUE_CRIME.name), value: Genre.TRUE_CRIME)
                     ],
                   value: dpp.selectedGenre,
                   onChanged: (value) {
@@ -104,11 +103,11 @@ class DiscoverPodcasts extends StatelessWidget {
 
 class DiscoverPodcastsProvider extends ChangeNotifier {
   Search podcastSearch = new Search();
-  int selectedGenre;
+  Genre selectedGenre;
   List<Item> podcasts;
 
 
-  changeGenre(int newGenre) async {
+  changeGenre(Genre newGenre) async {
     selectedGenre = newGenre;
     podcasts = null;
     notifyListeners();
@@ -124,6 +123,7 @@ class DiscoverPodcastsProvider extends ChangeNotifier {
   }
 }
 
+/*
 class Genre {
   int arts = 1301;
   int business = 1321;
@@ -145,4 +145,4 @@ class Genre {
   int technology = 1318;
   int true_crime = 1488;
 }
-
+*/
