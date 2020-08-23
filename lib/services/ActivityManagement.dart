@@ -15,7 +15,7 @@ import 'package:path_provider/path_provider.dart';
 //import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock/wakelock.dart';
-//import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../main.dart';
 import 'UserManagement.dart';
@@ -1003,17 +1003,14 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
   @override
   Widget build(BuildContext context) {
     return SimpleDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
       contentPadding: EdgeInsets.fromLTRB(10.0, 5.0, 10.0, 5.0),
       title: Center(child: Text('Upload Post', style: TextStyle(color: Colors.deepPurple),)),
       children: <Widget>[
-        Text('Post Title',
-          style: TextStyle(
-            fontSize: 16.0
-          )
-        ),
+        SizedBox(height: 10),
         TextField(
           decoration: InputDecoration(
-            hintText: dateString,
+            hintText: 'Post Title (optional)',
           ),
           onChanged: (value) {
             postTitle = value;
@@ -1043,8 +1040,8 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
           textColor: Colors.white,
           child: Center(child: fileName == null ? Text('Choose a file...') : Text(fileName)),
           onPressed: () async {
-            /*
-            String path = await FilePicker.getFilePath(type: FileType.audio, allowedExtensions: ['mp3', 'aac', 'm4a']);
+
+            String path = await FilePicker.getFilePath(type: FileType.custom, allowedExtensions: ['mp3', 'aac', 'm4a']);
             File uploadFile = File(path);
             print('Selected File Path: $path');
             print('File: ${uploadFile}: ${await uploadFile.exists()}');
@@ -1058,7 +1055,7 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
               fileName = path.split('/').last;
               duration = postDuration;
             });
-             */
+
           },
         ),
         Center(child: noFileError == null ? Container() : Text(noFileError, style: TextStyle(color: Colors.red),)),

@@ -306,6 +306,7 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
     }
 
     return new SimpleDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
       contentPadding: EdgeInsets.all(10.0),
       title: Center(child: Text('Update Profile',
         style: TextStyle(
@@ -313,10 +314,7 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
         ),
       )),
       children: <Widget>[
-        Divider(
-          color: Colors.deepPurple,
-          height: 20.0,
-        ),
+        SizedBox(height: 15),
         Text('Change Username',
           style: TextStyle(
             fontSize: 18.0,

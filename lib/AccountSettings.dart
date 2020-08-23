@@ -19,6 +19,7 @@ class AccountSettings extends StatelessWidget {
           User currentUser = Provider.of<User>(context);
           print('Firebase User Info: ${firebaseUser.providerId}/${firebaseUser.isEmailVerified}');
           return SimpleDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text('Account Settings'),),
             contentPadding: EdgeInsets.fromLTRB(10, 10, 10, 20),
             children: <Widget>[

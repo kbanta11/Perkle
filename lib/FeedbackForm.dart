@@ -18,6 +18,7 @@ class FeedbackForm extends StatelessWidget {
         builder: (context, fbp, _) {
           User currentUser = Provider.of<User>(context);
           return SimpleDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text('Feedback')),
             contentPadding: EdgeInsets.fromLTRB(10, 10, 10, 20),
             children: <Widget>[

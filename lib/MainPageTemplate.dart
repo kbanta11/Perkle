@@ -38,16 +38,19 @@ class MainPageTemplate extends StatelessWidget {
       child: Consumer<MainTemplateProvider>(
           builder: (context, tempProvider, _) {
             User currentUser = Provider.of<User>(context);
+            print('Padding: ${MediaQuery.of(context).viewPadding}');
             return Scaffold(
+              backgroundColor: Colors.white,
               body: SlidingUpPanel(
                 borderRadius: BorderRadius.all(Radius.circular(25)),
                 panel: TopPanel(showPostButtons: true, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar,),
                 collapsed: TopPanel(showPostButtons: false, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar,),
-                maxHeight: 265,
-                minHeight: 185,
+                maxHeight: 265 + MediaQuery.of(context).viewPadding.top,
+                minHeight: 185 + MediaQuery.of(context).viewPadding.top,
                 defaultPanelState: mp.panelOpen ? PanelState.OPEN : PanelState.CLOSED,
                 slideDirection: SlideDirection.DOWN,
                 panelSnapping: true,
+                renderPanelSheet: false,
                 onPanelOpened: () {
                   tempProvider.changeOffsetHeight(1);
                   mp.updatePanelState();
@@ -61,35 +64,38 @@ class MainPageTemplate extends StatelessWidget {
                 onPanelSlide: (slidePct) {
                   tempProvider.changeOffsetHeight(slidePct);
                 },
-                body: Column(
-                  children: <Widget>[
-                    Container(height: tempProvider.offsetHeight != null ? tempProvider.offsetHeight : mp.panelOpen ? 265 : 185),
-                    Expanded(
-                        child: body
-                    ),
-                    bottomNavBarMobile((int i) {
-                      if(i == 0) {
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => HomePageMobile(),
-                        ));
-                      }
-                      if(i == 1) {
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => DiscoverPageMobile(),
-                        ));
-                      }
-                      if(i == 2) {
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => ConversationListPageMobile(),
-                        ));
-                      }
-                      if(i == 3) {
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => ProfilePageMobile(userId: currentUser.uid),
-                        ));
-                      }
-                    }, bottomNavIndex, noSelection: noBottomNavSelected)
-                  ],
+                body: Container(
+                  color: Colors.transparent,
+                  child: Column(
+                    children: <Widget>[
+                      Container(height: (tempProvider.offsetHeight != null ? tempProvider.offsetHeight : mp.panelOpen ? 265 : 185) + MediaQuery.of(context).viewPadding.top),
+                      Expanded(
+                          child: body
+                      ),
+                      bottomNavBarMobile((int i) {
+                        if(i == 0) {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => HomePageMobile(),
+                          ));
+                        }
+                        if(i == 1) {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => DiscoverPageMobile(),
+                          ));
+                        }
+                        if(i == 2) {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => ConversationListPageMobile(),
+                          ));
+                        }
+                        if(i == 3) {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => ProfilePageMobile(userId: currentUser.uid),
+                          ));
+                        }
+                      }, bottomNavIndex, noSelection: noBottomNavSelected)
+                    ],
+                  )
                 ),
               ),
               floatingActionButton:isConversation != null && isConversation ? Padding(

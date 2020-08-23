@@ -171,7 +171,7 @@ class TopPanel extends StatelessWidget {
       return '$minutesString:$secondsString';
     }
     return Container(
-      height: 265.0,
+      height: 265.0 + MediaQuery.of(context).viewPadding.top,
       width: MediaQuery.of(context).size.width,
       decoration: BoxDecoration(
         color: Colors.deepPurple,

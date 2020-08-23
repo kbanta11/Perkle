@@ -537,8 +537,8 @@ packages:
   podcast_search:
     dependency: "direct main"
     description:
-      path: "/Users/kbant/Documents/podcast_search"
-      relative: false
+      path: "../podcast_search"
+      relative: true
     source: path
     version: "0.3.6"
   process:

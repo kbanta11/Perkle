@@ -156,6 +156,7 @@ class EpisodeDialog extends StatelessWidget {
   @override
   build(BuildContext context) {
     return SimpleDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
       title: Center(child: Text(podcast.title)),
       contentPadding: EdgeInsets.all(10),
       children: <Widget>[

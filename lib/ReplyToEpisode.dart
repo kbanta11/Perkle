@@ -32,6 +32,7 @@ class ReplyToEpisodeDialog extends StatelessWidget {
         builder: (context, rep, _) {
           User user = Provider.of<User>(context);
           return rep.isUploading ? Center(child: CircularProgressIndicator()) : SimpleDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text(_episode.title, textAlign: TextAlign.center)),
             contentPadding: EdgeInsets.all(10),
             children: <Widget>[
