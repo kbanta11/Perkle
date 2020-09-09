@@ -11,7 +11,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:package_info/package_info.dart';
 import 'package:podcast_search/podcast_search.dart';
 
+import 'AddPostDialog.dart';
 import 'LoginPage.dart';
+import 'ShareToDialog.dart';
 import 'SignUpPage.dart';
 import 'HomePage.dart';
 import 'SearchPage.dart';
@@ -156,6 +158,10 @@ class MainAppProvider extends ChangeNotifier {
     await player.play(newPostPod.audioUrl).catchError((e) {
       print('Error playing post: $e');
     });
+    if(newPostPod.type == PostType.DIRECT_POST) {
+      FirebaseUser user = await FirebaseAuth.instance.currentUser();
+      await DBService().markDirectPostHeard(conversationId: newPostPod.directPost.conversationId, userId: user.uid, postId: newPostPod.directPost.id);
+    }
 
     player.onPlayerCompletion.listen((_) async {
       stopPost();
@@ -225,6 +231,27 @@ class MainAppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  insertPostToQueueFirst(PostPodItem post) {
+    queue.insert(0, post);
+    notifyListeners();
+  }
+
+  addUnheardToQueue({String conversationId, String userId}) async {
+    List<DirectPost> unheardPosts = List<DirectPost>();
+    List<String> heardPostIDs = await DBService().getHeardPostIds(conversationId: conversationId, userId: userId);
+    List<DirectPost> conversationPosts = await DBService().getDirectPosts(conversationId);
+    unheardPosts = conversationPosts;
+    if(heardPostIDs != null) {
+      unheardPosts.removeWhere((DirectPost post) => heardPostIDs.contains(post.id));
+    }
+    unheardPosts.removeWhere((DirectPost post) => post.senderUID == userId);
+    unheardPosts.forEach((DirectPost post) {
+      PostPodItem newItem = PostPodItem.fromDirectPost(post);
+      insertPostToQueueFirst(newItem);
+    });
+    playPostFromQueue();
+  }
+
   removeFromQueue(PostPodItem post) {
     queue.removeWhere((element) => element.id == post.id);
     notifyListeners();
@@ -288,6 +315,15 @@ class MainAppProvider extends ChangeNotifier {
       context: context,
       builder: (context) {
        return ReplyToEpisodeDialog(episode, podcast);
+      }
+    );
+  }
+
+  shareToConversation(BuildContext context, {Episode episode, Podcast podcast, User user}) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ShareToDialog(recordingLocation: episode.contentUrl, episode: episode, podcast: podcast, currentUser: user,);
       }
     );
   }

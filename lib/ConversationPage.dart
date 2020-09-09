@@ -7,9 +7,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:podcast_search/podcast_search.dart';
 //import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
 
+import 'EpisodePage.dart';
+import 'ListTileBubble.dart';
 import 'main.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -365,94 +368,164 @@ class ConversationPageMobile extends StatelessWidget {
       child: Consumer<List<DirectPost>>(
         builder: (context, postList, _) {
           User user = Provider.of<User>(context);
+          List<DayPosts> days = List<DayPosts>();
+          if(postList != null) {
+            postList.forEach((post) {
+              if(days.where((day) => day.date.year == post.datePosted.year && day.date.month == post.datePosted.month && day.date.day == post.datePosted.day).length > 0) {
+                days.where((day) => day.date.year == post.datePosted.year && day.date.month == post.datePosted.month && day.date.day == post.datePosted.day).first.list.add(post);
+              } else {
+                List posts = List();
+                posts.add(post);
+                days.add(DayPosts(date: DateTime(post.datePosted.year, post.datePosted.month, post.datePosted.day), list: posts));
+              }
+            });
+          }
           return MainPageTemplate(
             isConversation: true,
             conversationId: conversationId,
             bottomNavIndex: 2,
             pageTitle: pageTitle,
-            body: postList == null ? Center(child: CircularProgressIndicator()) : ListView(
-              children: postList.map((post) {
-                return StreamProvider<User>(
-                  create: (context) => UserManagement().streamUserDoc(post.senderUID),
-                  child: Consumer<User>(
-                    builder: (context, sender, _) {
-                      if(sender == null)
-                        return Container();
+            body: postList == null ? Center(child: CircularProgressIndicator()) : Stack(
+              children: <Widget>[
+                ListView(
+                    children: days.map((day) {
+                      return Container(
+                        padding: EdgeInsets.only(bottom: 10),
+                        child: Row(
+                            children: <Widget>[
+                              Expanded(
+                                  child: Container(
+                                    margin: EdgeInsets.only(left: 10),
+                                    padding: EdgeInsets.only(left: 5),
+                                    decoration: BoxDecoration(
+                                        border: Border(
+                                            left: BorderSide(color: Colors.deepPurple[500], width: 2)
+                                        )
+                                    ),
+                                    child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(day.date.year == DateTime.now().year && day.date.month == DateTime.now().month && day.date.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date).toString(), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]), textAlign: TextAlign.left,),
+                                          Column(
+                                            children: day.list.map((post) {
+                                              DirectPost directPost = post;
+                                              return StreamBuilder<User>(
+                                                stream: UserManagement().streamUserDoc(directPost.senderUID),
+                                                builder: (context, AsyncSnapshot<User> userSnap) {
 
-                      //Return list tile for this direct message
-                      //Create picUrl widget
-                      Widget picButton = InkWell(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (context) =>
-                                  ProfilePageMobile(userId: sender.uid),
-                            ));
-                          },
-                          child: sender.profilePicUrl != null ? Container(
-                              height: 50.0,
-                              width: 50.0,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.deepPurple,
-                                  image: DecorationImage(
-                                      fit: BoxFit.cover,
-                                      image: NetworkImage(sender.profilePicUrl)
+                                                  User sender = userSnap.data;
+                                                  if(sender == null) {
+                                                    return Container();
+                                                  }
+
+                                                  //Return list tile for this direct message
+                                                  //Create picUrl widget
+                                                  Widget picButton = InkWell(
+                                                      onTap: () async {
+                                                        Episode episode;
+                                                        Podcast pod;
+                                                        if(directPost.podcastUrl != null) {
+                                                          showDialog(
+                                                            context: context,
+                                                            child: Center(child: CircularProgressIndicator()),
+                                                          );
+                                                          pod = await Podcast.loadFeed(url: directPost.podcastUrl);
+                                                          Navigator.of(context).pop();
+                                                          episode = pod.episodes.firstWhere((element) => element.contentUrl == directPost.audioFileLocation);
+                                                        }
+                                                        Navigator.push(context, MaterialPageRoute(
+                                                          builder: (context) =>
+                                                          episode != null ? EpisodePage(episode, pod) : ProfilePageMobile(userId: sender.uid),
+                                                        ));
+                                                      },
+                                                      child: Container(
+                                                          height: 50.0,
+                                                          width: 50.0,
+                                                          decoration: BoxDecoration(
+                                                              shape: directPost.podcastImage != null ? BoxShape.rectangle : BoxShape.circle,
+                                                              color: Colors.deepPurple,
+                                                              image: DecorationImage(
+                                                                  fit: BoxFit.cover,
+                                                                  image: NetworkImage(directPost.podcastImage ?? sender.profilePicUrl ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
+                                                              )
+                                                          )
+                                                      )
+                                                  );
+
+                                                  //Create play button column
+                                                  Widget playColumn = Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: <Widget>[
+                                                      InkWell(
+                                                        child: Container(
+                                                          height: 35,
+                                                          width: 35,
+                                                          decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
+                                                          ),
+                                                          child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                                        ),
+                                                        onTap: () {
+                                                          mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));
+                                                          mp.notifyListeners();
+                                                        },
+                                                      ),
+                                                      Text(post.getLengthString())
+                                                    ],
+                                                  );
+
+                                                  return ListTileBubble(
+                                                    width: MediaQuery.of(context).size.width - 50,
+                                                    alignment: user.uid == sender.uid ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                                    leading: user.uid == sender.uid ? playColumn : picButton,
+                                                    trailing: user.uid == sender.uid ? picButton : playColumn,
+                                                    color: directPost.shared != null && directPost.shared ? Colors.pink[50] : user.uid == sender.uid ? Colors.blueGrey[50] : Colors.deepPurple[50],
+                                                    title: Text(directPost.messageTitle ?? '@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left),
+                                                    subTitle: directPost.podcastTitle != null ? Column(crossAxisAlignment: user.uid == sender.uid ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: <Widget>[Text('${directPost.podcastTitle}'), Text('shared by @${sender.username}', style: TextStyle(color: Colors.grey),)],) : directPost.messageTitle != null ? Text('@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left,) : null,
+                                                    onTap: () async {
+                                                      await ActivityManager().sendDirectPostDialog(context, conversationId: conversationId);
+                                                    },
+                                                  );
+                                                } ,
+                                              );
+                                            }).toList(),
+                                          )
+                                        ]
+                                    ),
                                   )
                               )
-                          ) : Container(
-                              height: 50.0,
-                              width: 50.0,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.deepPurple,
-                              )
-                          )
+                            ]
+                        ),
                       );
-
-                      //Create play button column
-                      Widget playColumn = Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          InkWell(
-                            child: Container(
-                              height: 35,
-                              width: 35,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
-                              ),
-                              child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
-                            ),
-                            onTap: () {
-                              mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));
-                            },
-                          ),
-                          Text(post.getLengthString())
-                        ],
-                      );
-
-                      return Card(
-                        elevation: 5,
-                        color: Colors.deepPurple[50],
-                        margin: EdgeInsets.all(5),
-                        child: Padding(
-                          padding: EdgeInsets.all(5),
-                          child: ListTile(
-                            leading: user.uid == sender.uid ? playColumn : picButton,
-                            trailing: user.uid == sender.uid ? picButton : playColumn,
-                            title: Text(post.messageTitle ?? DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted).toString(), style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left),
-                            subtitle: Text('@${post.senderUsername}', style: TextStyle(fontSize: 16), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left,),
-                            onTap: () async {
-                              await ActivityManager().sendDirectPostDialog(context, conversationId: conversationId);
-                            },
-                          ),
-                        )
-                      );
-                    },
+                    }).toList()
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: <Widget>[
+                      FlatButton(
+                        child: Text('Play Unheard', style: TextStyle(color: Colors.white)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                        color: Colors.deepPurple,
+                        onPressed: () async {
+                          await mp.addUnheardToQueue(conversationId: conversationId, userId: firebaseUser.uid);
+                        },
+                      ),
+                      FlatButton(
+                        child: Text('Reply', style: TextStyle(color: Colors.white)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                        color: Colors.deepPurple,
+                        onPressed: () async {
+                          await mp.activityManager.sendDirectPostDialog(context, conversationId: conversationId);
+                        },
+                      )
+                    ],
                   ),
-                );
-              }).toList()
+                )
+              ],
             ),
           );
         },

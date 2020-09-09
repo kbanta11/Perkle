@@ -370,6 +370,7 @@ class DiscoverPageMobile extends StatelessWidget {
                   Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: <Widget>[
+                        /*
                         FlatButton(
                           child: Text('Tags',
                             style: TextStyle(color: pageProvider.selectedCat == 'Tags' ? Colors.white : Colors.deepPurple),
@@ -383,6 +384,7 @@ class DiscoverPageMobile extends StatelessWidget {
                             pageProvider.selectCategory('Tags');
                           },
                         ),
+                        */
                         FlatButton(
                           child: Text('Pods',
                             style: TextStyle(color: pageProvider.selectedCat == 'Pods' ? Colors.white : Colors.deepPurple),
@@ -411,6 +413,7 @@ class DiscoverPageMobile extends StatelessWidget {
                         ),
                       ]
                   ),
+                  /*
                   pageProvider.selectedCat == 'Tags' ? Expanded(
                     child: Column(
                       children: <Widget>[
@@ -437,7 +440,8 @@ class DiscoverPageMobile extends StatelessWidget {
                         )
                       ],
                     ),
-                  ) : pageProvider.selectedCat == 'People' ? Expanded(
+                  ) :
+                  */ pageProvider.selectedCat == 'People' ? Expanded(
                     child: StreamProvider<List<String>>(
                       create: (context) => DBService().streamDiscoverPods(),
                       child: Consumer<List<String>>(

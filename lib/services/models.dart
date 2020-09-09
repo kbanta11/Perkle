@@ -122,6 +122,17 @@ class DirectPost {
   DateTime datePosted;
   String messageTitle;
   int secondsLength;
+  int msLength;
+  String author;
+  String podcastLink;
+  String podcastUrl;
+  String podcastTitle;
+  String podcastImage;
+  String episodeGuid;
+  String episodeDescription;
+  String episodeLink;
+  bool shared;
+
 
   DirectPost({
     this.id,
@@ -132,6 +143,16 @@ class DirectPost {
     this.datePosted,
     this.messageTitle,
     this.secondsLength,
+    this.author,
+    this.podcastLink,
+    this.podcastUrl,
+    this.podcastTitle,
+    this.episodeDescription,
+    this.episodeGuid,
+    this.episodeLink,
+    this.msLength,
+    this.shared,
+    this.podcastImage,
   });
 
   factory DirectPost.fromFirestore(DocumentSnapshot snap) {
@@ -143,13 +164,30 @@ class DirectPost {
       audioFileLocation: snap.data['audioFileLocation'],
       datePosted: DateTime.fromMillisecondsSinceEpoch(snap.data['datePosted'].millisecondsSinceEpoch),
       messageTitle: snap.data['messageTitle'],
-      secondsLength: snap.data['secondsLength']
+      secondsLength: snap.data['secondsLength'],
+      author: snap.data['author'],
+      podcastLink: snap.data['podcast-link'],
+      podcastUrl: snap.data['podcast-url'],
+      podcastTitle: snap.data['podcast-title'],
+      podcastImage: snap.data['podcast-image'],
+      episodeGuid: snap.data['episode-guid'],
+      episodeLink: snap.data['episode-link'],
+      episodeDescription: snap.data['episode-description'],
+      msLength: snap.data['ms-length'],
+      shared: snap.data['shared']
     );
   }
 
   String getLengthString() {
     String postLength = '--:--';
-    if(secondsLength != null) {
+    if(msLength != null) {
+      Duration postDuration = Duration(milliseconds: msLength);
+      if(postDuration.inHours > 0){
+        postLength = '${postDuration.inHours}:${postDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${postDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+      } else {
+        postLength = '${postDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${postDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+      }
+    } else if(secondsLength != null) {
       Duration postDuration = Duration(seconds: secondsLength);
       if(postDuration.inHours > 0){
         postLength = '${postDuration.inHours}:${postDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${postDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
@@ -277,7 +315,7 @@ class PostPodItem {
       return Text(post.postTitle ?? DateFormat("MMMM dd, yyyy").format(post.datePosted).toString());
     }
     if(type == PostType.DIRECT_POST) {
-      return Text(directPost.messageTitle ?? DateFormat("MMMM dd, yyyy").format(directPost.datePosted).toString());
+      return Text('${directPost.podcastTitle != null ? '${directPost.podcastTitle} | ' : ''}${directPost.messageTitle}' ?? DateFormat("MMMM dd, yyyy").format(directPost.datePosted).toString());
     }
     if(type == PostType.PODCAST_EPISODE) {
       return Text(episode.title);
@@ -396,4 +434,11 @@ class EpisodeReply {
 enum UserListType {
   FOLLOWERS,
   FOLLOWING
+}
+
+class DayPosts {
+  DateTime date;
+  List list;
+
+  DayPosts({this.date, this.list});
 }

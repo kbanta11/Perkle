@@ -123,146 +123,182 @@ class Timeline extends StatelessWidget {
             emptyText = 'This user hasn\'t posted yet!';
           if(type == TimelineType.STREAMTAG)
             emptyText = 'There aren\'t any posts for this tag yet!';
+
+          //Get Days in timeline and group daily posts together
+          List<DayPosts> days = List<DayPosts>();
+          if(postList != null) {
+            postList.forEach((post) {
+              if(days.where((d) => d.date.year == post.datePosted.year && d.date.month == post.datePosted.month && d.date.day == post.datePosted.day).length > 0) {
+                days.where((d) => d.date.year == post.datePosted.year && d.date.month == post.datePosted.month && d.date.day == post.datePosted.day).first.list.add(post);
+              } else {
+                List list = List();
+                list.add(post);
+                days.add(DayPosts(date: DateTime(post.datePosted.year, post.datePosted.month, post.datePosted.day), list: list));
+              }
+            });
+          }
+
           return ListView(
-            children: postList == null ? [Center(child: CircularProgressIndicator())] : postList.length == 0 ? [Center(child: Text(emptyText))] : postList.map((post) {
-              return StreamProvider<User>(
-                create: (context) => UserManagement().streamUserDoc(post.userUID),
-                child: Consumer<User>(
-                  builder: (context, poster, _) {
-                    return Card(
-                      elevation: 5,
-                      color: Colors.deepPurple[50],
-                      margin: EdgeInsets.all(5),
-                      child: Padding(
-                        padding: EdgeInsets.all(5),
-                        child: ExpansionTile(
-                          leading: poster == null || poster.profilePicUrl == null ? Container(
-                            height: 60.0,
-                            width: 60.0,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.deepPurple,
-                            ),
-                            child: InkWell(
-                              child: Container(),
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(
-                                  builder: (context) =>
-                                      ProfilePageMobile(userId: post.userUID,),
-                                ));
-                              },
-                            ),
-                          ) : Container(
-                              height: 60.0,
-                              width: 60.0,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.deepPurple,
-                                image: DecorationImage(
-                                  fit: BoxFit.cover,
-                                  image: NetworkImage(poster.profilePicUrl),
-                                ),
-                              ),
-                              child: InkWell(
-                                child: Container(),
-                                onTap: () {
-                                  Navigator.push(context, MaterialPageRoute(
-                                    builder: (context) =>
-                                        ProfilePageMobile(userId: post.userUID,),
-                                  ));
-                                },
-                              )
-                          ),
-                          title: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text('@${post.username}'),
-                              Text('${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'),
-                              post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted))  : Container(),
-                            ],
-                          ),
-                          trailing: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              Container(
-                                width: 80,
-                                child: Row(
-                                  children: <Widget>[
-                                    InkWell(
-                                      child: Container(
-                                        height: 35,
-                                        width: 35,
-                                        decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
-                                        ),
-                                        child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+            children: postList == null ? [Center(child: CircularProgressIndicator())] : postList.length == 0 ? [Center(child: Text(emptyText))] : days.map((day) {
+              return Container(
+                margin: EdgeInsets.only(left: 10, bottom: 10),
+                padding: EdgeInsets.only(left: 10),
+                decoration: BoxDecoration(
+                    border: Border(
+                        left: BorderSide(color: Colors.deepPurple[500], width: 2)
+                    )
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(day.date.year == DateTime.now().year && day.date.month == DateTime.now().month && day.date.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]),),
+                    Column(
+                      children: day.list.map((post) {
+                        return StreamProvider<User>(
+                          create: (context) => UserManagement().streamUserDoc(post.userUID),
+                          child: Consumer<User>(
+                            builder: (context, poster, _) {
+                              return Card(
+                                elevation: 5,
+                                color: Colors.deepPurple[50],
+                                margin: EdgeInsets.all(5),
+                                child: Padding(
+                                  padding: EdgeInsets.all(5),
+                                  child: ExpansionTile(
+                                    leading: poster == null || poster.profilePicUrl == null ? Container(
+                                      height: 60.0,
+                                      width: 60.0,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.deepPurple,
                                       ),
-                                      onTap: () {
-                                        mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
-                                      },
-                                    ),
-                                    SizedBox(width: 5,),
-                                    InkWell(
-                                      child: Container(
-                                        height: 35,
-                                        width: 35,
-                                        decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
-                                        ),
-                                        child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
-                                      ),
-                                      onTap: () {
-                                        if(mp.queue.where((p) => p.id == post.id).length <= 0)
-                                          mp.addPostToQueue(PostPodItem.fromPost(post));
-                                      },
-                                    )
-                                  ],
-                                ),
-                              ),
-                              Text(post.getLengthString())
-                            ],
-                          ),
-                          children: <Widget>[
-                            Row(
-                              children: <Widget>[
-                                SizedBox(width: 90),
-                                Expanded(
-                                  child: post.streamList != null && post.streamList.length > 0 ? Wrap(
-                                    spacing: 8,
-                                    children: post.streamList.map((tag) => InkWell(
-                                        child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
+                                      child: InkWell(
+                                        child: Container(),
                                         onTap: () {
                                           Navigator.push(context, MaterialPageRoute(
-                                              builder: (context) => StreamTagPageMobile(tag: tag,)
+                                            builder: (context) =>
+                                                ProfilePageMobile(userId: post.userUID,),
                                           ));
-                                        }
-                                    )).toList(),
-                                  ) : Container(),
-                                ),
-                                currentUser != null && post.userUID == currentUser.uid ? Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: <Widget>[
-                                    IconButton(icon: Icon(Icons.delete_forever)),
-                                    IconButton(icon: Icon(Icons.file_download))
-                                  ],
-                                ) : IconButton(icon: Icon(Icons.file_download),),
-                                /*
+                                        },
+                                      ),
+                                    ) : Container(
+                                        height: 60.0,
+                                        width: 60.0,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.deepPurple,
+                                          image: DecorationImage(
+                                            fit: BoxFit.cover,
+                                            image: NetworkImage(poster.profilePicUrl),
+                                          ),
+                                        ),
+                                        child: InkWell(
+                                          child: Container(),
+                                          onTap: () {
+                                            Navigator.push(context, MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ProfilePageMobile(userId: post.userUID,),
+                                            ));
+                                          },
+                                        )
+                                    ),
+                                    title: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        Text('@${post.username}'),
+                                        Text('${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'),
+                                        post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted))  : Container(),
+                                      ],
+                                    ),
+                                    trailing: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: <Widget>[
+                                        Container(
+                                          width: 80,
+                                          child: Row(
+                                            children: <Widget>[
+                                              InkWell(
+                                                child: Container(
+                                                  height: 35,
+                                                  width: 35,
+                                                  decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
+                                                  ),
+                                                  child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                                ),
+                                                onTap: () {
+                                                  mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
+                                                },
+                                              ),
+                                              SizedBox(width: 5,),
+                                              InkWell(
+                                                child: Container(
+                                                  height: 35,
+                                                  width: 35,
+                                                  decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
+                                                  ),
+                                                  child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
+                                                ),
+                                                onTap: () {
+                                                  if(mp.queue.where((p) => p.id == post.id).length <= 0)
+                                                    mp.addPostToQueue(PostPodItem.fromPost(post));
+                                                },
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                        Text(post.getLengthString())
+                                      ],
+                                    ),
+                                    children: <Widget>[
+                                      Row(
+                                        children: <Widget>[
+                                          SizedBox(width: 90),
+                                          Expanded(
+                                            child: post.streamList != null && post.streamList.length > 0 ? Wrap(
+                                              spacing: 8,
+                                              children: post.streamList.map<Widget>((String tag) {
+                                                return InkWell(
+                                                    child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
+                                                    onTap: () {
+                                                      Navigator.push(context, MaterialPageRoute(
+                                                          builder: (context) => StreamTagPageMobile(tag: tag,)
+                                                      ));
+                                                    }
+                                                );
+                                              }).toList(),
+                                            ) : Container(),
+                                          ),
+                                          currentUser != null && post.userUID == currentUser.uid ? Row(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: <Widget>[
+                                              IconButton(icon: Icon(Icons.delete_forever)),
+                                              IconButton(icon: Icon(Icons.file_download))
+                                            ],
+                                          ) : IconButton(icon: Icon(Icons.file_download),),
+                                          /*
                                 IconButton(icon: Icon(Icons.music_note),
                                   onPressed: () async {
                                     convertFile(post);
                                   }
                                 ),
                                  */
-                              ],
-                            )
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                                        ],
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    )
+                  ],
                 ),
               );
             }).toList(),

@@ -98,15 +98,6 @@ class MainPageTemplate extends StatelessWidget {
                   )
                 ),
               ),
-              floatingActionButton:isConversation != null && isConversation ? Padding(
-                padding: EdgeInsets.only(bottom: 50),
-                child: FloatingActionButton(
-                  child: Icon(Icons.send, color: Colors.white),
-                  onPressed: () async {
-                    await _activityManager.sendDirectPostDialog(context, conversationId: conversationId);
-                  },
-                ),
-              ) : Container(),
             );
           }
       ),
