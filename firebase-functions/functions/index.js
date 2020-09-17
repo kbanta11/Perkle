@@ -4,16 +4,22 @@ const _ = require('lodash');
 const request = require('request-promise');
 
 const admin = require('firebase-admin');
-const ffmpegLib = require('fluent-ffmpeg');
-const ffmpeg_static = require('ffmpeg-static');
-ffmpegLib.setFfmpegPath(ffmpeg_static.path);
+const firebase_tools = require('firebase-tools');
+let serviceAccount = require('../flutter-fire-test-be63e-firebase-adminsdk-vlm6z-ad7f260341.json');
+//const ffmpegLib = require('fluent-ffmpeg');
+//const ffmpeg_static = require('ffmpeg-static');
+//ffmpegLib.setFfmpegPath(ffmpeg_static.path);
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+let Parser = require('rss-parser');
 
 admin.initializeApp(functions.config().firebase);
 
 const db = admin.firestore();
+db.settings({
+  ignoreUndefinedProperties: true,
+});
 
 
 exports.indexUsersToElastic = functions.firestore.document('/users/{uid}').onWrite((change, context) => {
@@ -68,6 +74,7 @@ exports.usernameFanOut = functions.firestore.document('/users/{uid}').onWrite(as
 	
 	if(usernameAfter !== usernameBefore) {
 		//Update username on all post documents from user
+		let postUpdatePromises = [];
 		await db.collection('posts').where('userUID', '==', userId).get().then(snapshot => {
 			if(snapshot.empty) {
 				console.log('User has no posts');
@@ -75,19 +82,21 @@ exports.usernameFanOut = functions.firestore.document('/users/{uid}').onWrite(as
 			}
 			
 			snapshot.forEach(doc => {
-				let transaction = db.runTransaction(t => {
+				postUpdatePromises.push(db.runTransaction(t => {
 					return t.get(doc.ref).then(_doc => {
 						t.update(_doc.ref, {username: usernameAfter});
 						return;
 					});
-				});
+				}));
 			});
 			return;
 		}).catch(err => {
 			console.log('Error getting user posts: ' + err);
 		});
+		await Promise.all(postUpdatePromises);
 		
 		//Update username on all direct posts where sender
+		let directPostPromises = [];
 		await db.collection('directposts').where('senderUID', '==', userId).get().then(snapshot => {
 			if(snapshot.empty) {
 				console.log('User has no direct posts');
@@ -95,17 +104,18 @@ exports.usernameFanOut = functions.firestore.document('/users/{uid}').onWrite(as
 			}
 			
 			snapshot.forEach(doc => {
-				let transaction = db.runTransaction(t => {
+				directPostPromises.push(db.runTransaction(t => {
 					return t.get(doc.ref).then(_doc => {
 						t.update(_doc.ref, {senderUsername: usernameAfter});
 						return;
 					});
-				});
+				}));
 			});
 			return;
 		}).catch(err => {
 			console.log('Error getting direct user posts: ' + err);
 		});
+		await Promise.all(directPostPromises);
 		
 		//Update username on all conversations user is included
 		await db.collection('conversations').where('memberList', 'array-contains', userId).get().then(snapshot => {
@@ -214,6 +224,123 @@ exports.directMessageNotification = functions.firestore.document('/conversations
 		});
 		}
 	});
+});
+
+exports.getUserTimeline = functions.firestore.document('/timelines/{id}').onWrite((change, context) => {
+	
+	let parser = new Parser();
+	//let podFeeds = ['http://joeroganexp.joerogan.libsynpro.com/rss', 'https://rss.art19.com/bunga-bunga'];
+
+	(async () => {
+		let allPostList = [];
+		let timelineRef = change.after.ref;
+		let timelineId = change.after.ref.id;
+		let timelineLastMinDate = null;
+		let timelineData = change.after.data();
+
+		if(timelineData.last_min_date){
+			timelineLastMinDate = timelineData.last_min_date.toDate();
+		} else {
+		  await firebase_tools.firestore.delete('/timelines/' + timelineId + '/items', {
+	        project: process.env.GCLOUD_PROJECT,
+	        recursive: true,
+	        yes: true,
+	        token: serviceAccount.token
+	      });
+		}
+
+		let podFeeds = timelineData.podcasts_included;
+		console.log(timelineData);
+		let feedPromises = [];
+		for(const url in podFeeds) {
+			//let feed = await parser.parseURL('http://joeroganexp.joerogan.libsynpro.com/rss');
+			console.log(podFeeds[url]);
+			feedPromises.push(parser.parseURL(podFeeds[url]));
+		}
+
+		await Promise.all(feedPromises).then(feeds => {
+			for(f in feeds) {
+				let feed = feeds[f];
+				console.log(feed.items.length);
+				let podcastData = {
+					'podcast_feed': feed.feedUrl,
+					'image_url': feed.image.url,
+					'podcast_title': feed.title,
+					'podcast_description': feed.description,
+				};
+				console.log('----------------------------------------------------------------------------');
+				for(i in feed.items) {
+					let item = feed.items[i]; 
+					//console.log(item);
+					let date = new Date(item.pubDate);
+					if(item.enclosure) {
+						let episodeData = {
+							'type': 'PODCAST_EPISODE',
+							'podcast_feed': podcastData.podcast_feed,
+							'image_url': podcastData.image_url,
+							'podcast_title': podcastData.podcast_title,
+							'podcast_description': podcastData.podcast_description,
+							'title': item.title,
+							'audio_url': item.enclosure.url,
+							'bytes_length': item.enclosure.length,
+							'description': item.content,
+							'date_iso': item.isoDate,
+							'date': date,
+							'episode_guid': item.guid,
+							'itunes_duration': item.itunes.duration,
+							'episode': item.itunes.episode
+						};
+						//console.log(episodeData);
+						allPostList.push(episodeData);
+						//console.log(item.title + ': ' + item.enclosure.url + '/' + item.enclosure.length);
+					}
+				}
+			}
+			return;
+		});
+
+		await db.collection('posts').where('timelines', 'array-contains', timelineId).get().then(snapshot => {
+			snapshot.forEach(doc => {
+				let data = doc.data();
+				postData = {
+					'type': 'POST',
+					'post_id': doc.ref.id,
+					'title': data.postTitle,
+					'audio_url': data.audioFileLocation,
+					'seconds_length': data.secondsLength,
+					'ms_length': data.ms_length,
+					'date': data.datePosted.toDate(),
+					'userUID': data.userUID,
+					'username':  data.username,
+					'listenCount': data.listenCount,
+					'streamList': data.streamList,
+				};
+				//console.log(postData);
+				allPostList.push(postData);
+			});
+			return;
+		});
+		allPostList.sort((a, b) => b.date - a.date);
+		if(allPostList.length > 50) {
+			if(timelineLastMinDate === null) {
+				allPostList = allPostList.slice(0, 50);
+			} else {
+				let currentPostList = allPostList.filter(p => p.date >= timelineLastMinDate);
+				let remainingPosts = allPostList.filter(p => p.date < timelineLastMinDate);
+				allPostList = remainingPosts.slice(0, 50);
+			}
+		}
+		let saveDataPromises = [];
+		for(const p in allPostList) {
+			let post = allPostList[p];
+			saveDataPromises.push(db.runTransaction(t => {
+						t.set(timelineRef.collection('items').doc(), post);
+						return Promise.resolve('episode added')
+					}));
+		}
+		await Promise.all(saveDataPromises);
+		console.log('Total Posts: ' + allPostList.length);
+	})().catch((e) => console.log('Error: ' + e));
 });
 
 exports.getSearchResults = functions.firestore.document('/requests/{id}').onWrite((change, context) => {
