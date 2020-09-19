@@ -26,7 +26,7 @@ class PodcastPage extends StatelessWidget {
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     User user = Provider.of<User>(context);
-    print('Followed Podcasts: ${user.followedPodcasts}/Podcast URL: ${podcast.url}/${user.followedPodcasts.contains(podcast.url)}');
+    //print('Followed Podcasts: ${user.followedPodcasts}/Podcast URL: ${podcast.url}/${user.followedPodcasts.contains(podcast.url)}');
     bool podcastFollowed = user.followedPodcasts != null && user.followedPodcasts.contains(podcast.url.replaceFirst('http:', 'https:'));
     return podcast == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
       bottomNavIndex: 3,
