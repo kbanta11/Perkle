@@ -354,10 +354,10 @@ exports.getTimeline = functions.runWith({timeoutSeconds: 300, memory: '1GB'}).ht
 		let post = allPostList[p];
 		if(current_audio_urls){
 			if(!current_audio_urls.includes(post.audio_url)) {
-				batch.set(timelineRef.collection('items').doc(), post);
+				batch.set(timelineRef.collection('items').doc(encodeURIComponent(post.audio_url)), post);
 			}
 		} else {
-			batch.set(timelineRef.collection('items').doc(), post);
+			batch.set(timelineRef.collection('items').doc(encodeURIComponent(post.audio_url)), post);
 		}
 	}
 	await batch.commit();

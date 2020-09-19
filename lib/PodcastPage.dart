@@ -4,6 +4,7 @@ import 'package:Perkl/services/db_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
@@ -51,24 +52,36 @@ class PodcastPage extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            Container(
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.all(Radius.circular(25)),
-                                  color: podcastFollowed ? Colors.transparent : Colors.deepPurple,
-                                  border: Border.all(color: Colors.deepPurple)
-                              ),
-                              padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-                              child: InkWell(
-                                child: Text(podcastFollowed ? 'Unfollow' : 'Follow', style: TextStyle(color: podcastFollowed ? Colors.deepPurple : Colors.white)),
-                                onTap: () async {
-                                  if(podcastFollowed) {
-                                    //Unfollow podcast
-                                    await DBService().unfollowPodcast(user: user, podcastUrl: podcast.url.replaceFirst('http:', 'https:'));
-                                  } else {
-                                    //Follow Podcast
-                                    await DBService().followPodcast(user: user, podcastUrl: podcast.url.replaceFirst('http:', 'https:'));
-                                  }
-                                },
+                            ChangeNotifierProvider<FollowButtonProvider>(
+                              create: (_) => FollowButtonProvider(),
+                              child: Consumer<FollowButtonProvider>(
+                                builder: (context, fbp, _) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.all(Radius.circular(25)),
+                                        color: podcastFollowed ? Colors.transparent : Colors.deepPurple,
+                                        border: Border.all(color: Colors.deepPurple)
+                                    ),
+                                    padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                                    child: fbp != null && fbp.followLoading ? SpinKitThreeBounce(color: podcastFollowed ? Colors.deepPurple : Colors.white, size: 16,) : InkWell(
+                                      child: Text(podcastFollowed ? 'Unfollow' : 'Follow', style: TextStyle(color: podcastFollowed ? Colors.deepPurple : Colors.white)),
+                                      onTap: () async {
+                                        if(fbp != null && fbp.followLoading) {
+                                          return;
+                                        }
+                                        fbp.changeFollowLoading();
+                                        if(podcastFollowed) {
+                                          //Unfollow podcast
+                                          await DBService().unfollowPodcast(user: user, podcastUrl: podcast.url.replaceFirst('http:', 'https:'));
+                                        } else {
+                                          //Follow Podcast
+                                          await DBService().followPodcast(user: user, podcastUrl: podcast.url.replaceFirst('http:', 'https:'));
+                                        }
+                                        fbp.changeFollowLoading();
+                                      },
+                                    ),
+                                  );
+                                }
                               ),
                             )
                           ],
@@ -208,6 +221,15 @@ class PodcastPage extends StatelessWidget {
           ]
       ),
     );
+  }
+}
+
+class FollowButtonProvider extends ChangeNotifier {
+  bool followLoading = false;
+
+  changeFollowLoading() {
+    followLoading = !followLoading;
+    notifyListeners();
   }
 }
 
