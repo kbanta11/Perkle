@@ -84,7 +84,7 @@ class DBService {
                 author: pod.title,
                 duration: Helper().parseItunesDuration(doc.data['itunes_duration']),
                 description: doc.data['description'],
-                publicationDate: DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
+                publicationDate: doc.data['date'] == null ? null : DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
                 contentUrl: doc.data['audio_url'],
                 episode: doc.data['episode'] != null ? int.parse(doc.data['episode']) : null);
             newItem = PostPodItem.fromEpisode(ep, pod);
@@ -95,7 +95,7 @@ class DBService {
                 userUID: doc.data['userUID'],
                 username: doc.data['username'],
                 secondsLength: doc.data['seconds_length'],
-                datePosted: DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
+                datePosted: doc.data['date'] == null ? null : DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
                 listenCount: doc.data['listenCount'],
                 streamList: doc.data['streamList'] != null ? doc.data['streamList'].map<String>((item) => item.toString()).toList() : null,
                 postTitle: doc.data['title']);
@@ -128,9 +128,9 @@ class DBService {
 
   updateTimeline({String timelineId, User user, DateTime minDate, bool reload, bool setLoading = true}) async {
     DocumentReference timelineRef = _db.collection('timelines').document(timelineId);
-    DateTime lastUpdateTime = await timelineRef.get().then((snap) => DateTime.fromMillisecondsSinceEpoch(snap.data['last_updated'].millisecondsSinceEpoch));
-    print('Time since last update ($lastUpdateTime to ${DateTime.now()}): ${DateTime.now().difference(lastUpdateTime).inSeconds}');
-    if((lastUpdateTime != null && DateTime.now().difference(lastUpdateTime).inSeconds > 90) || minDate != null) {
+    DateTime lastUpdateTime = await timelineRef.get().then((snap) => snap.data['last_updated'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snap.data['last_updated'].millisecondsSinceEpoch));
+    //print('Time since last update ($lastUpdateTime to ${DateTime.now()}): ${DateTime.now().difference(lastUpdateTime).inSeconds}');
+    if(lastUpdateTime == null || (lastUpdateTime != null && DateTime.now().difference(lastUpdateTime).inSeconds > 90) || minDate != null) {
       if(setLoading){
         await _db.runTransaction((transaction) => transaction.update(timelineRef, {'is_loading': true}));
       }
