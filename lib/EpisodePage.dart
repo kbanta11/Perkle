@@ -195,7 +195,7 @@ class EpisodePage extends StatelessWidget {
                               );
                             },
                           ),
-                          title: Text(reply.replyTitle != null ? reply.replyTitle : DateFormat("MMMM dd, yyyy @ HH:MM").format(reply.replyDate).toString()),
+                          title: Text(reply.replyTitle != null ? reply.replyTitle : DateFormat("MMMM dd, yyyy @ hh:mm a").format(reply.replyDate).toString()),
                           subtitle: Text('@${reply.posterUsername}', style: TextStyle(fontSize: 16)),
                           trailing: Container(
                             width: 85,

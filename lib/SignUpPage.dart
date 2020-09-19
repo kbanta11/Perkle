@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'main.dart';
 import 'services/UserManagement.dart';
 
 GoogleSignIn _googleSignUp = new GoogleSignIn();
@@ -200,7 +201,9 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
           print('creating user document');
           UserManagement().storeNewUser(currentUser);
         } else {
-          Navigator.of(context).pushNamedAndRemoveUntil('/homepage', (Route<dynamic> route) => false);
+          Navigator.pushReplacement(context, MaterialPageRoute(
+            builder: (context) => MainApp(),
+          ));
         }
       }
     });

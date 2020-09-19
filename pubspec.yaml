@@ -24,6 +24,7 @@ dependencies:
   firebase_database:
   firebase_storage:
   firebase_messaging:
+  cloud_functions:
   google_sign_in:
   image_picker:
   image_cropper:

@@ -1,13 +1,17 @@
 import 'dart:io';
+import 'package:Perkl/services/ActivityManagement.dart';
 import 'package:Perkl/services/UserManagement.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:podcast_search/podcast_search.dart';
 import 'package:path_provider/path_provider.dart';
+import 'PodcastPage.dart';
 import 'ProfilePage.dart';
 import 'StreamTagPage.dart';
 import 'services/models.dart';
@@ -19,6 +23,7 @@ import 'package:http/http.dart' as http;
 enum TimelineType {
   STREAMTAG,
   MAINFEED,
+  STATION,
   USER,
 }
 
@@ -34,13 +39,14 @@ class Timeline extends StatelessWidget {
   build(BuildContext context) {
     FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    User currentUser = Provider.of<User>(context);
     //print('TimelineId: $timelineId/StreamTag: $tagStream/UserId: $userId');
     Stream postStream;
     if(tagStream != null) {
       postStream = tagStream;
       //print('Grabbed stream for tag: $tagStream');
     } else {
-      postStream = DBService().streamTimelinePosts(firebaseUser, timelineId: timelineId, userId: userId);
+      postStream = DBService().streamTimelinePosts(currentUser, timelineId: timelineId, userId: userId, type: type,);
     }
 
     /*
@@ -98,48 +104,66 @@ class Timeline extends StatelessWidget {
       });
     }
     */
+    //User currentUser = Provider.of<User>(context);
+    return StreamBuilder<bool>(
+      stream: DBService().streamTimelineLoading(timelineId),
+      builder: (context, snap) {
+        bool isLoading = false;
+        if(snap != null && snap.data != null && snap.data) {
+          isLoading = true;
+        }
+        return StreamBuilder<List<PostPodItem>>(
+          stream: postStream,
+          builder: (context, AsyncSnapshot<List<PostPodItem>> postListSnap) {
+            List<PostPodItem> postList = postListSnap.data;
+            print('Post List: $postList');
+            String emptyText = 'Looks like there are\'nt any posts to show here!';
+            if(type == TimelineType.MAINFEED)
+              emptyText = 'Your Timeline is Empty! Try following some users!';
+            if(type == TimelineType.USER && currentUser != null && userId == currentUser.uid)
+              emptyText = 'You have no posts! Try recording and say hello!';
+            if(type == TimelineType.USER && currentUser != null && userId != currentUser.uid)
+              emptyText = 'This user hasn\'t posted yet!';
+            if(type == TimelineType.STREAMTAG)
+              emptyText = 'There aren\'t any posts for this tag yet!';
 
-    return MultiProvider(
-      providers: [
-        StreamProvider<List<Post>>(create: (_) => postStream),
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
-      ],
-      child: StreamBuilder<List<Post>>(
-        stream: postStream,
-        builder: (context, AsyncSnapshot<List<Post>> postListSnap) {
-          User currentUser = Provider.of<User>(context);
-          List<Post> postList = postListSnap.data;
-          if(postList != null) {
-            //print('setting page posts');
-            mp.setPagePosts(postList);
-          }
-          //print('Post List: ${postList != null ? postList.length : ''}');
-          String emptyText = 'Looks like there are\'nt any posts to show here!';
-          if(type == TimelineType.MAINFEED)
-            emptyText = 'Your Timeline is Empty! Try following some users!';
-          if(type == TimelineType.USER && currentUser != null && userId == currentUser.uid)
-            emptyText = 'You have no posts! Try recording and say hello!';
-          if(type == TimelineType.USER && currentUser != null && userId != currentUser.uid)
-            emptyText = 'This user hasn\'t posted yet!';
-          if(type == TimelineType.STREAMTAG)
-            emptyText = 'There aren\'t any posts for this tag yet!';
+            //Get Days in timeline and group daily posts together
+            List<DayPosts> days = List<DayPosts>();
+            DateTime minDate;
+            if(postList != null) {
+              postList.forEach((post) {
+                DateTime postDate;
+                if(post.type == PostType.POST) {
+                  postDate = post.post.datePosted;
+                  if(days.where((d) => d.date.year == post.post.datePosted.year && d.date.month == post.post.datePosted.month && d.date.day == post.post.datePosted.day).length > 0) {
+                    days.where((d) => d.date.year == post.post.datePosted.year && d.date.month == post.post.datePosted.month && d.date.day == post.post.datePosted.day).first.list.add(post.post);
+                  } else {
+                    List list = List();
+                    list.add(post.post);
+                    days.add(DayPosts(date: DateTime(post.post.datePosted.year, post.post.datePosted.month, post.post.datePosted.day), list: list));
+                  }
+                }
+                if(post.type == PostType.PODCAST_EPISODE) {
+                  postDate = post.episode.publicationDate;
+                  if(days.where((d) => d.date.year == post.episode.publicationDate.year && d.date.month == post.episode.publicationDate.month && d.date.day == post.episode.publicationDate.day).length > 0) {
+                    days.where((d) => d.date.year == post.episode.publicationDate.year && d.date.month == post.episode.publicationDate.month && d.date.day == post.episode.publicationDate.day).first.list.add(post.episode);
+                  } else {
+                    List list = List();
+                    list.add(post.episode);
+                    days.add(DayPosts(date: DateTime(post.episode.publicationDate.year, post.episode.publicationDate.month, post.episode.publicationDate.day), list: list));
+                  }
+                }
+                if(minDate == null) {
+                  minDate = postDate;
+                } else if (postDate.isBefore(minDate)) {
+                  minDate = postDate;
+                }
+              });
+            }
+            days.sort((a, b) => b.date.compareTo(a.date));
 
-          //Get Days in timeline and group daily posts together
-          List<DayPosts> days = List<DayPosts>();
-          if(postList != null) {
-            postList.forEach((post) {
-              if(days.where((d) => d.date.year == post.datePosted.year && d.date.month == post.datePosted.month && d.date.day == post.datePosted.day).length > 0) {
-                days.where((d) => d.date.year == post.datePosted.year && d.date.month == post.datePosted.month && d.date.day == post.datePosted.day).first.list.add(post);
-              } else {
-                List list = List();
-                list.add(post);
-                days.add(DayPosts(date: DateTime(post.datePosted.year, post.datePosted.month, post.datePosted.day), list: list));
-              }
-            });
-          }
-
-          return ListView(
-            children: postList == null ? [Center(child: CircularProgressIndicator())] : postList.length == 0 ? [Center(child: Text(emptyText))] : days.map((day) {
+            List<Widget> itemList = new List<Widget>();
+            itemList.addAll(days.map((day) {
               return Container(
                 margin: EdgeInsets.only(left: 10, bottom: 10),
                 padding: EdgeInsets.only(left: 10),
@@ -154,6 +178,123 @@ class Timeline extends StatelessWidget {
                     Text(day.date.year == DateTime.now().year && day.date.month == DateTime.now().month && day.date.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]),),
                     Column(
                       children: day.list.map((post) {
+                        if(post is Episode) {
+                          return Card(
+                              elevation: 5,
+                              color: Colors.pink[50],
+                              margin: EdgeInsets.all(5),
+                              child: ClipRRect(
+                                child: Slidable(
+                                  actionPane: SlidableDrawerActionPane(),
+                                  actionExtentRatio: 0.2,
+                                  child: Padding(
+                                      padding: EdgeInsets.all(5),
+                                      child: ListTile(
+                                        leading: Container(
+                                            height: 50.0,
+                                            width: 50.0,
+                                            decoration: BoxDecoration(
+                                                shape: BoxShape.rectangle,
+                                                color: Colors.deepPurple,
+                                                image: DecorationImage(
+                                                    fit: BoxFit.cover,
+                                                    image: NetworkImage(post.podcast.image ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
+                                                )
+                                            )
+                                        ),
+                                        title: Text(post.title),
+                                        subtitle: Text('${post.podcast.title}'),
+                                        trailing: Container(
+                                            width: 85,
+                                            child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                children: <Widget>[
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: <Widget>[
+                                                      InkWell(
+                                                          child: Container(
+                                                            height: 35,
+                                                            width: 35,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: mp.currentPostPodId == (post.guid == null ? post.link : post.guid) ? Colors.red : Colors.deepPurple,
+                                                            ),
+                                                            child: Center(child: FaIcon(mp.currentPostPodId == (post.guid == null ? post.link : post.guid) && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                                          ),
+                                                          onTap: () {
+                                                            if(mp.currentPostPodId == (post.guid == null ? post.link : post.guid) && mp.isPlaying) {
+                                                              mp.pausePost();
+                                                              return;
+                                                            }
+                                                            mp.playPost(PostPodItem.fromEpisode(post, post.podcast));
+                                                          }
+                                                      ),
+                                                      SizedBox(width: 5),
+                                                      InkWell(
+                                                          child: Container(
+                                                            height: 35,
+                                                            width: 35,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: mp.queue.where((item) => item.id == (post.guid == null ? post.link : post.guid)).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                            ),
+                                                            child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                          ),
+                                                          onTap: () {
+                                                            if(mp.queue.where((item) => item.id == (post.guid == null ? post.link : post.guid)).length == 0)
+                                                              mp.addPostToQueue(PostPodItem.fromEpisode(post, post.podcast));
+                                                          }
+                                                      )
+                                                    ],
+                                                  ),
+                                                  post.duration == null ? Text('') : Text(ActivityManager().getDurationString(post.duration)),
+                                                ]
+                                            )
+                                        ),
+                                        onTap: () async {
+                                          showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return EpisodeDialog(ep: post, podcast: post.podcast);
+                                              }
+                                          );
+                                        },
+                                      )
+                                  ),
+                                  secondaryActions: <Widget>[
+                                    new SlideAction(
+                                      color: Colors.red[300],
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: <Widget>[
+                                          FaIcon(FontAwesomeIcons.reply, color: Colors.white),
+                                          Text('Respond', style: TextStyle(color: Colors.white))
+                                        ],
+                                      ),
+                                      onTap: () async {
+                                        post.podcast = await Podcast.loadFeed(url: post.podcast.url);
+                                        mp.replyToEpisode(post, post.podcast, context);
+                                      },
+                                    ),
+                                    new SlideAction(
+                                      color: Colors.deepPurple[300],
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: <Widget>[
+                                          FaIcon(FontAwesomeIcons.comments, color: Colors.white),
+                                          Text('Discuss', style: TextStyle(color: Colors.white))
+                                        ],
+                                      ),
+                                      onTap: () {
+                                        mp.shareToConversation(context, episode: post, podcast: post.podcast, user: currentUser);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              )
+                          );
+                        }
                         return StreamProvider<User>(
                           create: (context) => UserManagement().streamUserDoc(post.userUID),
                           child: Consumer<User>(
@@ -162,134 +303,175 @@ class Timeline extends StatelessWidget {
                                 elevation: 5,
                                 color: Colors.deepPurple[50],
                                 margin: EdgeInsets.all(5),
-                                child: Padding(
-                                  padding: EdgeInsets.all(5),
-                                  child: ExpansionTile(
-                                    leading: poster == null || poster.profilePicUrl == null ? Container(
-                                      height: 60.0,
-                                      width: 60.0,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.deepPurple,
-                                      ),
-                                      child: InkWell(
-                                        child: Container(),
-                                        onTap: () {
-                                          Navigator.push(context, MaterialPageRoute(
-                                            builder: (context) =>
-                                                ProfilePageMobile(userId: post.userUID,),
-                                          ));
-                                        },
-                                      ),
-                                    ) : Container(
-                                        height: 60.0,
-                                        width: 60.0,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.deepPurple,
-                                          image: DecorationImage(
-                                            fit: BoxFit.cover,
-                                            image: NetworkImage(poster.profilePicUrl),
+                                child: ClipRect(
+                                  child: Slidable(
+                                    actionPane: SlidableDrawerActionPane(),
+                                    actionExtentRatio: 0.2,
+                                    child: Padding(
+                                      padding: EdgeInsets.all(5),
+                                      child: ExpansionTile(
+                                        leading: poster == null || poster.profilePicUrl == null ? Container(
+                                          height: 60.0,
+                                          width: 60.0,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.deepPurple,
                                           ),
-                                        ),
-                                        child: InkWell(
-                                          child: Container(),
-                                          onTap: () {
-                                            Navigator.push(context, MaterialPageRoute(
-                                              builder: (context) =>
-                                                  ProfilePageMobile(userId: post.userUID,),
-                                            ));
-                                          },
-                                        )
-                                    ),
-                                    title: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        Text('@${post.username}'),
-                                        Text('${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'),
-                                        post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted))  : Container(),
-                                      ],
-                                    ),
-                                    trailing: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: <Widget>[
-                                        Container(
-                                          width: 80,
-                                          child: Row(
-                                            children: <Widget>[
-                                              InkWell(
-                                                child: Container(
-                                                  height: 35,
-                                                  width: 35,
-                                                  decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
-                                                  ),
-                                                  child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
-                                                ),
-                                                onTap: () {
-                                                  mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
-                                                },
+                                          child: InkWell(
+                                            child: Container(),
+                                            onTap: () {
+                                              Navigator.push(context, MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ProfilePageMobile(userId: post.userUID,),
+                                              ));
+                                            },
+                                          ),
+                                        ) : Container(
+                                            height: 60.0,
+                                            width: 60.0,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.deepPurple,
+                                              image: DecorationImage(
+                                                fit: BoxFit.cover,
+                                                image: NetworkImage(poster.profilePicUrl),
                                               ),
-                                              SizedBox(width: 5,),
-                                              InkWell(
-                                                child: Container(
-                                                  height: 35,
-                                                  width: 35,
-                                                  decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
-                                                  ),
-                                                  child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
-                                                ),
-                                                onTap: () {
-                                                  if(mp.queue.where((p) => p.id == post.id).length <= 0)
-                                                    mp.addPostToQueue(PostPodItem.fromPost(post));
-                                                },
-                                              )
-                                            ],
-                                          ),
+                                            ),
+                                            child: InkWell(
+                                              child: Container(),
+                                              onTap: () {
+                                                Navigator.push(context, MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      ProfilePageMobile(userId: post.userUID,),
+                                                ));
+                                              },
+                                            )
                                         ),
-                                        Text(post.getLengthString())
-                                      ],
-                                    ),
-                                    children: <Widget>[
-                                      Row(
-                                        children: <Widget>[
-                                          SizedBox(width: 90),
-                                          Expanded(
-                                            child: post.streamList != null && post.streamList.length > 0 ? Wrap(
-                                              spacing: 8,
-                                              children: post.streamList.map<Widget>((String tag) {
-                                                return InkWell(
-                                                    child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
+                                        title: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            Text('@${post.username}'),
+                                            Text('${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy h:mm a').format(post.datePosted)}', style: TextStyle(fontSize: 14)),
+                                            post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy h:mm a').format(post.datePosted), style: TextStyle(fontSize: 14, color: Colors.black45))  : Container(),
+                                          ],
+                                        ),
+                                        trailing: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: <Widget>[
+                                            Container(
+                                              width: 80,
+                                              child: Row(
+                                                children: <Widget>[
+                                                  InkWell(
+                                                    child: Container(
+                                                      height: 35,
+                                                      width: 35,
+                                                      decoration: BoxDecoration(
+                                                          shape: BoxShape.circle,
+                                                          color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
+                                                      ),
+                                                      child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                                    ),
                                                     onTap: () {
-                                                      Navigator.push(context, MaterialPageRoute(
-                                                          builder: (context) => StreamTagPageMobile(tag: tag,)
-                                                      ));
-                                                    }
-                                                );
-                                              }).toList(),
-                                            ) : Container(),
-                                          ),
-                                          currentUser != null && post.userUID == currentUser.uid ? Row(
-                                            mainAxisAlignment: MainAxisAlignment.end,
+                                                      mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
+                                                    },
+                                                  ),
+                                                  SizedBox(width: 5,),
+                                                  InkWell(
+                                                    child: Container(
+                                                      height: 35,
+                                                      width: 35,
+                                                      decoration: BoxDecoration(
+                                                          shape: BoxShape.circle,
+                                                          color: mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
+                                                      ),
+                                                      child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
+                                                    ),
+                                                    onTap: () {
+                                                      if(mp.queue.where((p) => p.id == post.id).length <= 0)
+                                                        mp.addPostToQueue(PostPodItem.fromPost(post));
+                                                    },
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                            Text(post.getLengthString())
+                                          ],
+                                        ),
+                                        children: <Widget>[
+                                          Row(
                                             children: <Widget>[
-                                              IconButton(icon: Icon(Icons.delete_forever)),
-                                              IconButton(icon: Icon(Icons.file_download))
+                                              SizedBox(width: 90),
+                                              Expanded(
+                                                child: post.streamList != null && post.streamList.length > 0 ? Wrap(
+                                                  spacing: 8,
+                                                  children: post.streamList.map<Widget>((String tag) {
+                                                    return InkWell(
+                                                        child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
+                                                        onTap: () {
+                                                          Navigator.push(context, MaterialPageRoute(
+                                                              builder: (context) => StreamTagPageMobile(tag: tag,)
+                                                          ));
+                                                        }
+                                                    );
+                                                  }).toList(),
+                                                ) : Container(),
+                                              ),
                                             ],
-                                          ) : IconButton(icon: Icon(Icons.file_download),),
-                                          /*
-                                IconButton(icon: Icon(Icons.music_note),
-                                  onPressed: () async {
-                                    convertFile(post);
-                                  }
-                                ),
-                                 */
+                                          )
                                         ],
-                                      )
-                                    ],
+                                      ),
+                                    ),
+                                    secondaryActions: <Widget>[
+                                      SlideAction(
+                                        color: Colors.deepPurple[300],
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.file_download, color: Colors.grey[400]),
+                                            Text('Download', style: TextStyle(color: Colors.grey[400]))
+                                          ]
+                                        ),
+                                      ),
+                                      currentUser != null && post.userUID == currentUser.uid ? SlideAction(
+                                        color: Colors.red[300],
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.delete_forever, color: Colors.white),
+                                            Text('Delete', style: TextStyle(color: Colors.white))
+                                          ]
+                                        ),
+                                        onTap: () {
+                                          showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(25))),
+                                                  title: Text('Are you sure?'),
+                                                  content: Text('You are about to delete this post forever. Are you sure you\'d like to remove this post?'),
+                                                  actions: [
+                                                    FlatButton(
+                                                      child: Text('Cancel'),
+                                                      onPressed: () {
+                                                        Navigator.of(context).pop();
+                                                      },
+                                                    ),
+                                                    FlatButton(
+                                                      child: Text('Delete'),
+                                                      onPressed: () async {
+                                                        await DBService().deletePost(post);
+                                                        //await DBService().deletePost(post.);
+                                                        Navigator.of(context).pop();
+                                                      },
+                                                    )],
+                                                );
+                                              }
+                                          );
+                                        },
+                                      ) : null
+                                    ].where((element) => element != null).toList(),
                                   ),
                                 ),
                               );
@@ -301,10 +483,36 @@ class Timeline extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
-          );
-        },
-      ),
+            }).toList());
+            if(type == TimelineType.MAINFEED || type == TimelineType.STATION) {
+              itemList.add(
+                ListTile(
+                  title: Center(
+                    child: isLoading ? CircularProgressIndicator() : Text('Load More'),
+                  ),
+                  onTap: () {
+                    if(!isLoading) {
+                      print('Loading more posts from: $minDate');
+                      DBService().updateTimeline(timelineId: timelineId, user: currentUser, minDate: minDate);
+                    }
+                  },
+                )
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                if(type == TimelineType.MAINFEED || type == TimelineType.STATION) {
+                  await DBService().updateTimeline(timelineId: timelineId, reload: false, setLoading: false);
+                }
+              },
+              child: ListView(
+                children: currentUser == null || postList == null ? [Center(child: CircularProgressIndicator())] : days.length == 0  && !isLoading ? [Center(child: Text(emptyText))] : days.length == 0 && isLoading ? [Center(child: CircularProgressIndicator())] : itemList,
+              ),
+            );
+          },
+        );
+      }
     );
   }
 }

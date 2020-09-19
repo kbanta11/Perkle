@@ -5,7 +5,7 @@ const request = require('request-promise');
 
 const admin = require('firebase-admin');
 const firebase_tools = require('firebase-tools');
-let serviceAccount = require('../flutter-fire-test-be63e-firebase-adminsdk-vlm6z-ad7f260341.json');
+let serviceAccount = require('./flutter-fire-test-be63e-firebase-adminsdk-vlm6z-ad7f260341.json');
 //const ffmpegLib = require('fluent-ffmpeg');
 //const ffmpeg_static = require('ffmpeg-static');
 //ffmpegLib.setFfmpegPath(ffmpeg_static.path);
@@ -226,121 +226,144 @@ exports.directMessageNotification = functions.firestore.document('/conversations
 	});
 });
 
-exports.getUserTimeline = functions.firestore.document('/timelines/{id}').onWrite((change, context) => {
-	
+exports.getTimeline = functions.runWith({timeoutSeconds: 300, memory: '1GB'}).https.onCall(async (data, context) => {
 	let parser = new Parser();
 	//let podFeeds = ['http://joeroganexp.joerogan.libsynpro.com/rss', 'https://rss.art19.com/bunga-bunga'];
 
-	(async () => {
-		let allPostList = [];
-		let timelineRef = change.after.ref;
-		let timelineId = change.after.ref.id;
-		let timelineLastMinDate = null;
-		let timelineData = change.after.data();
+	let allPostList = [];
 
-		if(timelineData.last_min_date){
-			timelineLastMinDate = timelineData.last_min_date.toDate();
-		} else {
-		  await firebase_tools.firestore.delete('/timelines/' + timelineId + '/items', {
-	        project: process.env.GCLOUD_PROJECT,
-	        recursive: true,
-	        yes: true,
-	        token: serviceAccount.token
-	      });
-		}
+	let timelineRef;
+	let timelineId = data.timelineId;
+	let timelineLastMinDate = null;
+	//let timelineData = change.after.data();
+	let timelineData = await db.collection('timelines').doc(timelineId).get().then(snapshot => {
+		timelineRef = snapshot.ref;
+		return snapshot.data();
+	});
 
-		let podFeeds = timelineData.podcasts_included;
-		console.log(timelineData);
-		let feedPromises = [];
-		for(const url in podFeeds) {
-			//let feed = await parser.parseURL('http://joeroganexp.joerogan.libsynpro.com/rss');
-			console.log(podFeeds[url]);
-			feedPromises.push(parser.parseURL(podFeeds[url]));
-		}
+	if(timelineData.last_min_date){
+		timelineLastMinDate = timelineData.last_min_date.toDate();
+	} else if(data.reload) {
+	  await firebase_tools.firestore.delete('/timelines/' + timelineId + '/items', {
+        project: process.env.GCLOUD_PROJECT,
+        recursive: true,
+        yes: true,
+        token: serviceAccount.token
+      });
+	}
 
-		await Promise.all(feedPromises).then(feeds => {
-			for(f in feeds) {
-				let feed = feeds[f];
-				console.log(feed.items.length);
-				let podcastData = {
-					'podcast_feed': feed.feedUrl,
-					'image_url': feed.image.url,
-					'podcast_title': feed.title,
-					'podcast_description': feed.description,
-				};
-				console.log('----------------------------------------------------------------------------');
-				for(i in feed.items) {
-					let item = feed.items[i]; 
-					//console.log(item);
-					let date = new Date(item.pubDate);
-					if(item.enclosure) {
-						let episodeData = {
-							'type': 'PODCAST_EPISODE',
-							'podcast_feed': podcastData.podcast_feed,
-							'image_url': podcastData.image_url,
-							'podcast_title': podcastData.podcast_title,
-							'podcast_description': podcastData.podcast_description,
-							'title': item.title,
-							'audio_url': item.enclosure.url,
-							'bytes_length': item.enclosure.length,
-							'description': item.content,
-							'date_iso': item.isoDate,
-							'date': date,
-							'episode_guid': item.guid,
-							'itunes_duration': item.itunes.duration,
-							'episode': item.itunes.episode
-						};
-						//console.log(episodeData);
-						allPostList.push(episodeData);
-						//console.log(item.title + ': ' + item.enclosure.url + '/' + item.enclosure.length);
-					}
+	let podFeeds = timelineData.podcasts_included;
+	//console.log(timelineData);
+	let feedPromises = [];
+	for(const i in podFeeds) {
+		let url = podFeeds[i];
+		url = url.replace('https:', 'http:');
+		//console.log(url);
+		let feed = parser.parseURL(url).then(f => {
+			f.url = url;
+			return f;
+		});
+		feedPromises.push(feed);
+	}
+
+	await Promise.all(feedPromises).then(feeds => {
+		//console.log('Feed Length: ' + feeds.length);
+		for(f in feeds) {
+			let feed = feeds[f];
+			//console.log('Feed Tuple: ' + feedTuple);
+			//console.log('Current Feed: ' + feed.title + '/URL: ' + feed.feedUrl + '/Feed URL: ' + feedTuple[0]);
+			let podcastData = {
+				'podcast_feed': feed.feedUrl ? feed.feedUrl : feed.url,
+				'image_url': feed.image.url,
+				'podcast_title': feed.title,
+				'podcast_description': feed.description,
+			};
+			console.log('----------------------------------------------------------------------------');
+			for(const i in feed.items) {
+				let item = feed.items[i]; 
+				//console.log(item);
+				let date = typeof item.pubDate !== "undefined" ? new Date(item.pubDate) : null;
+				if(item.enclosure) {
+					let episodeData = {
+						'type': 'PODCAST_EPISODE',
+						'podcast_feed': podcastData.podcast_feed,
+						'image_url': typeof podcastData.image_url !== "undefined" ? podcastData.image_url : null,
+						'podcast_title': podcastData.podcast_title,
+						'podcast_description': typeof podcastData.podcast_description !== "undefined" ? podcastData.podcast_description : null,
+						'title': item.title,
+						'audio_url': item.enclosure.url,
+						'bytes_length': item.enclosure.length,
+						'description': item.content,
+						'date_iso': item.isoDate,
+						'date': date,
+						'episode_guid': typeof item.guid !== "undefined" ? item.guid : null,
+						'itunes_duration': typeof item.itunes.duration !== "undefined" ? item.itunes.duration : null,
+						'episode': typeof item.itunes.episode !== "undefined" ? item.itunes.episode : null
+					};
+					//console.log(episodeData);
+					allPostList.push(episodeData);
+					//console.log(item.title + ': ' + item.enclosure.url + '/' + item.enclosure.length);
 				}
 			}
-			return;
-		});
+		}
+		return;
+	});
 
-		await db.collection('posts').where('timelines', 'array-contains', timelineId).get().then(snapshot => {
-			snapshot.forEach(doc => {
-				let data = doc.data();
-				postData = {
-					'type': 'POST',
-					'post_id': doc.ref.id,
-					'title': data.postTitle,
-					'audio_url': data.audioFileLocation,
-					'seconds_length': data.secondsLength,
-					'ms_length': data.ms_length,
-					'date': data.datePosted.toDate(),
-					'userUID': data.userUID,
-					'username':  data.username,
-					'listenCount': data.listenCount,
-					'streamList': data.streamList,
-				};
-				//console.log(postData);
-				allPostList.push(postData);
-			});
-			return;
+	await db.collection('posts').where('timelines', 'array-contains', timelineId).get().then(snapshot => {
+		snapshot.forEach(doc => {
+			let data = doc.data();
+			postData = {
+				'type': 'POST',
+				'post_id': doc.ref.id,
+				'title': typeof data.postTitle !== "undefined" ? data.postTitle : null,
+				'audio_url': data.audioFileLocation,
+				'seconds_length': typeof data.secondsLength !== "undefined" ? data.secondsLength : null,
+				'ms_length': typeof data.ms_length !== "undefined" ? data.ms_length : null,
+				'date': data.datePosted.toDate(),
+				'userUID': data.userUID,
+				'username':  data.username,
+				'listenCount': data.listenCount,
+				'streamList': typeof data.streamList !== "undefined" ? data.streamList : null,
+			};
+			//console.log(postData);
+			allPostList.push(postData);
 		});
-		allPostList.sort((a, b) => b.date - a.date);
-		if(allPostList.length > 50) {
-			if(timelineLastMinDate === null) {
-				allPostList = allPostList.slice(0, 50);
-			} else {
-				let currentPostList = allPostList.filter(p => p.date >= timelineLastMinDate);
-				let remainingPosts = allPostList.filter(p => p.date < timelineLastMinDate);
-				allPostList = remainingPosts.slice(0, 50);
+		return;
+	});
+	allPostList.sort((a, b) => b.date - a.date);
+	if(allPostList.length > 50) {
+		if(timelineLastMinDate === null) {
+			allPostList = allPostList.slice(0, 50);
+		} else {
+			let currentPostList = allPostList.filter(p => p.date >= timelineLastMinDate);
+			let remainingPosts = allPostList.filter(p => p.date < timelineLastMinDate);
+			allPostList = remainingPosts.slice(0, 50);
+		}
+	}
+	let current_audio_urls = await timelineRef.collection('items').get().then(querySnapshot => {
+		if(!querySnapshot.empty) {
+			return querySnapshot.docs.map(doc => {
+				return doc.data().audio_url
+			});
+		}
+		return;
+	});
+	//console.log(current_audio_urls);
+	let batch = db.batch();
+	for(const p in allPostList) {
+		let post = allPostList[p];
+		if(current_audio_urls){
+			if(!current_audio_urls.includes(post.audio_url)) {
+				batch.set(timelineRef.collection('items').doc(), post);
 			}
+		} else {
+			batch.set(timelineRef.collection('items').doc(), post);
 		}
-		let saveDataPromises = [];
-		for(const p in allPostList) {
-			let post = allPostList[p];
-			saveDataPromises.push(db.runTransaction(t => {
-						t.set(timelineRef.collection('items').doc(), post);
-						return Promise.resolve('episode added')
-					}));
-		}
-		await Promise.all(saveDataPromises);
-		console.log('Total Posts: ' + allPostList.length);
-	})().catch((e) => console.log('Error: ' + e));
+	}
+	await batch.commit();
+	console.log('Total Posts: ' + allPostList.length);
+	
+	console.log('complete');
 });
 
 exports.getSearchResults = functions.firestore.document('/requests/{id}').onWrite((change, context) => {

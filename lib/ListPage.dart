@@ -253,6 +253,7 @@ class ConversationListPageMobile extends StatelessWidget {
                           Text(day.date.year == DateTime.now().year && day.date.month == DateTime.now().month && day.date.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]),),
                           Column(
                             children: day.list.map((conversation) {
+                              print('conversation: ${conversation.id}');
                               String firstOtherUid = conversation.memberList.where((item) => item != user.uid).first;
                               String titleText = '';
                               int unreadPosts = 0;

@@ -412,7 +412,6 @@ class ConversationPageMobile extends StatelessWidget {
                                               return StreamBuilder<User>(
                                                 stream: UserManagement().streamUserDoc(directPost.senderUID),
                                                 builder: (context, AsyncSnapshot<User> userSnap) {
-
                                                   User sender = userSnap.data;
                                                   if(sender == null) {
                                                     return Container();

@@ -1,3 +1,4 @@
+import 'package:Perkl/SignUpPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:io';
 
+import 'main.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'HomePage.dart';
@@ -69,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
               ));
             }
           },
-        )..show(context);
+        ).show(context);
       },
       onLaunch: (Map<String, dynamic> message) async {
         print("onLaunch: $message");
@@ -98,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
         }
       },
     );
-    _checkLoggedIn();
+    //_checkLoggedIn();
   }
 
   @override
@@ -169,7 +171,9 @@ class _LoginPageState extends State<LoginPage> {
                           ).then((AuthResult authResult) {
                             Navigator.of(context).pop();
                             print('Auth Result: $authResult');
-                            Navigator.of(context).pushReplacementNamed('/homepage');
+                            Navigator.pushReplacement(context, MaterialPageRoute(
+                              builder: (context) => MainApp(),
+                            ));
                           })
                               .catchError((e) {
                             print('Error Logging In: ${e.code}/${e.message}');
@@ -234,7 +238,9 @@ class _LoginPageState extends State<LoginPage> {
                         textColor: Colors.white,
                         elevation: 7.0,
                         onPressed: (){
-                          Navigator.of(context).pushNamed('/signup');
+                          Navigator.pushReplacement(context, MaterialPageRoute(
+                            builder: (context) => SignUpPage(),
+                          ));
                         },
                         shape: RoundedRectangleBorder(
                           borderRadius: new BorderRadius.circular(25.0),
@@ -278,7 +284,9 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
               setState(() {
                 _isLoading = false;
               });
-              Navigator.of(context).pushReplacementNamed('/homepage');
+              Navigator.pushReplacement(context, MaterialPageRoute(
+                builder: (context) => MainApp(),
+              ));
             },
             child: Container(
               width: 200.0,

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:podcast_search/podcast_search.dart';
+import 'db_services.dart';
 //import 'package:html_unescape/html_unescape.dart';
 import 'UserManagement.dart';
 import 'ActivityManagement.dart';
@@ -15,9 +18,11 @@ class User {
   List<String> following;
   String profilePicUrl;
   String mainFeedTimelineId;
+  List<String> followedPodcasts;
   List<String> timelinesIncluded;
   Map<String, dynamic> directConversationMap;
   List<String> posts;
+  List<Podcast> podcastList;
 
   User({
     this.uid,
@@ -30,27 +35,30 @@ class User {
     this.mainFeedTimelineId,
     this.timelinesIncluded,
     this.directConversationMap,
-    this.posts
+    this.posts,
+    this.followedPodcasts,
   });
 
   factory User.fromFirestore(DocumentSnapshot snapshot) {
-    return User(
+    User newUser = new User(
       uid: snapshot.documentID,
       email: snapshot.data['email'],
       bio: snapshot.data['bio'],
       username: snapshot.data['username'],
       followers: snapshot.data['followers'] == null ? null : snapshot.data['followers'].entries.map<String>((entry) {
-        print('follower');
         String userId = entry.key;
         return userId;
       }).toList(),
       following: snapshot.data['following'] == null ? null : snapshot.data['following'].entries.map<String>((entry) {
-        print('following');
         String userId = entry.key;
         return userId;
       }).toList(),
       profilePicUrl: snapshot.data['profilePicUrl'],
       mainFeedTimelineId: snapshot.data['mainFeedTimelineId'],
+      followedPodcasts: snapshot.data['followedPodcasts'] == null ? null : snapshot.data['followedPodcasts'].map<String>((entry) {
+        String podcastUrl = entry;
+        return podcastUrl.replaceFirst('http:', 'https:');
+      }).toList(),
       timelinesIncluded: snapshot.data['timelinesIncluded'] == null ? null : snapshot.data['timelinesIncluded'].entries.map<String>((entry) {
         print('timelines');
         String timelineId = entry.key;
@@ -62,7 +70,15 @@ class User {
         return postId;
       }).toList(),
     );
+    return newUser;
   }
+}
+
+class CurrentUser {
+  User user;
+  bool isLoaded = true;
+
+  CurrentUser({this.user, this.isLoaded});
 }
 
 class DiscoverTag {
@@ -315,7 +331,7 @@ class PostPodItem {
       return Text(post.postTitle ?? DateFormat("MMMM dd, yyyy").format(post.datePosted).toString());
     }
     if(type == PostType.DIRECT_POST) {
-      return Text('${directPost.podcastTitle != null ? '${directPost.podcastTitle} | ' : ''}${directPost.messageTitle}' ?? DateFormat("MMMM dd, yyyy").format(directPost.datePosted).toString());
+      return directPost.podcastTitle != null ? Text('${directPost.podcastTitle} | ${directPost.messageTitle}') : directPost.messageTitle != null ? Text('${directPost.messageTitle}') : directPost.datePosted != null ? Text(DateFormat('MMMM dd, yyyy h:mm a').format(directPost.datePosted)) : Container();
     }
     if(type == PostType.PODCAST_EPISODE) {
       return Text(episode.title);

@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:Perkl/main.dart';
 import 'package:Perkl/services/db_services.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'dart:io';
@@ -15,6 +18,7 @@ import 'DiscoverPage.dart';
 import 'ConversationPage.dart';
 import 'Timeline.dart';
 
+import 'TutorialDialog.dart';
 import 'services/models.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -218,6 +222,7 @@ class HomePageMobileState extends State<HomePageMobile> {
     String uid = await FirebaseAuth.instance.currentUser().then((user) {
       if(user != null)
         return user.uid;
+      return null;
     });
     // FirebaseUser user = await _auth.currentUser();
 
@@ -230,12 +235,48 @@ class HomePageMobileState extends State<HomePageMobile> {
     }
   }
 
+  Future<bool> showTutorial() async {
+    String localPath = await getApplicationDocumentsDirectory().then((directory) => directory.path);
+    File localFile;
+
+    if(await File('$localPath/local_data.json').exists()) {
+      localFile = File('$localPath/local_data.json');
+    } else {
+      localFile = null;
+    }
+
+    if(localFile != null) {
+      String localJsonString = await localFile.readAsString();
+      Map<String, dynamic> localJsonMap = jsonDecode(localJsonString);
+      bool tutorialCompleted = localJsonMap['tutorialComplete'];
+      print('Tutorial Complete? ${tutorialCompleted}');
+      if(tutorialCompleted != null && tutorialCompleted) {
+        return false;
+      }
+    } else {
+      print('Creating local data file');
+      localFile = new File('$localPath/local_data.json');
+      await localFile.writeAsString(jsonEncode({'tutorialComplete': false}));
+    }
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
-    //WidgetsBinding.instance.addPostFrameCallback((_) async {
-    //  await _showUsernameDialog(context);
-    //});
+    showTutorial().then((show) {
+      if(!show) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) {
+                return TutorialDialog();
+              }
+          );
+        });
+      }
+    });
     //print('Skipping checking username');
     _saveDeviceToken();
   }
@@ -244,34 +285,31 @@ class HomePageMobileState extends State<HomePageMobile> {
   build(BuildContext context) {
     FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    return StreamBuilder(
-      stream: UserManagement().streamCurrentUser(firebaseUser),
-        builder: (context, AsyncSnapshot<User> userSnap) {
-          User user = userSnap.data;
-          if(user == null)
-            return Center(child: CircularProgressIndicator());
-          if(user.username == null || user.username.length == 0)
-            return Scaffold(
-              body: Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                child: WillPopScope(
-                  onWillPop: () async => false,
-                  child: UsernameDialog(),
-                ),
-              ),
-            );
-          return MainPageTemplate(
-              bottomNavIndex: 0,
-              body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
-          );
-        }
+    User user = Provider.of<User>(context);
+    DBService().updateTimeline(timelineId: user.mainFeedTimelineId, user: user, reload: false);
+    if(user == null)
+      return Center(child: CircularProgressIndicator());
+    if(user.username == null || user.username.length == 0) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: WillPopScope(
+            onWillPop: () async => false,
+            child: UsernameDialog(),
+          ),
+        ),
+      );
+    }
+
+    return MainPageTemplate(
+        bottomNavIndex: 0,
+        body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
     );
   }
 }
-
 

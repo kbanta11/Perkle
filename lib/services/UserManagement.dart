@@ -37,12 +37,8 @@ class UserManagement {
   Stream<User> streamCurrentUser(FirebaseUser user) {
     if(user == null)
       return null;
-    return _db.collection('users').document(user.uid).snapshots().map((snap) {
-      if(snap == null || snap.data == null)
-        return null;
-      //print('user snap data: ${snap.data}');
-      return User.fromFirestore(snap);
-    });
+    return _db.collection('users').document(user.uid).snapshots().map((snap) => User.fromFirestore(snap));
+    //await currentUser.loadFollowedPodcasts();
   }
   
   Stream<User> streamUserDoc(String userId) {

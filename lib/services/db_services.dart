@@ -1,10 +1,14 @@
+import 'package:Perkl/Timeline.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'package:intl/intl.dart';
+import 'package:podcast_search/podcast_search.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:io';
 import 'models.dart';
+import 'Helper.dart';
 
 class DBService {
   Firestore _db = Firestore.instance;
@@ -48,25 +52,69 @@ class DBService {
     });
   }
 
-  Stream<List<Post>> streamTimelinePosts(FirebaseUser currentUser, {String timelineId, String streamTag, String userId}) {
+  Stream<List<PostPodItem>> streamTimelinePosts(User currentUser, {String timelineId, String streamTag, String userId, TimelineType type, bool reload}) {
     print('TimelineId: $timelineId ---- StreamTag: $streamTag ---- UserId: $userId');
     if(streamTag != null) {
       return _db.collection('posts').where('streamList', arrayContains: streamTag).orderBy('datePosted', descending: true).snapshots().map((qs) {
-        return qs.documents.map((doc) => Post.fromFirestore(doc)).toList();
+        return qs.documents.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
       });
     }
-    if(timelineId != null) {
-      return _db.collection('posts').where('timelines', arrayContains: timelineId).orderBy("datePosted", descending: true).snapshots().map((qs) {
-        return qs.documents.map((doc) => Post.fromFirestore(doc)).toList();
-      });
+    if(timelineId != null && type == TimelineType.MAINFEED) {
+      //updateTimeline(timelineId: timelineId, user: currentUser, reload: reload);
+      return _db.collection('timelines').document(timelineId).collection('items').orderBy("date", descending: true).snapshots().map((qs) {
+        print(qs.documents.length);
+        List<PostPodItem> list = qs.documents.map((DocumentSnapshot doc) {
+          String itemType = doc.data['type'];
+          Map data = doc.data;
+          //print(data.toString());
+          PostPodItem newItem;
+          if(itemType == 'PODCAST_EPISODE') {
+            //Map data = doc.data;
+            //data['description'] = data['description'].toString();
+            //print(data);
+            String feedUrl = doc.data['podcast_feed'];
+            if(feedUrl != null)
+              feedUrl = feedUrl.replaceFirst('https:', 'http:');
+            print('feedUrl: $feedUrl');
+            Podcast pod = new Podcast.of(url: feedUrl, description: doc.data['podcast_description'] != null ? doc.data['podcast_description'].toString() : null, title: doc.data['podcast_title'], image: doc.data['image_url']);
+            //print('$itemType: ${data['audio_url']} | Episode: ${data['episode']} | Guid: ${data['episode_guid']} | Title: ${data['title']} | Author: ${pod.title} | Duration: ${data['itunes_duration']} | Description: ${data['description']}');
+            Episode ep = new Episode.of(guid: doc.data['episode_guid'],
+                title: doc.data['title'],
+                podcast: pod,
+                author: pod.title,
+                duration: Helper().parseItunesDuration(doc.data['itunes_duration']),
+                description: doc.data['description'],
+                publicationDate: DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
+                contentUrl: doc.data['audio_url'],
+                episode: doc.data['episode'] != null ? int.parse(doc.data['episode']) : null);
+            newItem = PostPodItem.fromEpisode(ep, pod);
+            //print('${newItem.podcast.title} : ${newItem.episode.title}');
+          } else if (itemType == 'POST') {
+            Post post = new Post(id: doc.data['post_id'],
+                audioFileLocation: doc.data['audio_url'],
+                userUID: doc.data['userUID'],
+                username: doc.data['username'],
+                secondsLength: doc.data['seconds_length'],
+                datePosted: DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
+                listenCount: doc.data['listenCount'],
+                streamList: doc.data['streamList'] != null ? doc.data['streamList'].map<String>((item) => item.toString()).toList() : null,
+                postTitle: doc.data['title']);
+            newItem = PostPodItem.fromPost(post);
+          }
+          //print(newItem);
+          return newItem;
+        }).toList();
+        print('List length: ${list.length}');
+        return list;
+      }).handleError((error) {print('Error getting timeline items: $error');});
     }
     if(userId != null) {
       return _db.collection('posts').where('userUID', isEqualTo: userId).orderBy("datePosted", descending: true).snapshots().map((qs) {
-        return qs.documents.map((doc) => Post.fromFirestore(doc)).toList();
+        return qs.documents.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
       });
     }
     return _db.collection('posts').where('userUID', isEqualTo: currentUser.uid).orderBy("datePosted", descending: true).snapshots().map((qs) {
-      return qs.documents.map((doc) => Post.fromFirestore(doc)).toList();
+      return qs.documents.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
     });
   }
 
@@ -75,6 +123,39 @@ class DBService {
     return _db.collection('episode-replies').where("unique_id", isEqualTo: uniqueId).orderBy("reply_date", descending: true).snapshots().map((qs) {
       print('Number of Replies: ${qs.documents.length}');
       return qs.documents.map((doc) => EpisodeReply.fromFirestore(doc)).toList();
+    });
+  }
+
+  updateTimeline({String timelineId, User user, DateTime minDate, bool reload, bool setLoading = true}) async {
+    DocumentReference timelineRef = _db.collection('timelines').document(timelineId);
+    DateTime lastUpdateTime = await timelineRef.get().then((snap) => DateTime.fromMillisecondsSinceEpoch(snap.data['last_updated'].millisecondsSinceEpoch));
+    print('Time since last update ($lastUpdateTime to ${DateTime.now()}): ${DateTime.now().difference(lastUpdateTime).inSeconds}');
+    if((lastUpdateTime != null && DateTime.now().difference(lastUpdateTime).inSeconds > 90) || minDate != null) {
+      if(setLoading){
+        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'is_loading': true}));
+      }
+      if(user != null) {
+        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'last_updated': DateTime.now(), 'podcasts_included': user.followedPodcasts, 'last_min_date': minDate, 'reload': reload}));
+      } else {
+        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'last_updated': DateTime.now(), 'last_min_date': minDate, 'reload': reload}));
+      }
+      final HttpsCallable callable = CloudFunctions.instance.getHttpsCallable(
+        functionName: 'getTimeline',
+      );
+      dynamic resp = await callable.call(<String, dynamic>{
+        'timelineId': timelineId,
+        'reload': reload ?? false
+      });
+      if(setLoading) {
+        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'is_loading': false}));
+      }
+      print('Response: $resp');
+    }
+  }
+
+  Stream<bool> streamTimelineLoading(String timelineId) {
+    return _db.collection('timelines').document(timelineId).snapshots().map((snap) {
+      return snap.data['is_loading'] ?? false;
     });
   }
 
@@ -207,12 +288,13 @@ class DBService {
           //Create memberMap {uid: username} for all users in group
           Map<String, dynamic> _memberMap = new Map<String, dynamic>();
           _memberMap.addAll({sender.uid: sender.username});
-          sendToUsers.forEach((key, value) async {
-            String _username = await Firestore.instance.collection('users').document(key).get().then((doc) {
+          print('Send To Users: $sendToUsers');
+          for(String user in sendToUsers.keys) {
+            String _username = await Firestore.instance.collection('users').document(user).get().then((doc) {
               return doc.data['username'];
             });
-            _memberMap.addAll({key: _username});
-          });
+            _memberMap.addAll({user: _username});
+          };
           print('Member Map (Send as group): $_memberMap');
           await shareDirectPost(episode, podcast, sender, memberMap: _memberMap);
         } else {
@@ -247,7 +329,10 @@ class DBService {
     DocumentReference postRef = _db.collection('directposts').document();
     String convoId = conversationId;
     WriteBatch batch = _db.batch();
-
+    print('Member Map passed in: $memberMap');
+    if(podcast.episodes == null) {
+      podcast = await Podcast.loadFeed(url: podcast.url);
+    }
     //Check if conversation with these members exists
     List<String> _memberList = new List<String>();
     if(memberMap != null) {
@@ -307,6 +392,7 @@ class DBService {
           conversationMembers.addAll({uid: {'username': username, 'unreadPosts': 1}});
       });
       Map<String, dynamic> postMap = {postRef.documentID: sender.uid};
+      print('member list: $_memberList/Conversation Members: $conversationMembers');
 
       batch.setData(conversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': DateTime.now(), 'lastPostUsername': sender.username, 'lastPostUserId': sender.uid});
     }
@@ -337,5 +423,37 @@ class DBService {
       print('Error committing batch: $error');
     }));
     print('batch committed');
+  }
+
+  //Delete a regular post document (does not delete the audio file)
+  Future<void> deletePost(Post post) async {
+    print('deleting post: ${post.id}');
+    await _db.collection('posts').document(post.id).delete();
+    return;
+  }
+
+  Future<void> followPodcast({User user, String podcastUrl}) async {
+    List<String> newList = new List<String>();
+    if(user.followedPodcasts != null) {
+      newList.addAll(user.followedPodcasts);
+    }
+    newList.add(podcastUrl);
+    DocumentReference userRef = _db.collection('users').document(user.uid);
+    await _db.runTransaction((transaction) {
+      return transaction.update(userRef, {'followedPodcasts': newList});
+    });
+  }
+
+  Future<void> unfollowPodcast({User user, String podcastUrl}) async {
+    List<String> newList = new List<String>();
+    if(user.followedPodcasts != null) {
+      newList.addAll(user.followedPodcasts);
+      newList.removeWhere((item) => item == podcastUrl);
+    }
+
+    DocumentReference userRef = _db.collection('users').document(user.uid);
+    await _db.runTransaction((transaction) {
+      return transaction.update(userRef, {'followedPodcasts': newList});
+    });
   }
 }

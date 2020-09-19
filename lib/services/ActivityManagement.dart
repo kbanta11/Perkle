@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 import 'package:Perkl/MainPageTemplate.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -621,6 +622,29 @@ class ActivityManager {
       return '$hours:$minutesString:$secondsString';
     return '$minutesString:$secondsString';
   }
+
+  updateTimeListened(Duration time, String url) async {
+    String localPath = await getApplicationDocumentsDirectory().then((directory) => directory.path);
+    File localFile;
+
+    if(await File('$localPath/local_data.json').exists()) {
+      localFile = File('$localPath/local_data.json');
+    } else {
+      localFile = null;
+    }
+
+    if(localFile != null) {
+      String localJsonString = await localFile.readAsString();
+      Map<String, dynamic> localJsonMap = jsonDecode(localJsonString);
+      print(localJsonMap);
+      if(localJsonMap['posts_in_progress'] != null) {
+        localJsonMap['posts_in_progress'][url] = time.inMilliseconds;
+      } else {
+        localJsonMap.addAll({'posts_in_progress': {url: time.inMilliseconds}});
+      }
+      await localFile.writeAsString(jsonEncode(localJsonMap));
+    }
+  }
 }
 
 List<String> processTagString(String postTags) {
@@ -913,4 +937,5 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
       ],
     );
   }
+
 }
