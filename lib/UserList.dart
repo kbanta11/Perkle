@@ -20,10 +20,10 @@ class UserList extends StatelessWidget {
       bottomNavIndex: 1,
       noBottomNavSelected: true,
       body: ListView(
-        children: userIdList.length > 0 ? userIdList.map((id) => StreamBuilder<User>(
+        children: userIdList.length > 0 ? userIdList.map((id) => StreamBuilder<PerklUser>(
           stream: UserManagement().streamUserDoc(id),
-          builder: (context, AsyncSnapshot<User> userSnap) {
-            User user = userSnap.data;
+          builder: (context, AsyncSnapshot<PerklUser> userSnap) {
+            PerklUser user = userSnap.data;
             print('User Id: $id/User obj: $user');
             return Card(
               margin: EdgeInsets.all(5),

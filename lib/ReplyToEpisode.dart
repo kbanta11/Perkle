@@ -22,15 +22,15 @@ class ReplyToEpisodeDialog extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<ReplyToEpisodeProvider>(create: (_) => ReplyToEpisodeProvider(),),
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
       ],
       child: Consumer<ReplyToEpisodeProvider>(
         builder: (context, rep, _) {
-          User user = Provider.of<User>(context);
+          PerklUser user = Provider.of<PerklUser>(context);
           return rep.isUploading ? Center(child: CircularProgressIndicator()) : SimpleDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text(_episode.title, textAlign: TextAlign.center)),
@@ -200,7 +200,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  sendReply({Episode episode, Podcast podcast, User user}) async {
+  sendReply({Episode episode, Podcast podcast, PerklUser user}) async {
     isUploading = true;
     notifyListeners();
     print('episode: $episode/guid:');

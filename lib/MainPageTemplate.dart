@@ -15,7 +15,7 @@ import 'PageComponents.dart';
 
 class MainPageTemplate extends StatelessWidget {
   Widget body;
-  ActivityManager _activityManager = new ActivityManager();
+  //ActivityManager _activityManager = new ActivityManager();
   int bottomNavIndex;
   bool noBottomNavSelected;
   bool showSearchBar = false;
@@ -28,16 +28,16 @@ class MainPageTemplate extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<MainTemplateProvider>(create: (_) => MainTemplateProvider()),
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
       ],
       child: Consumer<MainTemplateProvider>(
           builder: (context, tempProvider, _) {
-            User currentUser = Provider.of<User>(context);
+            PerklUser currentUser = Provider.of<PerklUser>(context);
             print('Padding: ${MediaQuery.of(context).viewPadding}');
             return Scaffold(
               backgroundColor: Colors.white,

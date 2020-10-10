@@ -1,11 +1,10 @@
-import 'dart:convert';
-
+//import 'dart:convert';
 import 'package:Perkl/main.dart';
 import 'package:Perkl/services/db_services.dart';
 import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -13,10 +12,10 @@ import 'package:provider/provider.dart';
 import 'AddPostDialog.dart';
 import 'ConversationPage.dart';
 import 'MainPageTemplate.dart';
-import 'PageComponents.dart';
-import 'HomePage.dart';
-import 'ProfilePage.dart';
-import 'DiscoverPage.dart';
+//import 'PageComponents.dart';
+//import 'HomePage.dart';
+//import 'ProfilePage.dart';
+//import 'DiscoverPage.dart';
 
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -210,16 +209,16 @@ class _ListPageState extends State<ListPage> {
 class ConversationListPageMobile extends StatelessWidget {
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
         StreamProvider<List<Conversation>>(create: (_) => DBService().streamConversations(firebaseUser.uid)),
       ],
       child: Consumer<List<Conversation>>(
         builder: (context, conversations, _) {
-          User user = Provider.of<User>(context);
+          PerklUser user = Provider.of<PerklUser>(context);
           List<DayPosts> days = List<DayPosts>();
           if(conversations != null) {
             conversations.forEach((convo) {
@@ -277,9 +276,9 @@ class ConversationListPageMobile extends StatelessWidget {
                                       child: InkWell(
                                         child: Row(
                                           children: <Widget>[
-                                            StreamProvider<User>(
+                                            StreamProvider<PerklUser>(
                                                 create: (context) => UserManagement().streamUserDoc(firstOtherUid),
-                                                child: Consumer<User>(
+                                                child: Consumer<PerklUser>(
                                                   builder: (context, firstUser, _) {
                                                     if(firstUser == null || firstUser.profilePicUrl == null)
                                                       return Container(

@@ -347,19 +347,18 @@ class DiscoverPageMobile extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
         ChangeNotifierProvider<DiscoverPageMobileProvider>(create: (_) => DiscoverPageMobileProvider()),
         FutureProvider<List<DiscoverTag>>(create: (_) => DBService().getDiscoverTags()),
       ],
-      child: Consumer<User>(
+      child: Consumer<PerklUser>(
           builder: (context, user, _) {
             DiscoverPageMobileProvider pageProvider = Provider.of<DiscoverPageMobileProvider>(context);
             List<DiscoverTag> discoverTags = Provider.of<List<DiscoverTag>>(context);
-            MainAppProvider mp = Provider.of<MainAppProvider>(context);
             print('DiscoverTags: $discoverTags');
             String firstTag = discoverTags != null ? discoverTags.first.value : null;
             print('Current Tag: ${pageProvider.selectedTag ?? firstTag}');
@@ -449,9 +448,9 @@ class DiscoverPageMobile extends StatelessWidget {
                           if(userList == null)
                             return Center(child: CircularProgressIndicator());
                           return ListView(
-                            children: userList.map((userId) => StreamProvider<User>(
+                            children: userList.map((userId) => StreamProvider<PerklUser>(
                               create: (context) => UserManagement().streamUserDoc(userId),
-                              child: Consumer<User>(
+                              child: Consumer<PerklUser>(
                                 builder: (context, user, _) {
                                   return user == null ? Container()
                                       : Card(

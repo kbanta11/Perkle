@@ -8,15 +8,15 @@ import 'package:Perkl/services/models.dart';
 class FeedbackForm extends StatelessWidget {
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser),),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser),),
         ChangeNotifierProvider<FeedbackProvider>(create: (_) => FeedbackProvider(),),
       ],
       child: Consumer<FeedbackProvider>(
         builder: (context, fbp, _) {
-          User currentUser = Provider.of<User>(context);
+          PerklUser currentUser = Provider.of<PerklUser>(context);
           return SimpleDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text('Feedback')),
@@ -85,7 +85,7 @@ class FeedbackProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sendFeedback(User user) async {
+  Future<void> sendFeedback(PerklUser user) async {
     await DBService().sendFeedback(rating, positive, negative, user);
     return;
   }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:Perkl/services/models.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,42 +8,47 @@ import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'models.dart';
+//import 'models.dart';
 
 class UserManagement {
-  Firestore _db = Firestore.instance;
+  FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Future<void> storeNewUser(user, {username}) async {
+  Future<void> storeNewUser(User user, {String username}) async {
     //print('Storing new user data');
-    Firestore.instance.collection('/timelines').add({'type': 'UserMainFeed', 'userUID': user.uid}).then((doc) {
-      String timelineId = doc.documentID;
-      Firestore.instance.collection('/users').document(user.uid).setData({
-        'email': user.email,
-        'uid': user.uid,
-        'username': username != null ? username : null,
-        'usernameCaseInsensitive': username != null ? username.toLowerCase() : null,
-        'mainFeedTimelineId': timelineId,
-      });
+    WriteBatch batch = _db.batch();
+    DocumentReference timelineRef = _db.collection('/timelines').doc();
+    batch.set(timelineRef, {'type': 'UserMainFeed', 'userUID': user.uid});
+
+    String timelineId = timelineRef.id;
+    DocumentReference userRef = _db.collection('/users').doc(user.uid);
+    batch.set(userRef, {
+      'email': user.email,
+      'uid': user.uid,
+      'username': username != null ? username : null,
+      'usernameCaseInsensitive': username != null ? username.toLowerCase() : null,
+      'mainFeedTimelineId': timelineId,
+      'tos_accepted': true,
     });
+    await batch.commit();
   }
 
   bool isLoggedIn() {
-    if (FirebaseAuth.instance.currentUser() != null) {
+    if (FirebaseAuth.instance.currentUser != null) {
       return true;
     } else {
       return false;
     }
   }
 
-  Stream<User> streamCurrentUser(FirebaseUser user) {
+  Stream<PerklUser> streamCurrentUser(User user) {
     if(user == null)
       return null;
-    return _db.collection('users').document(user.uid).snapshots().map((snap) => User.fromFirestore(snap));
+    return _db.collection('users').doc(user.uid).snapshots().map((snap) => PerklUser.fromFirestore(snap));
     //await currentUser.loadFollowedPodcasts();
   }
   
-  Stream<User> streamUserDoc(String userId) {
-    return _db.collection('users').document(userId).snapshots().map((snap) => User.fromFirestore(snap));
+  Stream<PerklUser> streamUserDoc(String userId) {
+    return _db.collection('users').doc(userId).snapshots().map((snap) => PerklUser.fromFirestore(snap));
   }
 
   Future<void> updateUser(BuildContext context, Map<String, dynamic> userData) async {
@@ -51,11 +57,9 @@ class UserManagement {
 //        print(e);
 //      });
 
-      Firestore.instance.runTransaction((Transaction userTransaction) async {
+      _db.runTransaction((Transaction userTransaction) async {
         await getUserData().then((DocumentReference doc) async {
-          await userTransaction.update(doc, userData).catchError((e) {
-            print(e);
-          });
+          await userTransaction.update(doc, userData);
         });
       });
     } else {
@@ -66,12 +70,12 @@ class UserManagement {
   Future<void> addPost(String docId) async {
     Map<dynamic, dynamic> postMap = new Map();
 
-    Firestore.instance.runTransaction((Transaction transaction) async {
+    _db.runTransaction((Transaction transaction) async {
       await getUserData().then((DocumentReference doc) async {
         await doc.get().then((DocumentSnapshot snapshot) async {
           print('set currposts');
-          print(snapshot.data['posts'].runtimeType);
-          Map<dynamic, dynamic> currPosts = snapshot.data['posts'];
+          print(snapshot.data()['posts'].runtimeType);
+          Map<dynamic, dynamic> currPosts = snapshot.data()['posts'];
           print('check currposts');
           if(currPosts != null) {
             print('setting postMap to currPosts');
@@ -83,45 +87,39 @@ class UserManagement {
           postMap.addAll({docId: true});
           print('Post List After add: $postMap');
           print('nothing will print');
-          await transaction.update(doc, {'posts': postMap});
+          transaction.update(doc, {'posts': postMap});
         });
       });
     });
   }
 
   Future<DocumentReference> getUserData() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      return user;
-    });
+    User user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return null;
     }
     print('getting user data document------------------');
-    return Firestore.instance.collection('users').document(user.uid);
+    return _db.collection('users').doc(user.uid);
   }
 
   Future<String> getUID() async {
-    return await FirebaseAuth.instance.currentUser().then((user) async {
-      return user.uid.toString();
-    });
+    return FirebaseAuth.instance.currentUser.uid;
   }
 
 
   Future<bool> userAlreadyCreated () async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser().then((user) {
-      return user;
-    });
+    User user = FirebaseAuth.instance.currentUser;
     //print('User UID: $user.uid--------------');
-    return await Firestore.instance.collection('users').document(user.uid).get().then((snapshot) {
+    return await _db.collection('users').doc(user.uid).get().then((snapshot) {
       return snapshot.exists;
     });
   }
 
   Future<bool> usernameExists(username) async {
-    QuerySnapshot result = await Firestore.instance.collection('users')
+    QuerySnapshot result = await _db.collection('users')
         .where("usernameCaseInsensitive", isEqualTo: username.toLowerCase()).limit(1)
-        .getDocuments();
-    return result.documents.length > 0;
+        .get();
+    return result.docs.length > 0;
   }
 }
 
@@ -282,7 +280,7 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
   void getCurrentBio() async {
     await UserManagement().getUserData().then((doc) async {
       await doc.get().then((snapshot) async {
-        currentBio = snapshot.data['bio'].toString();
+        currentBio = snapshot.data()['bio'].toString();
       });
     });
   }

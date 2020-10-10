@@ -57,6 +57,7 @@ class ListTileBubble extends StatelessWidget {
         }
       },
     );
+    /*
     return Card(
       elevation: 5,
       color: color ?? Colors.white,
@@ -89,5 +90,6 @@ class ListTileBubble extends StatelessWidget {
         ),
       ),
     );
+     */
   }
 }

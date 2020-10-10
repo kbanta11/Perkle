@@ -11,11 +11,10 @@ import 'models.dart';
 import 'Helper.dart';
 
 class DBService {
-  Firestore _db = Firestore.instance;
-
+  FirebaseFirestore _db = FirebaseFirestore.instance;
   Future<int> getConfigMinBuildNumber() async {
-    int buildNumber = await _db.collection('config').document('config').get().then((snap) {
-      return snap.data[Platform.isAndroid ? 'minimum_android_version' : 'minimum_ios_version'];
+    int buildNumber = await _db.collection('config').doc('config').get().then((snap) {
+      return snap.data()[Platform.isAndroid ? 'minimum_android_version' : 'minimum_ios_version'];
     }).catchError((e) {
       print('error: $e');
     });
@@ -23,82 +22,82 @@ class DBService {
   }
 
   Future<List<DiscoverTag>> getDiscoverTags() async {
-    return await _db.collection('discover').where('type', isEqualTo: 'StreamTag').orderBy('rank').getDocuments().then((QuerySnapshot qs) {
-      return qs.documents.map((doc) => DiscoverTag.fromFirestore(doc)).toList();
+    return await _db.collection('discover').where('type', isEqualTo: 'StreamTag').orderBy('rank').get().then((QuerySnapshot qs) {
+      return qs.docs.map((doc) => DiscoverTag.fromFirestore(doc)).toList();
     });
   }
 
   Stream<List<String>> streamDiscoverPods() {
-    return _db.collection('requests').document('discover').snapshots().map((doc) {
-      return doc.data['results'].map<String>((value) => value.toString()).toList();
+    return _db.collection('requests').doc('discover').snapshots().map((doc) {
+      return doc.data()['results'].map<String>((value) => value.toString()).toList();
     });
   }
 
   Stream<List<Conversation>> streamConversations(String userId) {
     return _db.collection('conversations').where('memberList', arrayContains: userId).orderBy('lastDate', descending: true).snapshots().map((qs) {
-      return qs.documents.map((doc) => Conversation.fromFirestore(doc)).toList();
+      return qs.docs.map((doc) => Conversation.fromFirestore(doc)).toList();
     });
   }
   
   Stream<List<DirectPost>> streamDirectPosts(String conversationId) {
     return _db.collection('directposts').where('conversationId', isEqualTo: conversationId).orderBy('datePosted', descending: true).snapshots().map((qs) {
-      return qs.documents.map((doc) => DirectPost.fromFirestore(doc)).toList();
+      return qs.docs.map((doc) => DirectPost.fromFirestore(doc)).toList();
     });
   }
 
   Stream<List<Post>> streamTagPosts(String streamTag) {
     return _db.collection('posts').where('streamList', arrayContains: streamTag).orderBy('datePosted', descending: true).snapshots().map((qs) {
-      return qs.documents.map((doc) => Post.fromFirestore(doc)).toList();
+      return qs.docs.map((doc) => Post.fromFirestore(doc)).toList();
     });
   }
 
-  Stream<List<PostPodItem>> streamTimelinePosts(User currentUser, {String timelineId, String streamTag, String userId, TimelineType type, bool reload}) {
+  Stream<List<PostPodItem>> streamTimelinePosts(PerklUser currentUser, {String timelineId, String streamTag, String userId, TimelineType type, bool reload}) {
     print('TimelineId: $timelineId ---- StreamTag: $streamTag ---- UserId: $userId');
     if(streamTag != null) {
       return _db.collection('posts').where('streamList', arrayContains: streamTag).orderBy('datePosted', descending: true).snapshots().map((qs) {
-        return qs.documents.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
+        return qs.docs.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
       });
     }
     if(timelineId != null && type == TimelineType.MAINFEED) {
       //updateTimeline(timelineId: timelineId, user: currentUser, reload: reload);
-      return _db.collection('timelines').document(timelineId).collection('items').orderBy("date", descending: true).snapshots().map((qs) {
-        print(qs.documents.length);
-        List<PostPodItem> list = qs.documents.map((DocumentSnapshot doc) {
-          String itemType = doc.data['type'];
-          Map data = doc.data;
+      return _db.collection('timelines').doc(timelineId).collection('items').orderBy("date", descending: true).snapshots().map((qs) {
+        print(qs.docs.length);
+        List<PostPodItem> list = qs.docs.map((DocumentSnapshot doc) {
+          String itemType = doc.data()['type'];
+          Map data = doc.data();
           //print(data.toString());
           PostPodItem newItem;
           if(itemType == 'PODCAST_EPISODE') {
             //Map data = doc.data;
             //data['description'] = data['description'].toString();
             //print(data);
-            String feedUrl = doc.data['podcast_feed'];
+            String feedUrl = data['podcast_feed'];
             if(feedUrl != null)
               feedUrl = feedUrl.replaceFirst('https:', 'http:');
             print('feedUrl: $feedUrl');
-            Podcast pod = new Podcast.of(url: feedUrl, description: doc.data['podcast_description'] != null ? doc.data['podcast_description'].toString() : null, title: doc.data['podcast_title'], image: doc.data['image_url']);
+            Podcast pod = new Podcast.of(url: feedUrl, description: data['podcast_description'] != null ? data['podcast_description'].toString() : null, title: doc.data()['podcast_title'], image: doc.data()['image_url']);
             //print('$itemType: ${data['audio_url']} | Episode: ${data['episode']} | Guid: ${data['episode_guid']} | Title: ${data['title']} | Author: ${pod.title} | Duration: ${data['itunes_duration']} | Description: ${data['description']}');
-            Episode ep = new Episode.of(guid: doc.data['episode_guid'],
-                title: doc.data['title'],
+            Episode ep = new Episode.of(guid: doc.data()['episode_guid'],
+                title: doc.data()['title'],
                 podcast: pod,
                 author: pod.title,
-                duration: Helper().parseItunesDuration(doc.data['itunes_duration']),
-                description: doc.data['description'],
-                publicationDate: doc.data['date'] == null ? null : DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
-                contentUrl: doc.data['audio_url'],
-                episode: doc.data['episode'] != null ? int.parse(doc.data['episode']) : null);
+                duration: Helper().parseItunesDuration(doc.data()['itunes_duration']),
+                description: doc.data()['description'],
+                publicationDate: doc.data()['date'] == null ? null : DateTime.fromMillisecondsSinceEpoch(doc.data()['date'].millisecondsSinceEpoch),
+                contentUrl: doc.data()['audio_url'],
+                episode: doc.data()['episode'] != null ? int.parse(doc.data()['episode']) : null);
             newItem = PostPodItem.fromEpisode(ep, pod);
             //print('${newItem.podcast.title} : ${newItem.episode.title}');
           } else if (itemType == 'POST') {
-            Post post = new Post(id: doc.data['post_id'],
-                audioFileLocation: doc.data['audio_url'],
-                userUID: doc.data['userUID'],
-                username: doc.data['username'],
-                secondsLength: doc.data['seconds_length'],
-                datePosted: doc.data['date'] == null ? null : DateTime.fromMillisecondsSinceEpoch(doc.data['date'].millisecondsSinceEpoch),
-                listenCount: doc.data['listenCount'],
-                streamList: doc.data['streamList'] != null ? doc.data['streamList'].map<String>((item) => item.toString()).toList() : null,
-                postTitle: doc.data['title']);
+            Post post = new Post(id: doc.data()['post_id'],
+                audioFileLocation: doc.data()['audio_url'],
+                userUID: doc.data()['userUID'],
+                username: doc.data()['username'],
+                secondsLength: doc.data()['seconds_length'],
+                datePosted: doc.data()['date'] == null ? null : DateTime.fromMillisecondsSinceEpoch(doc.data()['date'].millisecondsSinceEpoch),
+                listenCount: doc.data()['listenCount'],
+                streamList: doc.data()['streamList'] != null ? doc.data()['streamList'].map<String>((item) => item.toString()).toList() : null,
+                postTitle: doc.data()['title']);
             newItem = PostPodItem.fromPost(post);
           }
           //print(newItem);
@@ -110,34 +109,43 @@ class DBService {
     }
     if(userId != null) {
       return _db.collection('posts').where('userUID', isEqualTo: userId).orderBy("datePosted", descending: true).snapshots().map((qs) {
-        return qs.documents.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
+        return qs.docs.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
       });
     }
     return _db.collection('posts').where('userUID', isEqualTo: currentUser.uid).orderBy("datePosted", descending: true).snapshots().map((qs) {
-      return qs.documents.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
+      return qs.docs.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
     });
   }
 
   Stream<List<EpisodeReply>> streamEpisodeReplies(String uniqueId) {
     print('Unique ID: $uniqueId');
     return _db.collection('episode-replies').where("unique_id", isEqualTo: uniqueId).orderBy("reply_date", descending: true).snapshots().map((qs) {
-      print('Number of Replies: ${qs.documents.length}');
-      return qs.documents.map((doc) => EpisodeReply.fromFirestore(doc)).toList();
+      //print('Number of Replies: ${qs.docs.length}');
+      return qs.docs.map((doc) => EpisodeReply.fromFirestore(doc)).toList();
     });
   }
 
-  updateTimeline({String timelineId, User user, DateTime minDate, bool reload, bool setLoading = true}) async {
-    DocumentReference timelineRef = _db.collection('timelines').document(timelineId);
-    DateTime lastUpdateTime = await timelineRef.get().then((snap) => snap.data['last_updated'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snap.data['last_updated'].millisecondsSinceEpoch));
+  updateTimeline({String timelineId, PerklUser user, DateTime minDate, bool reload, bool setLoading = true}) async {
+    DocumentReference timelineRef = _db.collection('timelines').doc(timelineId);
+    DateTime lastUpdateTime = await timelineRef.get().then((snap) => snap.data()['last_updated'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snap.data()['last_updated'].millisecondsSinceEpoch));
     //print('Time since last update ($lastUpdateTime to ${DateTime.now()}): ${DateTime.now().difference(lastUpdateTime).inSeconds}');
     if(lastUpdateTime == null || (lastUpdateTime != null && DateTime.now().difference(lastUpdateTime).inSeconds > 90) || minDate != null) {
       if(setLoading){
-        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'is_loading': true}));
+        await _db.runTransaction((transaction) {
+          transaction.update(timelineRef, {'is_loading': true});
+          return;
+        });
       }
       if(user != null) {
-        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'last_updated': DateTime.now(), 'podcasts_included': user.followedPodcasts, 'last_min_date': minDate, 'reload': reload}));
+        await _db.runTransaction((transaction) {
+          transaction.update(timelineRef, {'last_updated': DateTime.now(), 'podcasts_included': user.followedPodcasts, 'last_min_date': minDate, 'reload': reload});
+          return;
+        });
       } else {
-        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'last_updated': DateTime.now(), 'last_min_date': minDate, 'reload': reload}));
+        await _db.runTransaction((transaction) {
+          transaction.update(timelineRef, {'last_updated': DateTime.now(), 'last_min_date': minDate, 'reload': reload});
+          return;
+        });
       }
       final HttpsCallable callable = CloudFunctions.instance.getHttpsCallable(
         functionName: 'getTimeline',
@@ -147,26 +155,29 @@ class DBService {
         'reload': reload ?? false
       });
       if(setLoading) {
-        await _db.runTransaction((transaction) => transaction.update(timelineRef, {'is_loading': false}));
+        await _db.runTransaction((transaction) {
+          transaction.update(timelineRef, {'is_loading': false});
+          return;
+        });
       }
       print('Response: $resp');
     }
   }
 
   Stream<bool> streamTimelineLoading(String timelineId) {
-    return _db.collection('timelines').document(timelineId).snapshots().map((snap) {
-      return snap.data['is_loading'] ?? false;
+    return _db.collection('timelines').doc(timelineId).snapshots().map((snap) {
+      return snap.data()['is_loading'] ?? false;
     });
   }
 
   Future<void> updateDeviceToken(String userToken, String uid) async {
     var tokens = _db
         .collection('users')
-        .document(uid)
+        .doc(uid)
         .collection('tokens')
-        .document(userToken);
+        .doc(userToken);
 
-    await tokens.setData({
+    await tokens.set({
       'token': userToken,
       'createdAt': FieldValue.serverTimestamp(), // optional
       'platform': Platform.operatingSystem // optional
@@ -174,7 +185,7 @@ class DBService {
   }
 
   void markConversationRead(String conversationId, String userId) async {
-    DocumentReference conversationRef = _db.collection('conversations').document(conversationId);
+    DocumentReference conversationRef = _db.collection('conversations').doc(conversationId);
     Conversation convo = await conversationRef.get().then((doc) => Conversation.fromFirestore(doc));
     print('Members before: ${convo.conversationMembers}');
     if(convo.conversationMembers != null && convo.conversationMembers.containsKey(userId)) {
@@ -184,22 +195,28 @@ class DBService {
       convo.conversationMembers[userId] = userMap;
     }
     print('Members after: ${convo.conversationMembers}');
-    await _db.runTransaction((transaction) => transaction.update(conversationRef, {'conversationMembers': convo.conversationMembers}));
+    await _db.runTransaction((transaction) {
+      transaction.update(conversationRef, {'conversationMembers': convo.conversationMembers});
+      return;
+    });
   }
 
-  Future<void> sendFeedback(int rating, String positive, String negative, User user) async {
-    DocumentReference feedbackRef = _db.collection('feedback').document('initial-testing').collection('responses').document(user.uid);
-    await _db.runTransaction((trans) => trans.set(feedbackRef, {
-      'userId': user.uid,
-      'rating': rating,
-      'positive': positive,
-      'negative': negative,
-      'datesent': DateTime.now(),
-    }));
+  Future<void> sendFeedback(int rating, String positive, String negative, PerklUser user) async {
+    DocumentReference feedbackRef = _db.collection('feedback').doc('initial-testing').collection('responses').doc(user.uid);
+    await _db.runTransaction((trans) {
+      trans.set(feedbackRef, {
+        'userId': user.uid,
+        'rating': rating,
+        'positive': positive,
+        'negative': negative,
+        'datesent': DateTime.now(),
+      });
+      return;
+    });
     return;
   }
 
-  Future<void> postEpisodeReply({Episode episode, Podcast podcast, String filePath, Duration replyLength, DateTime replyDate, User user, String replyTitle}) async {
+  Future<void> postEpisodeReply({Episode episode, Podcast podcast, String filePath, Duration replyLength, DateTime replyDate, PerklUser user, String replyTitle}) async {
     String episodeId = episode.guid != null ? episode.guid : episode.link;
     String fileUrlString;
 
@@ -215,11 +232,11 @@ class DBService {
     }
 
     //add document to "episode-replies" collection, key on episode ID (guid/link)
-    DocumentReference replyRef = _db.collection('episode-replies').document();
+    DocumentReference replyRef = _db.collection('episode-replies').doc();
 
-    await _db.runTransaction((transaction) async {
-      await transaction.set(replyRef, {
-        'id': replyRef.documentID,
+    await _db.runTransaction((transaction) {
+      transaction.set(replyRef, {
+        'id': replyRef.id,
         'unique_id': episodeId,
         'podcast_name': podcast.title,
         'episode_name': episode.title,
@@ -231,57 +248,59 @@ class DBService {
         'reply_ms': replyLength.inMilliseconds,
         'audioFileLocation': fileUrlString,
       });
+      return;
     });
 
     //Make sure to update username change function to also update replies
   }
 
   Future<List<String>> getHeardPostIds({String conversationId, String userId}) async {
-    return await _db.collection('conversations').document(conversationId).collection('heard-posts').document(userId).get().then((DocumentSnapshot docSnap) {
+    return await _db.collection('conversations').doc(conversationId).collection('heard-posts').doc(userId).get().then((DocumentSnapshot docSnap) {
       if(!docSnap.exists) {
         return null;
       }
       List<String> idList = List<String>();
-      idList.addAll(docSnap.data['id_list'].cast<String>());
+      idList.addAll(docSnap.data()['id_list'].cast<String>());
       return idList;
     });
   }
 
   markDirectPostHeard({String conversationId, String userId, String postId}) async {
-    DocumentReference docRef = _db.collection('conversations').document(conversationId).collection('heard-posts').document(userId);
+    DocumentReference docRef = _db.collection('conversations').doc(conversationId).collection('heard-posts').doc(userId);
     List<String> idList = List<String>();
     bool docExists = false;
 
     await docRef.get().then((docSnap) {
       if(docSnap.exists) {
         docExists = true;
-        idList.addAll(docSnap.data['id_list'].cast<String>());
+        idList.addAll(docSnap.data()['id_list'].cast<String>());
       }
     });
     idList.add(postId);
 
     await _db.runTransaction((transaction) {
       if(docExists) {
-        return transaction.update(docRef, {
+        transaction.update(docRef, {
           'id_list': idList,
         });
       } else {
-        return transaction.set(docRef, {'id_list': idList});
+        transaction.set(docRef, {'id_list': idList});
       }
+      return;
     });
   }
 
   Future<List<DirectPost>> getDirectPosts(String conversationId) {
-    return _db.collection('directposts').where('conversationId', isEqualTo: conversationId).orderBy('datePosted', descending: true).getDocuments().then((QuerySnapshot qs) {
-      if(qs.documents.length > 0) {
-        return qs.documents.map((docSnap) => DirectPost.fromFirestore(docSnap)).toList();
+    return _db.collection('directposts').where('conversationId', isEqualTo: conversationId).orderBy('datePosted', descending: true).get().then((QuerySnapshot qs) {
+      if(qs.docs.length > 0) {
+        return qs.docs.map((docSnap) => DirectPost.fromFirestore(docSnap)).toList();
       }
       return null;
     });
   }
 
   //Share podcast episodes in conversations
-  Future<void> shareEpisodeToDiscussion({Episode episode, Podcast podcast, User sender, bool sendAsGroup, Map<String, dynamic> sendToUsers, Map<String, dynamic> addToConversations}) async {
+  Future<void> shareEpisodeToDiscussion({Episode episode, Podcast podcast, PerklUser sender, bool sendAsGroup, Map<String, dynamic> sendToUsers, Map<String, dynamic> addToConversations}) async {
     if(sendToUsers != null){
       if(sendToUsers.length > 0) {
         if(sendAsGroup) {
@@ -290,11 +309,11 @@ class DBService {
           _memberMap.addAll({sender.uid: sender.username});
           print('Send To Users: $sendToUsers');
           for(String user in sendToUsers.keys) {
-            String _username = await Firestore.instance.collection('users').document(user).get().then((doc) {
-              return doc.data['username'];
+            String _username = await _db.collection('users').doc(user).get().then((doc) {
+              return doc.data()['username'];
             });
             _memberMap.addAll({user: _username});
-          };
+          }
           print('Member Map (Send as group): $_memberMap');
           await shareDirectPost(episode, podcast, sender, memberMap: _memberMap);
         } else {
@@ -303,8 +322,8 @@ class DBService {
           sendToUsers.forEach((key, value) async {
             Map<String, dynamic> _memberMap = new Map<String, dynamic>();
             _memberMap.addAll({sender.uid: sender.username});
-            String _thisUsername = await Firestore.instance.collection('users').document(key).get().then((doc) {
-              return doc.data['username'];
+            String _thisUsername = await _db.collection('users').doc(key).get().then((doc) {
+              return doc.data()['username'];
             });
             _memberMap.addAll({key: _thisUsername});
             //send direct post to this user
@@ -324,9 +343,9 @@ class DBService {
     }
   }
 
-  Future<void> shareDirectPost(Episode episode, Podcast podcast, User sender, {String conversationId, Map<dynamic, dynamic> memberMap}) async {
+  Future<void> shareDirectPost(Episode episode, Podcast podcast, PerklUser sender, {String conversationId, Map<dynamic, dynamic> memberMap}) async {
     DocumentReference conversationRef;
-    DocumentReference postRef = _db.collection('directposts').document();
+    DocumentReference postRef = _db.collection('directposts').doc();
     String convoId = conversationId;
     WriteBatch batch = _db.batch();
     print('Member Map passed in: $memberMap');
@@ -340,12 +359,12 @@ class DBService {
     }
     _memberList.sort();
     if(convoId == null){
-      await Firestore.instance.collection('conversations').where('memberList', isEqualTo: _memberList).getDocuments().then((snapshot) {
-        if(snapshot.documents.isNotEmpty) {
-          DocumentSnapshot conversation = snapshot.documents.first;
+      await _db.collection('conversations').where('memberList', isEqualTo: _memberList).get().then((snapshot) {
+        if(snapshot.docs.isNotEmpty) {
+          DocumentSnapshot conversation = snapshot.docs.first;
           if(conversation != null)
             conversationRef = conversation.reference;
-            convoId = conversation.reference.documentID;
+            convoId = conversation.reference.id;
         }
       });
     }
@@ -353,13 +372,13 @@ class DBService {
     //If conversation exists, add post to conversation, otherwise create new conversation and add post
     if(convoId != null) {
       print('Conversation exists: $convoId');
-      conversationRef = _db.collection('conversations').document(convoId);
+      conversationRef = _db.collection('conversations').doc(convoId);
       //Get post map and conversationMembers
       Map<String, dynamic> postMap;
       Map<String, dynamic> conversationMembers;
       await conversationRef.get().then((DocumentSnapshot snapshot) {
-        postMap = Map<String, dynamic>.from(snapshot.data['postMap']);
-        conversationMembers = Map<String, dynamic>.from(snapshot.data['conversationMembers']);
+        postMap = Map<String, dynamic>.from(snapshot.data()['postMap']);
+        conversationMembers = Map<String, dynamic>.from(snapshot.data()['conversationMembers']);
       });
 
       //-increment unread posts for all users other than posting user
@@ -376,13 +395,13 @@ class DBService {
         newMemberMap[uid] = newDetails;
       });
 
-      postMap.addAll({postRef.documentID: sender.uid});
+      postMap.addAll({postRef.id: sender.uid});
       //update conversation document
-      batch.updateData(conversationRef, {'postMap': postMap, 'lastDate': DateTime.now(), 'lastPostUsername': sender.username, 'lastPostUserId': sender.uid, 'conversationMembers': newMemberMap});
+      batch.update(conversationRef, {'postMap': postMap, 'lastDate': DateTime.now(), 'lastPostUsername': sender.username, 'lastPostUserId': sender.uid, 'conversationMembers': newMemberMap});
     } else {
       //Create new conversation document and update data
-      conversationRef = Firestore.instance.collection('/conversations').document();
-      convoId = conversationRef.documentID;
+      conversationRef = _db.collection('/conversations').doc();
+      convoId = conversationRef.id;
       print('creating new conversation: $conversationId');
       Map<String, dynamic> conversationMembers = new Map<String, dynamic>();
       memberMap.forEach((uid, username) {
@@ -391,10 +410,10 @@ class DBService {
         else
           conversationMembers.addAll({uid: {'username': username, 'unreadPosts': 1}});
       });
-      Map<String, dynamic> postMap = {postRef.documentID: sender.uid};
+      Map<String, dynamic> postMap = {postRef.id: sender.uid};
       print('member list: $_memberList/Conversation Members: $conversationMembers');
 
-      batch.setData(conversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': DateTime.now(), 'lastPostUsername': sender.username, 'lastPostUserId': sender.uid});
+      batch.set(conversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': DateTime.now(), 'lastPostUsername': sender.username, 'lastPostUserId': sender.uid});
     }
 
     //Add data to new direct post document (message title, contentUrl, length (ms), date, sender, conversationId, shared, podcast and episode info)
@@ -417,7 +436,7 @@ class DBService {
       'shared': true,
     };
 
-    batch.setData(postRef, newPostData);
+    batch.set(postRef, newPostData);
 
     await batch.commit().catchError(((error) {
       print('Error committing batch: $error');
@@ -428,32 +447,34 @@ class DBService {
   //Delete a regular post document (does not delete the audio file)
   Future<void> deletePost(Post post) async {
     print('deleting post: ${post.id}');
-    await _db.collection('posts').document(post.id).delete();
+    await _db.collection('posts').doc(post.id).delete();
     return;
   }
 
-  Future<void> followPodcast({User user, String podcastUrl}) async {
+  Future<void> followPodcast({PerklUser user, String podcastUrl}) async {
     List<String> newList = new List<String>();
     if(user.followedPodcasts != null) {
       newList.addAll(user.followedPodcasts);
     }
     newList.add(podcastUrl);
-    DocumentReference userRef = _db.collection('users').document(user.uid);
+    DocumentReference userRef = _db.collection('users').doc(user.uid);
     await _db.runTransaction((transaction) {
-      return transaction.update(userRef, {'followedPodcasts': newList});
+      transaction.update(userRef, {'followedPodcasts': newList});
+      return;
     });
   }
 
-  Future<void> unfollowPodcast({User user, String podcastUrl}) async {
+  Future<void> unfollowPodcast({PerklUser user, String podcastUrl}) async {
     List<String> newList = new List<String>();
     if(user.followedPodcasts != null) {
       newList.addAll(user.followedPodcasts);
       newList.removeWhere((item) => item == podcastUrl);
     }
 
-    DocumentReference userRef = _db.collection('users').document(user.uid);
+    DocumentReference userRef = _db.collection('users').doc(user.uid);
     await _db.runTransaction((transaction) {
-      return transaction.update(userRef, {'followedPodcasts': newList});
+      transaction.update(userRef, {'followedPodcasts': newList});
+      return;
     });
   }
 }

@@ -1,8 +1,8 @@
 import 'package:Perkl/main.dart';
-import 'package:Perkl/services/UserManagement.dart';
+//import 'package:Perkl/services/UserManagement.dart';
 import 'package:Perkl/services/db_services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/gestures.dart';
+//import 'package:firebase_auth/firebase_auth.dart';
+//import 'package:flutter/gestures.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +25,7 @@ class PodcastPage extends StatelessWidget {
   @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    User user = Provider.of<User>(context);
+    PerklUser user = Provider.of<PerklUser>(context);
     //print('Followed Podcasts: ${user.followedPodcasts}/Podcast URL: ${podcast.url}/${user.followedPodcasts.contains(podcast.url)}');
     bool podcastFollowed = user.followedPodcasts != null && user.followedPodcasts.contains(podcast.url.replaceFirst('http:', 'https:'));
     return podcast == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(

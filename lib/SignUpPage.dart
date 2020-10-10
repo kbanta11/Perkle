@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
+import 'LoginPage.dart';
 import 'main.dart';
 import 'services/UserManagement.dart';
 
@@ -19,11 +21,18 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _usernameTaken;
   String _validateUsernameError;
   String _emailError;
+  bool _termsAccepted = false;
 
   @override
   Widget build(BuildContext context){
     return new Scaffold (
-        appBar: AppBar(),
+        appBar: AppBar(
+          leading: IconButton(icon: Icon(Icons.arrow_back), onPressed: () {
+            Navigator.pushReplacement(context, MaterialPageRoute(
+              builder: (context) => LoginPage(),
+            ));
+          }),
+        ),
         body: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
@@ -74,6 +83,46 @@ class _SignUpPageState extends State<SignUpPage> {
                           },
                           obscureText: true,
                         ),
+                        SizedBox(height: 10),
+                        Row(
+                          children: <Widget>[
+                            Checkbox(
+                              value: _termsAccepted,
+                              onChanged: (value) {
+                                setState(() {
+                                  _termsAccepted = !_termsAccepted;
+                                });
+                              },
+                            ),
+                            Container(
+                              width: 200,
+                              child: RichText(
+                                text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                          text: 'By signing in or signing, you are agreeing to our ',
+                                          style: TextStyle(color: Colors.black)
+                                      ),
+                                      TextSpan(
+                                          text: 'terms and conditions',
+                                          style: TextStyle(color: Colors.blue,),
+                                          recognizer: TapGestureRecognizer()..onTap = () {launch('https://www.perklapp.com/tos');}
+                                      ),
+                                      TextSpan(
+                                          text: ' and ',
+                                          style: TextStyle(color: Colors.black)
+                                      ),
+                                      TextSpan(
+                                          text: 'privacy policy.',
+                                          style: TextStyle(color: Colors.blue,),
+                                          recognizer: TapGestureRecognizer()..onTap = () {launch('https://firebasestorage.googleapis.com/v0/b/flutter-fire-test-be63e.appspot.com/o/AppFiles%2Fprivacy_policy.html?alt=media&token=85870176-cf2e-49d8-b9a1-100a44a4390a');}
+                                      )
+                                    ]
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         SizedBox(height: 20.0),
                         RaisedButton(
                           child: Text('Sign Up'),
@@ -84,6 +133,25 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                           elevation: 7.0,
                           onPressed: () async {
+                            if(!_termsAccepted) {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: Text('Accept our Terms of Use'),
+                                    actions: <Widget>[
+                                      FlatButton(
+                                        child: Text('OK'),
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                      )
+                                    ],
+                                  );
+                                }
+                              );
+                              return;
+                            }
                             _usernameTaken = await UserManagement().usernameExists(_username);
                             if(_username == null){
                               missingUsername(context);
@@ -96,7 +164,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   email: _email,
                                   password: _password
                               ).then((signedInUser) {
-                                FirebaseUser newUser = signedInUser.user;
+                                User newUser = signedInUser.user;
                                 UserManagement().storeNewUser(newUser, username: _username);
                               }).catchError((e) {
                                 print('Error: ${e.code}');
@@ -109,7 +177,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             }
                           },
                         ),
-                        _GoogleSignUpSection()
+                        _GoogleSignUpSection(termsAccepted: _termsAccepted,)
                       ],
                     )
                 )
@@ -122,6 +190,10 @@ class _SignUpPageState extends State<SignUpPage> {
 
 
 class _GoogleSignUpSection extends StatefulWidget {
+  bool termsAccepted = false;
+
+  _GoogleSignUpSection({this.termsAccepted});
+
   @override
   State<StatefulWidget> createState() => _GoogleSignUpSectionState();
 }
@@ -147,7 +219,27 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
             color: Colors.white,
             textColor: Colors.deepPurple,
             onPressed: () async {
-              _signUpWithGoogle();
+              if(!widget.termsAccepted) {
+                await showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text('Accept our Terms of Use'),
+                        actions: <Widget>[
+                          FlatButton(
+                            child: Text('OK'),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          )
+                        ],
+                      );
+                    }
+                );
+                return;
+              } else {
+                _signUpWithGoogle();
+              }
             },
             child: Container(
               width: 200.0,
@@ -177,19 +269,19 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
     final GoogleSignInAccount googleUser = await _googleSignUp.signIn();
     final GoogleSignInAuthentication googleAuth = await googleUser
         .authentication;
-    final AuthCredential credential = GoogleAuthProvider.getCredential(
+    final AuthCredential credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
-    final AuthResult authResult = await FirebaseAuth.instance.signInWithCredential(
+    final UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(
         credential);
-    final FirebaseUser user = authResult.user;
+    final User user = userCred.user;
     assert(user.email != null);
     assert(user.displayName != null);
     assert(!user.isAnonymous);
     assert(await user.getIdToken() != null);
 
-    final FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
+    final User currentUser = FirebaseAuth.instance.currentUser;
     assert(user.uid == currentUser.uid);
 
     userDocCreated = await UserManagement().userAlreadyCreated();

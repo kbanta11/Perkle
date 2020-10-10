@@ -8,16 +8,14 @@ import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:intl/intl.dart';
+//import 'package:firebase_storage/firebase_storage.dart';
+//import 'package:intl/intl.dart';
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock/wakelock.dart';
 
 import 'ProfilePage.dart';
 import 'SearchPage.dart';
-import 'HomePage.dart';
-import 'StreamTagPage.dart';
 import 'UserList.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
@@ -212,7 +210,7 @@ class TopPanel extends StatelessWidget {
                                 DateTime date = DateTime.now();
                                 templateProvider.setSearchTerm(value);
                                 if(searchRequestId != null)
-                                  await Firestore.instance.collection('requests').document(searchRequestId).setData({'searchTerm': value, "searchDateTime": date});
+                                  await FirebaseFirestore.instance.collection('requests').doc(searchRequestId).set({'searchTerm': value, "searchDateTime": date});
                               }
                           )
                       ) : Center(child: new Text(pageTitle != null ? pageTitle : 'Perkl')),
@@ -527,7 +525,7 @@ class _PlaylistControlsState extends State<PlaylistControls> {
  */
 
 class UserInfoSection extends StatefulWidget {
-  final User user;
+  final PerklUser user;
 
   UserInfoSection({Key key, @required this.user}) : super(key: key);
 
@@ -537,16 +535,6 @@ class UserInfoSection extends StatefulWidget {
 
 class _UserInfoSectionState extends State<UserInfoSection> {
   ActivityManager activityManager = new ActivityManager();
-  bool _isRecording = false;
-  String _postAudioPath;
-  DateTime _startRecordDate;
-
-  Future<bool> _isCurrentUser(String userId) async {
-    return await FirebaseAuth.instance.currentUser().then((user) {
-        return user.uid.toString() == userId.toString();
-    });
-  }
-
 
     @override
     void initState() {
@@ -555,9 +543,9 @@ class _UserInfoSectionState extends State<UserInfoSection> {
 
     @override
     Widget build(BuildContext context) {
-      FirebaseUser currentUser = Provider.of<FirebaseUser>(context);
+      User currentUser = Provider.of<User>(context);
 
-      Widget editMessageButton(User user, FirebaseUser currentUser) {
+      Widget editMessageButton(PerklUser user, User currentUser) {
         if(user.uid != currentUser.uid) {
           //Send Message Button
           return ButtonTheme(
@@ -573,9 +561,9 @@ class _UserInfoSectionState extends State<UserInfoSection> {
                 String currentUsername;
                 String currentUserId;
                 await UserManagement().getUserData().then((docRef) async {
-                  currentUserId = docRef.documentID;
+                  currentUserId = docRef.id;
                   await docRef.get().then((snapshot) {
-                    currentUsername = snapshot.data['username'].toString();
+                    currentUsername = snapshot.data()['username'].toString();
                   });
                 });
                 await activityManager.sendDirectPostDialog(context, memberMap: {widget.user.uid: widget.user.username, currentUserId: currentUsername});
@@ -606,74 +594,64 @@ class _UserInfoSectionState extends State<UserInfoSection> {
       }
 
       //Left button under profile description: Follow/Unfollow if not own profile
-      Widget followUnfollowButton = FutureBuilder(
-          future: _isCurrentUser(widget.user.uid),
-          initialData: false,
-          builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-            if(snapshot.data) {
-              return Container();
-            } else {
-              return StreamBuilder(
-                stream: Firestore.instance.collection('/users').document(currentUser.uid).snapshots(),
-                builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-                  // print('$currentUserId ----::---- ${snapshot.data}');
-                  bool isFollowing = false;
-                  Map<dynamic, dynamic> following;
-                  if(snapshot.hasData) {
-                    switch (snapshot.connectionState) {
-                      case ConnectionState.waiting:
-                        return SizedBox();
-                      default:
-                        following = snapshot.data['following'];
+      Widget followUnfollowButton = StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('/users').doc(currentUser.uid).snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+          // print('$currentUserId ----::---- ${snapshot.data}');
+          bool isFollowing = false;
+          Map<dynamic, dynamic> following;
+          if(snapshot.hasData) {
+            switch (snapshot.connectionState) {
+              case ConnectionState.waiting:
+                return SizedBox();
+              default:
+                following = snapshot.data.data()['following'];
 
-                        // print(following == null);
-                        if(following != null) {
-                          // print('user has following list');
-                          // print('User already followed: ${following.containsKey(widget.userId)}');
-                          isFollowing = following.containsKey(widget.user.uid);
-                        }
+                // print(following == null);
+                if(following != null) {
+                  // print('user has following list');
+                  // print('User already followed: ${following.containsKey(widget.userId)}');
+                  isFollowing = following.containsKey(widget.user.uid);
+                }
 
-                        if(isFollowing){
-                          return ButtonTheme(
-                              height: 25,
-                              minWidth: 50,
-                              child: OutlineButton(
-                                child: Text('Unfollow'),
-                                padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-                                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-                                borderSide: BorderSide(
-                                  color: Colors.deepPurple,
-                                ),
-                                textColor: Colors.deepPurple,
-                                onPressed: () async {
-                                  ActivityManager().unfollowUser(widget.user.uid);
-                                },
-                              )
-                          );
-                        }
-                    }
-                  }
+                if(isFollowing){
                   return ButtonTheme(
-                    height: 25,
-                    minWidth: 50,
-                    child: FlatButton(
-                      child: Text('Follow'),
-                      padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-                      shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-                      color: Colors.deepPurple,
-                      textColor: Colors.white,
-                      onPressed: () async {
-                        ActivityManager().followUser(widget.user.uid);
-                      },
-                    ),
+                      height: 25,
+                      minWidth: 50,
+                      child: OutlineButton(
+                        child: Text('Unfollow'),
+                        padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                        shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                        borderSide: BorderSide(
+                          color: Colors.deepPurple,
+                        ),
+                        textColor: Colors.deepPurple,
+                        onPressed: () async {
+                          ActivityManager().unfollowUser(widget.user.uid);
+                        },
+                      )
                   );
-                },
-              );
+                }
             }
           }
+          return ButtonTheme(
+            height: 25,
+            minWidth: 50,
+            child: FlatButton(
+              child: Text('Follow'),
+              padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+              shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+              color: Colors.deepPurple,
+              textColor: Colors.white,
+              onPressed: () async {
+                ActivityManager().followUser(widget.user.uid);
+              },
+            ),
+          );
+        },
       );
 
-      Widget profileImage(User user) {
+      Widget profileImage(PerklUser user) {
           if(user != null && user.profilePicUrl != null) {
             return Container(
               height: 75.0,
@@ -698,7 +676,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
         );
       }
 
-      Widget profilePic(User user, FirebaseUser currentUser) {
+      Widget profilePic(PerklUser user, User currentUser) {
         if(user.uid != currentUser.uid) {
           return profileImage(user);
         }
@@ -841,24 +819,14 @@ class BioTextSection extends StatefulWidget {
 }
 
 class _BioTextSectionState extends State<BioTextSection> {
-  Future<FirebaseUser> currentUser = FirebaseAuth.instance.currentUser();
+  User currentUser = FirebaseAuth.instance.currentUser;
   String currentUserId;
   bool showMore = false;
 
-  Future<bool> _isCurrentUser(String userId) async {
-    return await FirebaseAuth.instance.currentUser().then((user) {
-      // print('Passed userId: $userId / Current User UID: ${user.uid}');
-      return user.uid.toString() == userId.toString();
+  void _getCurrentUserId() {
+    setState((){
+      currentUserId = currentUser.uid.toString();
     });
-  }
-
-  void _getCurrentUserId() async {
-    await currentUser.then((user) {
-      setState((){
-        currentUserId = user.uid.toString();
-      });
-    });
-
   }
 
   @override
@@ -873,12 +841,12 @@ class _BioTextSectionState extends State<BioTextSection> {
     return Container(
       //width: 200.0,
       child: StreamBuilder<QuerySnapshot>(
-          stream: Firestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
+          stream: FirebaseFirestore.instance.collection('users').where("uid", isEqualTo: widget.userId).snapshots(),
           builder: (context, snapshot) {
             String bio = 'Please enter a short biography. Let everyone know who you are and what you enjoy!';
             String _bio;
             if(snapshot.hasData)
-              _bio = snapshot.data.documents.first.data['bio'].toString();
+              _bio = snapshot.data.docs.first.data()['bio'].toString();
 
             if(_bio != 'null' && _bio != null) {
               bio = _bio;
@@ -905,7 +873,7 @@ class _BioTextSectionState extends State<BioTextSection> {
 }
 
 class ProfilePic extends StatelessWidget {
-  User user;
+  PerklUser user;
 
   ProfilePic(this.user);
 
@@ -1427,41 +1395,24 @@ class MainPopMenu extends StatelessWidget {
               mp.notifyListeners();
             }
           },
-        ) : FutureBuilder(
-            future: FirebaseAuth.instance.currentUser(),
-            builder: (context, snapshot) {
-              if(snapshot.hasData){
-                String _userId = snapshot.data.uid;
-                return StreamBuilder(
-                    stream: Firestore.instance.collection('users').document(_userId).snapshots(),
-                    builder: (context, snapshot) {
-                      if(snapshot.hasData) {
-                        String profilePicUrl = snapshot.data['profilePicUrl'];
-                        if(profilePicUrl != null)
-                          return Container(
-                            height: 40.0,
-                            width: 40.0,
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                                image: DecorationImage(
-                                  fit: BoxFit.cover,
-                                  image: NetworkImage(profilePicUrl.toString()),
-                                )
-                            ),
-                          );
-                      }
-                      return Container(
-                        height: 40.0,
-                        width: 40.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          // image: DecorationImage()
-                        ),
-                      );
-                    }
-                );
+        ) : StreamBuilder(
+            stream: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser.uid).snapshots(),
+            builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+              if(snapshot.hasData) {
+                String profilePicUrl = snapshot.data.data()['profilePicUrl'];
+                if(profilePicUrl != null)
+                  return Container(
+                    height: 40.0,
+                    width: 40.0,
+                    decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        image: DecorationImage(
+                          fit: BoxFit.cover,
+                          image: NetworkImage(profilePicUrl.toString()),
+                        )
+                    ),
+                  );
               }
               return Container(
                 height: 40.0,
@@ -1506,7 +1457,6 @@ class MainPopMenu extends StatelessWidget {
 
 //Bottom Navigation Bar
 Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activityManager, bool noSelection}) {
-  bool _isActive = false;
   return Container(
     decoration: BoxDecoration(
       borderRadius: BorderRadius.only(topLeft: Radius.elliptical(10, 10), topRight: Radius.elliptical(10, 10)),
@@ -1549,7 +1499,6 @@ Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activi
 
 //New Bottom Nav Bar
 Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager activityManager, bool noSelection}) {
-  bool _isActive = false;
   return Container(
       decoration: BoxDecoration(
           borderRadius: BorderRadius.only(topLeft: Radius.elliptical(10, 10), topRight: Radius.elliptical(10, 10)),

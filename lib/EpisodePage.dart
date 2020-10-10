@@ -166,9 +166,9 @@ class EpisodePage extends StatelessWidget {
                       child: Padding(
                         padding: EdgeInsets.all(5),
                         child: ListTile(
-                          leading: StreamBuilder<User>(
+                          leading: StreamBuilder<PerklUser>(
                             stream: UserManagement().streamUserDoc(reply.posterUid),
-                            builder: (context, AsyncSnapshot<User> userSnap) {
+                            builder: (context, AsyncSnapshot<PerklUser> userSnap) {
                               return Container(
                                   height: 60.0,
                                   width: 60.0,

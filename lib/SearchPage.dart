@@ -1,6 +1,6 @@
 import 'package:Perkl/MainPageTemplate.dart';
-import 'package:Perkl/main.dart';
-import 'package:Perkl/services/db_services.dart';
+//import 'package:Perkl/main.dart';
+//import 'package:Perkl/services/db_services.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -224,23 +224,23 @@ class _SearchPageState extends State<SearchPage> {
 
 //New Version
 class SearchPageMobile extends StatelessWidget {
-  DocumentReference searchRequestDoc = Firestore.instance.collection('requests').document();
+  DocumentReference searchRequestDoc = FirebaseFirestore.instance.collection('requests').doc();
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
         ChangeNotifierProvider<SearchPageProvider>(create: (_) => SearchPageProvider()),
       ],
-      child: Consumer<User>(
+      child: Consumer<PerklUser>(
         builder: (context, currentUser, _) {
           SearchPageProvider spp = Provider.of<SearchPageProvider>(context);
           return MainPageTemplate(
             bottomNavIndex: 1,
             noBottomNavSelected: true,
             showSearchBar: true,
-            searchRequestId: searchRequestDoc.documentID,
+            searchRequestId: searchRequestDoc.id,
             body: Column(
               children: <Widget>[
                 Row(
@@ -272,7 +272,7 @@ class SearchPageMobile extends StatelessWidget {
                           if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data == null)
                             return Center(child: CircularProgressIndicator());
                           return FutureBuilder<SearchResult>(
-                            future: Search().search(asyncSearchDocSnap.data.data['searchTerm'], limit: 50),
+                            future: Search().search(asyncSearchDocSnap.data.data()['searchTerm'], limit: 50),
                             builder: (context, AsyncSnapshot<SearchResult> searchResultSnap) {
                               if(!searchResultSnap.hasData)
                                 return Center(child: Text('Sorry...No results for this search'));
@@ -319,8 +319,8 @@ class SearchPageMobile extends StatelessWidget {
                         List<String> results;
                         if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data == null)
                           return Center(child: Text('There are no results for this search...'));
-                        print('Snapshot: $asyncSearchDocSnap/Snapshot term: ${asyncSearchDocSnap.data.data['searchTerm']}/Results: ${asyncSearchDocSnap.data.data["results"]}');
-                        results = asyncSearchDocSnap.data.data['results'] == null ? null : asyncSearchDocSnap.data.data['results'].map<String>((value) => value.toString()).toList();
+                        print('Snapshot: $asyncSearchDocSnap/Snapshot term: ${asyncSearchDocSnap.data.data()['searchTerm']}/Results: ${asyncSearchDocSnap.data.data()["results"]}');
+                        results = asyncSearchDocSnap.data.data()['results'] == null ? null : asyncSearchDocSnap.data.data()['results'].map<String>((value) => value.toString()).toList();
                         print('Query Results: $results');
 
 
@@ -342,14 +342,14 @@ class SearchPageMobile extends StatelessWidget {
                             return Center(child: CircularProgressIndicator());
                           default:
                             return ListView(
-                              children: asyncSearchDocSnap.data['results'].map<Widget>((userId) {
+                              children: asyncSearchDocSnap.data.data()['results'].map<Widget>((userId) {
                                 print(userId);
-                                return StreamBuilder<User>(
-                                    stream: Firestore.instance.collection('users').document(userId).snapshots().map((snap) => User.fromFirestore(snap)),
-                                    builder: (BuildContext context, AsyncSnapshot<User> userSnap) {
+                                return StreamBuilder<PerklUser>(
+                                    stream: FirebaseFirestore.instance.collection('users').doc(userId).snapshots().map((snap) => PerklUser.fromFirestore(snap)),
+                                    builder: (BuildContext context, AsyncSnapshot<PerklUser> userSnap) {
                                       if(!asyncSearchDocSnap.hasData)
                                         return Container();
-                                      User user = userSnap.data;
+                                      PerklUser user = userSnap.data;
                                       Widget followButton = IconButton(
                                           icon: Icon(Icons.person_add),
                                           color: Colors.deepPurple,

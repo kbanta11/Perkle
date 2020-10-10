@@ -17,7 +17,7 @@ import 'StreamTagPage.dart';
 import 'services/models.dart';
 import 'services/db_services.dart';
 import 'main.dart';
-import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
+//import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'package:http/http.dart' as http;
 
 enum TimelineType {
@@ -37,9 +37,9 @@ class Timeline extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    User currentUser = Provider.of<User>(context);
+    PerklUser currentUser = Provider.of<PerklUser>(context);
     //print('TimelineId: $timelineId/StreamTag: $tagStream/UserId: $userId');
     Stream postStream;
     if(tagStream != null) {
@@ -295,9 +295,9 @@ class Timeline extends StatelessWidget {
                               )
                           );
                         }
-                        return StreamProvider<User>(
+                        return StreamProvider<PerklUser>(
                           create: (context) => UserManagement().streamUserDoc(post.userUID),
-                          child: Consumer<User>(
+                          child: Consumer<PerklUser>(
                             builder: (context, poster, _) {
                               return Card(
                                 elevation: 5,

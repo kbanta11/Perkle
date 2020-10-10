@@ -22,6 +22,7 @@ import 'TutorialDialog.dart';
 import 'services/models.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
+import 'services/local_services.dart';
 import 'package:flushbar/flushbar.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -179,7 +180,7 @@ class _HomePageState extends State<HomePage> {
 Future<void> _showUsernameDialog(BuildContext context) async {
   String username = await UserManagement().getUserData().then((DocumentReference doc) {
     return doc.get().then((DocumentSnapshot snapshot) {
-      return snapshot.data['username'].toString();
+      return snapshot.data()['username'].toString();
     });
   });
   print('username (in dialog): $username-------------');
@@ -219,11 +220,7 @@ class HomePageMobileState extends State<HomePageMobile> {
 
   _saveDeviceToken() async {
     // Get the current user
-    String uid = await FirebaseAuth.instance.currentUser().then((user) {
-      if(user != null)
-        return user.uid;
-      return null;
-    });
+    String uid = FirebaseAuth.instance.currentUser.uid;
     // FirebaseUser user = await _auth.currentUser();
 
     // Get the token for this device
@@ -236,29 +233,11 @@ class HomePageMobileState extends State<HomePageMobile> {
   }
 
   Future<bool> showTutorial() async {
-    String localPath = await getApplicationDocumentsDirectory().then((directory) => directory.path);
-    File localFile;
+    LocalService localService = new LocalService();
+    bool tutorialCompleted = await localService.getData('tutorial_complete') ?? false;
 
-    if(await File('$localPath/local_data.json').exists()) {
-      localFile = File('$localPath/local_data.json');
-    } else {
-      localFile = null;
-    }
-
-    if(localFile != null) {
-      String localJsonString = await localFile.readAsString();
-      Map<String, dynamic> localJsonMap = jsonDecode(localJsonString);
-      bool tutorialCompleted = localJsonMap['tutorialComplete'];
-      print('Tutorial Complete? ${tutorialCompleted}');
-      if(tutorialCompleted != null && tutorialCompleted) {
-        return false;
-      }
-    } else {
-      print('Creating local data file');
-      localFile = new File('$localPath/local_data.json');
-      await localFile.writeAsString(jsonEncode({'tutorialComplete': false}));
-    }
-    return true;
+    //Change to show tutorial screens for production
+    return true; //return tutorialCompleted?
   }
 
   @override
@@ -283,9 +262,9 @@ class HomePageMobileState extends State<HomePageMobile> {
 
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    User user = Provider.of<User>(context);
+    PerklUser user = Provider.of<PerklUser>(context);
     DBService().updateTimeline(timelineId: user.mainFeedTimelineId, user: user, reload: false);
     if(user == null)
       return Center(child: CircularProgressIndicator());

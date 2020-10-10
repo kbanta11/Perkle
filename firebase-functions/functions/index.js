@@ -13,6 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 let Parser = require('rss-parser');
+const got = require('got');
 
 admin.initializeApp(functions.config().firebase);
 
@@ -425,6 +426,137 @@ exports.updateTopUsers = functions.pubsub.schedule('every 30 minutes').onRun( as
     }).catch(err => {
         console.log('Error getting updated users: ' + err);
     });
+});
+
+exports.updateTopPodcasts = functions.pubsub.schedule('30 4 * * *').onRun(async (context) => {
+	let genre_docs = []
+	await db.collection('top-podcasts').get().then(snapshot => {
+		snapshot.forEach(doc => {
+			let data = doc.data();
+			let genre_ref = doc.ref;
+			data.ref = genre_ref;
+			genre_docs.push(data);
+		});
+		return;
+	});
+
+	let genre_results = [];
+	let genre_updates = [];
+	for(g in genre_docs) {
+		let genre_data = genre_docs[g];
+		//Set URL for current genre document
+		let url = 'https://itunes.apple.com/us/rss/toppodcasts/limit=100/explicit=true/json';
+		if(genre_data.genre_id) {
+			url = 'https://itunes.apple.com/us/rss/toppodcasts/limit=100/genre=' + genre_data.genre_id + '/explicit=true/json';
+		}
+
+		genre_updates.push(db.runTransaction(t => {
+			t.update(genre_data.ref, {'last_updated': new Date(Date.now())});
+			return Promise.resolve();
+		}));
+
+		//Get top podcast results
+		let genre_result_promise = got(url, {json: true, allowGetBody: true}).then(result => {
+			//console.log(result.body);
+			result.body['genre_data'] = {'genre_title': genre_data.title, 'genre_id': genre_data.genre_id, 'doc_name': genre_data.doc_name};
+			//console.log(result.body.feed.genre_data);
+			//console.log(result.body);
+			return result;
+		});
+		genre_results.push(genre_result_promise);
+	}
+
+	let ranked_pods = [];
+	await Promise.all(genre_results).then(async results => {
+		for(r in results) {
+			//console.log(r);
+			let result = results[r];
+			let feed_data = result.body;
+			console.log(feed_data.genre_data);
+			let entries = feed_data.entry;
+			for(e in entries) {
+				let entry = entries[e];
+				let rank = e;
+				let id = entry['id']['attributes']['im:id'];
+				//console.log(entry);
+				ranked_pods.push({
+					'rank': rank,
+					'genre_id': feed_data.genre_data.genre_id,
+					'genre_title': feed_data.genre_data.genre_title,
+					'genre_doc_name': feed_data.genre_data.doc_name,
+					'itunes_id': id
+				});
+			}
+		}
+		return;
+	});
+
+	let top_podcast_read_promises = [];
+	/* eslint-disable no-await-in-loop */
+	for(x in ranked_pods) {
+		rp = ranked_pods[x];
+		try {
+			await sleep(3000);
+			console.log(rp.itunes_id + ': ' + rp.genre_title + '/' + rp.genre_doc_name);
+			let pod_data_read_promise = await got('https://itunes.apple.com/lookup?id=' + rp.itunes_id, {json: true, allowGetBody: true}).then(result => {
+					let data = result.body.results[0];
+					let pod_data = {
+						'rank': rp.rank,
+						'genre_id': rp.genre_id,
+						'genre_title': rp.genre_title,
+						'genre_doc_name': rp.genre_doc_name,
+						'podcast_title': data.collectionName,
+						'feed_url': data.feedUrl,
+						'itunes_id': rp.itunes_id,
+						'artwork_url_30': data.artworkUrl30,
+						'artwork_url_60': data.artworkUrl60,
+						'artwork_url_100': data.artworkUrl100,
+					}
+					//console.log(pod_data);
+					return pod_data;
+				}).catch((e) => console.log('Error getting podcast data: ' + e));
+			top_podcast_read_promises.push(pod_data_read_promise);
+		} catch (e) {
+			console.log('Error: ' + e);
+		}
+	}
+
+	let batches = [];
+	await Promise.all(top_podcast_read_promises).then(results => {
+		let batch = db.batch();
+		let i = 0;
+		for(r in results) {
+			console.log(i);
+			let pod = results[r];
+			let ref = db.collection('top-podcasts').doc(pod.genre_doc_name).collection('podcasts').doc(encodeURIComponent(pod.feed_url));
+			batch.set(ref, pod);
+			if(i === 499) {
+				batches.push(batch);
+				batch = db.batch();
+				i = 0;
+			} else {
+				i = i + 1;
+			}
+
+		}
+		return;
+	});
+	console.log('Number of batches: ' + batches.length);
+	for(g in genre_docs) {
+		let data = genre_docs[g];
+		//Add promise for deleting all current values in each genre
+		await firebase_tools.firestore.delete('/top-podcasts/' + data.doc_name + '/podcasts', {
+	        project: process.env.GCLOUD_PROJECT,
+	        recursive: true,
+	        yes: true,
+	        token: serviceAccount.token
+	      });
+	}
+	await Promise.all(genre_updates);
+	for(b in batches) {
+		let bat = batches[b];
+		bat.commit();
+	}
 });
 
 /*

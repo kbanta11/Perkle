@@ -3,7 +3,7 @@ import 'package:Perkl/services/db_services.dart';
 import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
@@ -17,11 +17,7 @@ import 'main.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 
-import 'PageComponents.dart';
-import 'HomePage.dart';
-import 'ListPage.dart';
 import 'ProfilePage.dart';
-import 'DiscoverPage.dart';
 
 /*-------------------------------------------------------
 class ConversationPage extends StatefulWidget {
@@ -358,16 +354,16 @@ class ConversationPageMobile extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
         StreamProvider<List<DirectPost>>(create: (_) => DBService().streamDirectPosts(conversationId)),
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
       ],
       child: Consumer<List<DirectPost>>(
         builder: (context, postList, _) {
-          User user = Provider.of<User>(context);
+          PerklUser user = Provider.of<PerklUser>(context);
           List<DayPosts> days = List<DayPosts>();
           if(postList != null) {
             postList.forEach((post) {
@@ -409,10 +405,10 @@ class ConversationPageMobile extends StatelessWidget {
                                           Column(
                                             children: day.list.map((post) {
                                               DirectPost directPost = post;
-                                              return StreamBuilder<User>(
+                                              return StreamBuilder<PerklUser>(
                                                 stream: UserManagement().streamUserDoc(directPost.senderUID),
-                                                builder: (context, AsyncSnapshot<User> userSnap) {
-                                                  User sender = userSnap.data;
+                                                builder: (context, AsyncSnapshot<PerklUser> userSnap) {
+                                                  PerklUser sender = userSnap.data;
                                                   if(sender == null) {
                                                     return Container();
                                                   }

@@ -8,16 +8,16 @@ import 'package:provider/provider.dart';
 class AccountSettings extends StatelessWidget {
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamCurrentUser(firebaseUser),),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser),),
         ChangeNotifierProvider<AccountSettingsProvider>(create: (_) => AccountSettingsProvider(),)
       ],
       child: Consumer<AccountSettingsProvider>(
         builder: (context, asp, _) {
-          User currentUser = Provider.of<User>(context);
-          print('Firebase User Info: ${firebaseUser.providerId}/${firebaseUser.isEmailVerified}');
+          PerklUser currentUser = Provider.of<PerklUser>(context);
+          print('Firebase User Info: ${firebaseUser.uid}/${firebaseUser.emailVerified}');
           return SimpleDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text('Account Settings'),),

@@ -1,12 +1,14 @@
 import 'package:Perkl/SignUpPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
+//import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flushbar/flushbar.dart';
-import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
+//import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -27,14 +29,14 @@ class _LoginPageState extends State<LoginPage> {
   String _email;
   String _password;
   String _errorMessage;
-  final Firestore _db = Firestore.instance;
+  //final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
   bool _redirectOnNotification = true;
 
   StreamSubscription iosSubscription;
 
   _checkLoggedIn() async {
-    FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
+    User currentUser = FirebaseAuth.instance.currentUser;
     if(currentUser != null)
       Navigator.pushReplacement(context, MaterialPageRoute(
         builder: (context) => HomePageMobile(redirectOnNotification: true,),
@@ -168,7 +170,7 @@ class _LoginPageState extends State<LoginPage> {
                           FirebaseAuth.instance.signInWithEmailAndPassword(
                               email: _email,
                               password: _password
-                          ).then((AuthResult authResult) {
+                          ).then((UserCredential authResult) {
                             Navigator.of(context).pop();
                             print('Auth Result: $authResult');
                             Navigator.pushReplacement(context, MaterialPageRoute(
@@ -280,7 +282,7 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
               setState(() {
                 _isLoading = true;
               });
-              await _signInWithGoogle();
+              await _signInWithGoogle(context);
               setState(() {
                 _isLoading = false;
               });
@@ -314,7 +316,7 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
   }
 
   // Example code of how to sign in with google.
-  Future<bool> _signInWithGoogle() async {
+  Future<bool> _signInWithGoogle(BuildContext context) async {
     bool userDocCreated;
 
     print('Starting Google sign in');
@@ -323,18 +325,18 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
     });
     print('Google User: $googleUser');
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-    final AuthCredential credential = GoogleAuthProvider.getCredential(
+    final AuthCredential credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
-    final AuthResult authResult = await FirebaseAuth.instance.signInWithCredential(credential);
-    final FirebaseUser user = authResult.user;
+    final UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+    final User user = userCred.user;
     assert(user.email != null);
     assert(user.displayName != null);
     assert(!user.isAnonymous);
     assert(await user.getIdToken() != null);
 
-    final FirebaseUser currentUser = await FirebaseAuth.instance.currentUser();
+    final User currentUser = FirebaseAuth.instance.currentUser;
     assert(user.uid == currentUser.uid);
 
     userDocCreated = await UserManagement().userAlreadyCreated();
@@ -345,7 +347,55 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
       _userID = user.uid;
       if (!userDocCreated) {
         print('creating user document');
-        await UserManagement().storeNewUser(currentUser);
+        await showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text('Accept Our Terms!'),
+              content: Container(
+                width: 200,
+                child: RichText(
+                  text: TextSpan(
+                      children: [
+                        TextSpan(
+                            text: 'By continuing, you are agreeing to our ',
+                            style: TextStyle(color: Colors.black)
+                        ),
+                        TextSpan(
+                            text: 'terms and conditions',
+                            style: TextStyle(color: Colors.blue,),
+                            recognizer: TapGestureRecognizer()..onTap = () {launch('https://www.perklapp.com/tos');}
+                        ),
+                        TextSpan(
+                            text: ' and ',
+                            style: TextStyle(color: Colors.black)
+                        ),
+                        TextSpan(
+                            text: 'privacy policy.',
+                            style: TextStyle(color: Colors.blue,),
+                            recognizer: TapGestureRecognizer()..onTap = () {launch('https://firebasestorage.googleapis.com/v0/b/flutter-fire-test-be63e.appspot.com/o/AppFiles%2Fprivacy_policy.html?alt=media&token=85870176-cf2e-49d8-b9a1-100a44a4390a');}
+                        )
+                      ]
+                  ),
+                ),
+              ),
+              actions: [
+                FlatButton(
+                  child: Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  }
+                ),
+                FlatButton(
+                  child: Text('OK'),
+                  onPressed: () async {
+                    await UserManagement().storeNewUser(currentUser);
+                  }
+                )
+              ]
+            );
+          }
+        );
       }
     } else {
       _success = false;

@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
 import 'services/UserManagement.dart';
-import 'services/ActivityManagement.dart';
+//import 'services/ActivityManagement.dart';
 import 'services/models.dart';
 
 import 'main.dart';
 import 'MainPageTemplate.dart';
 import 'PageComponents.dart';
-import 'HomePage.dart';
-import 'ListPage.dart';
-import 'DiscoverPage.dart';
 import 'Timeline.dart';
 
 /*--------------------------------------------
@@ -98,13 +95,13 @@ class ProfilePageMobile extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    FirebaseUser firebaseUser = Provider.of<FirebaseUser>(context);
+    User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return userId == null ? Center(child: CircularProgressIndicator(),) : MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => UserManagement().streamUserDoc(userId)),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamUserDoc(userId)),
       ],
-      child: Consumer<User>(
+      child: Consumer<PerklUser>(
           builder: (context, user, _) {
             return user == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
                 bottomNavIndex: 3,

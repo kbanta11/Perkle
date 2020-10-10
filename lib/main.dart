@@ -2,10 +2,13 @@ import 'package:Perkl/services/ActivityManagement.dart';
 import 'package:Perkl/services/UserManagement.dart';
 import 'package:Perkl/services/db_services.dart';
 import 'package:Perkl/services/models.dart';
+import 'package:audio_service/audio_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:launch_review/launch_review.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -16,11 +19,11 @@ import 'package:podcast_search/podcast_search.dart';
 
 import 'AddPostDialog.dart';
 import 'LoginPage.dart';
+import 'PlayerTask.dart';
 import 'ShareToDialog.dart';
 import 'SignUpPage.dart';
 import 'HomePage.dart';
 import 'SearchPage.dart';
-import 'Dashboard.dart';
 import 'ReplyToEpisode.dart';
 
 void main() async {
@@ -35,6 +38,8 @@ class MainApp extends StatefulWidget {
 }
 
 class MainAppState extends State<MainApp> {
+  FirebaseApp fbApp;
+
   Future<bool> updateNeeded() async {
     int minBuildNumber = await DBService().getConfigMinBuildNumber();
 
@@ -45,28 +50,60 @@ class MainAppState extends State<MainApp> {
     return buildNumber < minBuildNumber;
   }
 
+  initialize() async {
+    final app = await Firebase.initializeApp();
+    setState(() {
+      fbApp = app;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    initialize();
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
-    return MultiProvider(
+    return fbApp == null ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              height: 160,
+              width: 160,
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/logo.png')
+                )
+              ),
+            ),
+            SizedBox(height: 10),
+            SpinKitPulse(size: 100, color: Colors.red,)
+          ],
+        )
+    ) : MultiProvider(
       providers: [
-        StreamProvider<FirebaseUser>(create: (_) => FirebaseAuth.instance.onAuthStateChanged),
+        StreamProvider<User>(create: (_) => FirebaseAuth.instance.userChanges()),
         FutureProvider<bool>(create: (_) => updateNeeded()),
       ],
-      child: Consumer<FirebaseUser>(
+      child: Consumer<User>(
         builder: (context, firebaseUser, _) {
 
           bool promptUpdate = Provider.of<bool>(context);
           print('Prompt Update: $promptUpdate');
           if(firebaseUser == null) {
-            return MaterialApp(home: Scaffold(body: LoginPage()));
+            return MaterialApp(theme: new ThemeData (
+                primarySwatch: Colors.deepPurple
+            ), home: Scaffold(body: LoginPage()));
           }
-          return StreamProvider<User>(
+          return StreamProvider<PerklUser>(
             create: (_) => UserManagement().streamCurrentUser(firebaseUser),
-            child: Consumer<User>(
+            child: Consumer<PerklUser>(
                 builder: (context, user, _) {
                   //print('Temporary User: $userTemp/Firebase User: $firebaseUser');
                   print('Temp User Followed Podcasts: ${user != null ? user.followedPodcasts : ''}');
@@ -107,7 +144,12 @@ class MainAppState extends State<MainApp> {
                               )
                             ],
                           ),
-                        )) : HomePageMobile(),
+                        )) : AudioServiceWidget(
+                            child: StreamProvider<PlaybackState>(
+                              create: (_) => AudioService.playbackStateStream,
+                              child: HomePageMobile(),
+                            )
+                        ),
                         routes: <String, WidgetBuilder> {
                           '/landingpage': (BuildContext context) => new MainApp(),
                           '/signup': (BuildContext context) => new SignUpPage(),
@@ -135,7 +177,7 @@ class MainAppProvider extends ChangeNotifier {
   PostPodItem currentPostPodItem;
   String currentPostPodId;
   PostType currentPostType;
-  AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
+  AudioPlayer player = new AudioPlayer();
   //SoundPlayer soundPlayer = SoundPlayer.withShadeUI(canSkipBackward: false, playInBackground: true);
   bool panelOpen = true;
   PostPosition position;
@@ -147,6 +189,20 @@ class MainAppProvider extends ChangeNotifier {
   DateTime _startRecordDate;
 
   playPost(PostPodItem newPostPod) async {
+    if(AudioService.running) {
+      print('playing audio service: ${AudioService.running}');
+      AudioService.play();
+    } else {
+      print('starting audio service');
+      AudioService.start(backgroundTaskEntrypoint: () {
+        AudioServiceBackground.run(() => PlayerTask());
+      });
+      AudioService.playMediaItem(MediaItem(
+        id: newPostPod.audioUrl,
+        title: newPostPod.displayTitle,
+        artist: newPostPod.displayArtist,
+      ));
+    }
     if(isPlaying) {
       player.stop();
       player.dispose();
@@ -182,6 +238,7 @@ class MainAppProvider extends ChangeNotifier {
     Duration startDuration = new Duration(milliseconds: 0);
     if(localFile != null) {
       String localJsonString = await localFile.readAsString();
+      print(localJsonString);
       Map<String, dynamic> localJsonMap = jsonDecode(localJsonString);
       print(localJsonMap);
       if(localJsonMap['posts_in_progress'] != null && localJsonMap['posts_in_progress'][newPostPod.audioUrl] != null) {
@@ -191,17 +248,27 @@ class MainAppProvider extends ChangeNotifier {
         }
       }
     }
-
+    /*
+    player.setNotification(
+      title: newPostPod.titleTextString(),
+      artist: newPostPod.subtitleTextString(),
+      elapsedTime: Duration(seconds: 0),
+      duration: newPostPod.getDuration(),
+      backwardSkipInterval: Duration(seconds: 30),
+      forwardSkipInterval: Duration(seconds: 30),
+    );
+    */
     await player.play(newPostPod.audioUrl, position: startDuration).catchError((e) {
       print('Error playing post: $e');
     });
     if(newPostPod.type == PostType.DIRECT_POST) {
-      FirebaseUser user = await FirebaseAuth.instance.currentUser();
+      User user = FirebaseAuth.instance.currentUser;
       await DBService().markDirectPostHeard(conversationId: newPostPod.directPost.conversationId, userId: user.uid, postId: newPostPod.directPost.id);
     }
 
     player.onAudioPositionChanged.listen((event) {
       if(event != null) {
+        //player.setNotification(elapsedTime: event);
         activityManager.updateTimeListened(event, newPostPod.audioUrl);
       }
     });
@@ -238,7 +305,7 @@ class MainAppProvider extends ChangeNotifier {
 
   skipBack() async {
     if(currentPostPodItem != null) {
-      Duration duration = Duration(milliseconds: await player.getDuration());
+      //Duration duration = Duration(milliseconds: await player.getDuration());
       Duration position = Duration(milliseconds: await player.getCurrentPosition());
       //print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
       if(position.inSeconds - 30 <= 0)
@@ -365,7 +432,7 @@ class MainAppProvider extends ChangeNotifier {
     );
   }
 
-  shareToConversation(BuildContext context, {Episode episode, Podcast podcast, User user}) {
+  shareToConversation(BuildContext context, {Episode episode, Podcast podcast, PerklUser user}) {
     showDialog(
       context: context,
       builder: (BuildContext context) {

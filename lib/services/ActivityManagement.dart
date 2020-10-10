@@ -9,17 +9,15 @@ import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
-//import 'package:flutter_sound/flutter_sound.dart';
 import 'package:sounds/sounds.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-//import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock/wakelock.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../main.dart';
 import 'UserManagement.dart';
+import 'local_services.dart';
 import '../PageComponents.dart';
 
 /*
@@ -50,6 +48,7 @@ class ActivityManager {
   //FlutterSound soundManager = new FlutterSound();
   //FlutterSoundRecorder fsRecorder = new FlutterSoundRecorder();
   SoundRecorder recorder = new SoundRecorder(playInBackground: true);
+  LocalService localService = new LocalService();
   //PostAudioPlayer currentPost;
   //AudioPlayer currentlyPlayingPlayer;
   //List<PostAudioPlayer> timelinePlaylist = new List();
@@ -58,7 +57,7 @@ class ActivityManager {
   //StreamSubscription<RecordStatus> recordingSubscription;
 
   bool isLoggedIn() {
-    if (FirebaseAuth.instance.currentUser() != null) {
+    if (FirebaseAuth.instance.currentUser != null) {
       return true;
     } else {
       return false;
@@ -77,13 +76,11 @@ class ActivityManager {
   addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic> sendToUsers, Map<String, dynamic> addToConversations) async {
     if (isLoggedIn()) {
       print('Starting post add');
-      await Firestore.instance.runTransaction((Transaction transaction) async {
-        String userId = await FirebaseAuth.instance.currentUser().then((user) {
-          return user.uid;
-        });
+      await FirebaseFirestore.instance.runTransaction((Transaction transaction) async {
+        String userId = FirebaseAuth.instance.currentUser.uid;
         String username = await UserManagement().getUserData().then((DocumentReference ref) async {
           return await ref.get().then((DocumentSnapshot snapshot) {
-            return snapshot.data['username'];
+            return snapshot.data()['username'];
           });
         });
 
@@ -92,30 +89,26 @@ class ActivityManager {
         String filename = postData['dateString'].toString().replaceAll(new RegExp(r' '), '_');
         print(filename);
         final StorageReference fsRef = FirebaseStorage.instance.ref().child(userId).child('$filename');
-        print('Post storage ref: ${fsRef}');
-        print('File (${audioFile}) exists: ${audioFile.existsSync()}');
+        //print('Post storage ref: $fsRef');
+        //print('File ($audioFile) exists: ${audioFile.existsSync()}');
         final StorageUploadTask uploadTask = fsRef.putFile(audioFile);
         print('$uploadTask');
         String fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
         String fileUrlString = fileUrl.toString();
 
         if(addToTimeline) {
-          print('awaiting post add...');
-          DocumentReference ref = Firestore.instance.collection('/posts').document();
-          print('Doc Ref add post: $ref');
-          String docId = ref.documentID;
-          print(docId);
-          DateTime date = postData['date'];
+          DocumentReference ref = FirebaseFirestore.instance.collection('/posts').doc();
+          String docId = ref.id;
 
           Map<String, dynamic> userTimelines = new Map<String, dynamic>.from(await UserManagement().getUserData().then((DocumentReference userDoc) async {
             print('user doc in add post: $userDoc');
             return await userDoc.get().then((DocumentSnapshot userSnap){
               print('got user snap: $userSnap // ${userSnap.data.toString()}');
-              print(userSnap.data['timelinesIncluded']);
-              if(userSnap.data['timelinesIncluded'] != null) {
+              print(userSnap.data()['timelinesIncluded']);
+              if(userSnap.data()['timelinesIncluded'] != null) {
                 print('user is included on timelines');
                 return new Map<String, dynamic>.from(
-                    userSnap.data['timelinesIncluded']);
+                    userSnap.data()['timelinesIncluded']);
               } else {
                 return new Map<String, dynamic>();
               }
@@ -127,7 +120,7 @@ class ActivityManager {
             userTimelines = new Map<String, dynamic>();
           }
 
-          await transaction.set(ref, {
+          transaction.set(ref, {
             'userUID':  userId,
             'username': username,
             'postTitle': postData['postTitle'],
@@ -138,12 +131,8 @@ class ActivityManager {
             'secondsLength': postData['secondsLength'],
             'streamList': postData['streamList'],
             'timelines': userTimelines.keys.toList(),
-          }).then((doc) async {
-            print('adding post to user');
-            await UserManagement().addPost(docId);
-          }).catchError((e) {
-            print(e);
           });
+          await UserManagement().addPost(docId);
         }
 
         if(sendToUsers != null){
@@ -153,8 +142,8 @@ class ActivityManager {
               Map<String, dynamic> _memberMap = new Map<String, dynamic>();
               _memberMap.addAll({userId: username});
               sendToUsers.forEach((key, value) async {
-                String _username = await Firestore.instance.collection('users').document(key).get().then((doc) {
-                  return doc.data['username'];
+                String _username = await FirebaseFirestore.instance.collection('users').doc(key).get().then((doc) {
+                  return doc.data()['username'];
                 });
                 _memberMap.addAll({key: _username});
               });
@@ -166,8 +155,8 @@ class ActivityManager {
               sendToUsers.forEach((key, value) async {
                 Map<String, dynamic> _memberMap = new Map<String, dynamic>();
                 _memberMap.addAll({userId: username});
-                String _thisUsername = await Firestore.instance.collection('users').document(key).get().then((doc) {
-                  return doc.data['username'];
+                String _thisUsername = await FirebaseFirestore.instance.collection('users').doc(key).get().then((doc) {
+                  return doc.data()['username'];
                 });
                 _memberMap.addAll({key: _thisUsername});
                 //send direct post to this user
@@ -203,19 +192,19 @@ class ActivityManager {
   Future<void> sendDirectPost(String messageTitle, String audioPath, int secondsLength, {String conversationId, Map<String, dynamic> memberMap, String fileUrl}) async {
     String _conversationId = conversationId;
     if(isLoggedIn()) {
-        WriteBatch batch = Firestore.instance.batch();
+        WriteBatch batch = FirebaseFirestore.instance.batch();
         DateTime date = DateTime.now();
 
         //Create document for new direct post message
-        DocumentReference directPostRef = Firestore.instance.collection('/directposts').document();
-        String directPostDocId = directPostRef.documentID;
+        DocumentReference directPostRef = FirebaseFirestore.instance.collection('/directposts').doc();
+        String directPostDocId = directPostRef.id;
 
 
         //Get posting user id and username
         DocumentReference postingUserDoc = await UserManagement().getUserData();
-        String postingUserID = postingUserDoc.documentID;
+        String postingUserID = postingUserDoc.id;
         String postingUsername = await postingUserDoc.get().then((DocumentSnapshot snapshot) async {
-          return snapshot.data['username'].toString();
+          return snapshot.data()['username'].toString();
         });
 
         //Get recipient user doc
@@ -248,11 +237,11 @@ class ActivityManager {
           _memberList.addAll(memberMap.keys);
         _memberList.sort();
         if(_conversationId == null){
-          await Firestore.instance.collection('conversations').where('memberList', isEqualTo: _memberList).getDocuments().then((snapshot) {
-            if(snapshot.documents.isNotEmpty) {
-              DocumentSnapshot conversation = snapshot.documents.first;
+          await FirebaseFirestore.instance.collection('conversations').where('memberList', isEqualTo: _memberList).get().then((snapshot) {
+            if(snapshot.docs.isNotEmpty) {
+              DocumentSnapshot conversation = snapshot.docs.first;
               if(conversation != null)
-                _conversationId = conversation.reference.documentID;
+                _conversationId = conversation.reference.id;
             }
           });
         }
@@ -266,12 +255,12 @@ class ActivityManager {
 
         if(conversationExists) {
           print('Conversation exists: $_conversationId');
-          DocumentReference conversationRef = Firestore.instance.collection('/conversations').document(_conversationId);
+          DocumentReference conversationRef = FirebaseFirestore.instance.collection('/conversations').doc(_conversationId);
           Map<String, dynamic> postMap;
           Map<String, dynamic> conversationMembers;
           await conversationRef.get().then((DocumentSnapshot snapshot) {
-            postMap = Map<String, dynamic>.from(snapshot.data['postMap']);
-            conversationMembers = Map<String, dynamic>.from(snapshot.data['conversationMembers']);
+            postMap = Map<String, dynamic>.from(snapshot.data()['postMap']);
+            conversationMembers = Map<String, dynamic>.from(snapshot.data()['conversationMembers']);
           });
 
           //To-Do --increment unread posts for all users other than posting user
@@ -290,11 +279,11 @@ class ActivityManager {
           });
 
           postMap.addAll({directPostDocId: postingUserID});
-          batch.updateData(conversationRef, {'postMap': postMap, 'lastDate': date, 'lastPostUsername': postingUsername, 'lastPostUserId': postingUserID, 'conversationMembers': newMemberMap});
+          batch.update(conversationRef, {'postMap': postMap, 'lastDate': date, 'lastPostUsername': postingUsername, 'lastPostUserId': postingUserID, 'conversationMembers': newMemberMap});
         } else {
           //Create new conversation document and update data
-          DocumentReference newConversationRef = Firestore.instance.collection('/conversations').document();
-          conversationId = newConversationRef.documentID;
+          DocumentReference newConversationRef = FirebaseFirestore.instance.collection('/conversations').doc();
+          conversationId = newConversationRef.id;
           print('creating new conversation: $conversationId');
           Map<String, dynamic> conversationMembers = new Map<String, dynamic>();
           memberMap.forEach((uid, username) {
@@ -305,7 +294,7 @@ class ActivityManager {
           });
           Map<String, dynamic> postMap = {directPostDocId: postingUserID};
 
-          batch.setData(newConversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': date, 'lastPostUsername': postingUsername, 'lastPostUserId': postingUserID});
+          batch.set(newConversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': date, 'lastPostUsername': postingUsername, 'lastPostUserId': postingUserID});
 
           /*
           //Add a new conversation to the sending user doc conversationMap
@@ -349,7 +338,7 @@ class ActivityManager {
           'datePosted': date
         };
 
-        batch.setData(directPostRef, newPostData);
+        batch.set(directPostRef, newPostData);
 
         await batch.commit().catchError(((error) {
           print('Error committing testBatch4: $error');
@@ -392,8 +381,6 @@ class ActivityManager {
       DateTime startRecordDateTime = DateTime.now();
       print('Recording started at: $startRecordDateTime');
       return [Platform.isIOS ? tempFilePath.replaceAll('file://', '') : tempFilePath, startRecordDateTime];
-
-      return null;
     } catch (e) {
       print('Start recorder error: $e');
       return null;
@@ -467,19 +454,19 @@ class ActivityManager {
 */
 
   Future<void> followUser(String newFollowUID) async {
-    WriteBatch batch = Firestore.instance.batch();
+    WriteBatch batch = FirebaseFirestore.instance.batch();
 
     //add newly followed user Id to current user's list of following
     DocumentReference currentUserDoc = await UserManagement().getUserData();
     String currentUserId = await currentUserDoc.get().then((snapshot) {
-      return snapshot.data['uid'].toString();
+      return snapshot.data()['uid'].toString();
     });
 
 
     Map<String, dynamic> currentFollowing = await currentUserDoc.get().then((snapshot) {
       print('setting currentFollowing');
-      if(snapshot.data['following'] != null)
-        return new Map<String, dynamic>.from(snapshot.data['following']);
+      if(snapshot.data()['following'] != null)
+        return new Map<String, dynamic>.from(snapshot.data()['following']);
       return null;
     });
 
@@ -492,22 +479,22 @@ class ActivityManager {
       newFollowing = currentFollowing;
     }
 
-    batch.updateData(currentUserDoc, {'following': newFollowing});
+    batch.update(currentUserDoc, {'following': newFollowing});
       //add current users Id to newly followed user's list of followers and add current users mainFeedTimelineId to followed users list of including timelines
-    DocumentReference followedUserDoc = Firestore.instance.collection('/users').document(newFollowUID);
+    DocumentReference followedUserDoc = FirebaseFirestore.instance.collection('/users').doc(newFollowUID);
 
     Map<String, dynamic> currentFollowers = await followedUserDoc.get().then((snapshot) {
-      if(snapshot.data['followers'] != null)
-        return Map<String, dynamic>.from(snapshot.data['followers']);
+      if(snapshot.data()['followers'] != null)
+        return Map<String, dynamic>.from(snapshot.data()['followers']);
       return null;
     });
     Map<String, dynamic> currentTimelinesIncluded = await followedUserDoc.get().then((snapshot) {
-      if(snapshot.data['timelinesIncluded'] != null)
-        return Map<String, dynamic>.from(snapshot.data['timelinesIncluded']);
+      if(snapshot.data()['timelinesIncluded'] != null)
+        return Map<String, dynamic>.from(snapshot.data()['timelinesIncluded']);
       return null;
     });
     String currentUserMainFeedTimelineId = await currentUserDoc.get().then((snapshot) {
-      return snapshot.data['mainFeedTimelineId'];
+      return snapshot.data()['mainFeedTimelineId'];
     });
 
     Map<String, dynamic> newFollowers;
@@ -530,20 +517,20 @@ class ActivityManager {
         newTimelinesIncluded = currentTimelinesIncluded;
       }
 
-      batch.updateData(followedUserDoc, {'followers': newFollowers, 'timelinesIncluded': newTimelinesIncluded});
+      batch.update(followedUserDoc, {'followers': newFollowers, 'timelinesIncluded': newTimelinesIncluded});
     }
 
       //add current user's main feed timeline to list of timelines for all posts from the newly followed
-    await Firestore.instance.collection('/posts').where('userUID', isEqualTo: newFollowUID).getDocuments().then((QuerySnapshot snapshot) {
-      print('post list snapshot data: ${snapshot.documents}');
-      if(snapshot.documents.isEmpty) {
+    await FirebaseFirestore.instance.collection('/posts').where('userUID', isEqualTo: newFollowUID).get().then((QuerySnapshot snapshot) {
+      print('post list snapshot data: ${snapshot.docs}');
+      if(snapshot.docs.isEmpty) {
         print('user has no posts');
       } else {
-        snapshot.documents.forEach((DocumentSnapshot postSnapshot) {
+        snapshot.docs.forEach((DocumentSnapshot postSnapshot) {
          List<dynamic> newPostTimelines = new List<dynamic>();
-         if(postSnapshot.data['timelines'] != null && postSnapshot.data['timelines'].length > 0) {
+         if(postSnapshot.data()['timelines'] != null && postSnapshot.data()['timelines'].length > 0) {
            print('post has timeline field');
-           List<dynamic> currentPostTimelines = postSnapshot.data['timelines'];
+           List<dynamic> currentPostTimelines = postSnapshot.data()['timelines'];
            newPostTimelines.addAll(currentPostTimelines);
            newPostTimelines.add(currentUserMainFeedTimelineId);
            print('set list to current timeline list');
@@ -552,7 +539,7 @@ class ActivityManager {
            newPostTimelines = [currentUserMainFeedTimelineId];
          }
 
-         batch.updateData(postSnapshot.reference, {'timelines': newPostTimelines});
+         batch.update(postSnapshot.reference, {'timelines': newPostTimelines});
         });
       }
     }).catchError((e) {
@@ -563,48 +550,48 @@ class ActivityManager {
   }
 
   Future<void> unfollowUser(String unfollowUID) async {
-    WriteBatch batch = Firestore.instance.batch();
+    WriteBatch batch = FirebaseFirestore.instance.batch();
 
     DocumentReference loggedInUserDoc = await UserManagement().getUserData().then((doc) => doc);
-    DocumentReference unfollowedUserDoc = await Firestore.instance.collection('/users').where('uid', isEqualTo: unfollowUID).getDocuments().then((snapshot) async {
-      return snapshot.documents.first.reference;
+    DocumentReference unfollowedUserDoc = await FirebaseFirestore.instance.collection('/users').where('uid', isEqualTo: unfollowUID).get().then((snapshot) async {
+      return snapshot.docs.first.reference;
     });
     String loggedInUID = await loggedInUserDoc.get().then((snapshot) {
-      return snapshot.data['uid'];
+      return snapshot.data()['uid'];
     });
     String loggedInMainFeedTimelineId = await loggedInUserDoc.get().then((snapshot) {
-      return snapshot.data['mainFeedTimelineId'];
+      return snapshot.data()['mainFeedTimelineId'];
     });
 
     //Remove userId from logged in user's list of following
     Map<String, dynamic> currentFollowing = await loggedInUserDoc.get().then((snapshot) {
-      return new Map<String, dynamic>.from(snapshot.data['following']);
+      return new Map<String, dynamic>.from(snapshot.data()['following']);
     });
     print('wint');
     currentFollowing.remove(unfollowUID);
 
-    batch.updateData(loggedInUserDoc, {'following': currentFollowing});
+    batch.update(loggedInUserDoc, {'following': currentFollowing});
     //remove logged in user's userId from unfollowed user's list of followers
     Map<String, dynamic> unfollowedUserFollowers = await unfollowedUserDoc.get().then((snapshot) {
-      return new Map<String, dynamic>.from(snapshot.data['followers']);
+      return new Map<String, dynamic>.from(snapshot.data()['followers']);
     });
     Map<String, dynamic> unfollowedTimelinesIncluded = await unfollowedUserDoc.get().then((snapshot) {
-      return new Map<String, dynamic>.from(snapshot.data['timelinesIncluded']);
+      return new Map<String, dynamic>.from(snapshot.data()['timelinesIncluded']);
     });
     unfollowedUserFollowers.remove(loggedInUID);
     unfollowedTimelinesIncluded.remove(loggedInMainFeedTimelineId);
 
-    batch.updateData(unfollowedUserDoc, {'followers': unfollowedUserFollowers, 'timelinesIncluded': unfollowedTimelinesIncluded});
+    batch.update(unfollowedUserDoc, {'followers': unfollowedUserFollowers, 'timelinesIncluded': unfollowedTimelinesIncluded});
     //remove logged in user's mainFeedTimelinesId from all posts of unfollowed user
-    await Firestore.instance.collection('/posts').where('userUID', isEqualTo: unfollowUID).getDocuments().then((snapshot) {
-      if(snapshot.documents.isEmpty){
+    await FirebaseFirestore.instance.collection('/posts').where('userUID', isEqualTo: unfollowUID).get().then((snapshot) {
+      if(snapshot.docs.isEmpty){
         print('unfollowed user has no posts');
       } else {
-        snapshot.documents.forEach((DocumentSnapshot docSnap) {
-          List<String> postTimelines = new List<String>.from(docSnap.data['timelines']);
+        snapshot.docs.forEach((DocumentSnapshot docSnap) {
+          List<String> postTimelines = new List<String>.from(docSnap.data()['timelines']);
           postTimelines.remove(loggedInMainFeedTimelineId);
 
-          batch.updateData(docSnap.reference, {'timelines': postTimelines});
+          batch.update(docSnap.reference, {'timelines': postTimelines});
         });
       }
     });
@@ -624,26 +611,14 @@ class ActivityManager {
   }
 
   updateTimeListened(Duration time, String url) async {
-    String localPath = await getApplicationDocumentsDirectory().then((directory) => directory.path);
-    File localFile;
-
-    if(await File('$localPath/local_data.json').exists()) {
-      localFile = File('$localPath/local_data.json');
+    Map<String, dynamic> postsInProgress = await localService.getData('posts_in_progress');
+    if(postsInProgress != null) {
+      postsInProgress[url] = time.inMilliseconds;
     } else {
-      localFile = null;
+      postsInProgress = new Map<String, dynamic>();
+      postsInProgress[url] = time.inMilliseconds;
     }
-
-    if(localFile != null) {
-      String localJsonString = await localFile.readAsString();
-      Map<String, dynamic> localJsonMap = jsonDecode(localJsonString);
-      print(localJsonMap);
-      if(localJsonMap['posts_in_progress'] != null) {
-        localJsonMap['posts_in_progress'][url] = time.inMilliseconds;
-      } else {
-        localJsonMap.addAll({'posts_in_progress': {url: time.inMilliseconds}});
-      }
-      await localFile.writeAsString(jsonEncode(localJsonMap));
-    }
+    await localService.setData('posts_in_progress', postsInProgress);
   }
 }
 
@@ -713,10 +688,10 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
           child: Center(child: fileName == null ? Text('Choose a file...') : Text(fileName)),
           onPressed: () async {
 
-            String path = await FilePicker.getFilePath(type: FileType.custom, allowedExtensions: ['mp3', 'aac', 'm4a']);
+            String path = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['mp3', 'aac', 'm4a'], allowMultiple: false).then((result) => result.files.first.path);
             File uploadFile = File(path);
             print('Selected File Path: $path');
-            print('File: ${uploadFile}: ${await uploadFile.exists()}');
+            print('File: $uploadFile: ${await uploadFile.exists()}');
             AudioPlayer tempPlayer = new AudioPlayer();
             await tempPlayer.setUrl(path);
             int audioDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.getDuration());

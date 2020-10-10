@@ -9,7 +9,7 @@ import 'db_services.dart';
 import 'UserManagement.dart';
 import 'ActivityManagement.dart';
 
-class User {
+class PerklUser {
   String uid;
   String email;
   String bio;
@@ -24,7 +24,7 @@ class User {
   List<String> posts;
   List<Podcast> podcastList;
 
-  User({
+  PerklUser({
     this.uid,
     this.email,
     this.bio,
@@ -39,33 +39,33 @@ class User {
     this.followedPodcasts,
   });
 
-  factory User.fromFirestore(DocumentSnapshot snapshot) {
-    User newUser = new User(
-      uid: snapshot.documentID,
-      email: snapshot.data['email'],
-      bio: snapshot.data['bio'],
-      username: snapshot.data['username'],
-      followers: snapshot.data['followers'] == null ? null : snapshot.data['followers'].entries.map<String>((entry) {
+  factory PerklUser.fromFirestore(DocumentSnapshot snapshot) {
+    PerklUser newUser = new PerklUser(
+      uid: snapshot.reference.id,
+      email: snapshot.data()['email'],
+      bio: snapshot.data()['bio'],
+      username: snapshot.data()['username'],
+      followers: snapshot.data()['followers'] == null ? null : snapshot.data()['followers'].entries.map<String>((entry) {
         String userId = entry.key;
         return userId;
       }).toList(),
-      following: snapshot.data['following'] == null ? null : snapshot.data['following'].entries.map<String>((entry) {
+      following: snapshot.data()['following'] == null ? null : snapshot.data()['following'].entries.map<String>((entry) {
         String userId = entry.key;
         return userId;
       }).toList(),
-      profilePicUrl: snapshot.data['profilePicUrl'],
-      mainFeedTimelineId: snapshot.data['mainFeedTimelineId'],
-      followedPodcasts: snapshot.data['followedPodcasts'] == null ? null : snapshot.data['followedPodcasts'].map<String>((entry) {
+      profilePicUrl: snapshot.data()['profilePicUrl'],
+      mainFeedTimelineId: snapshot.data()['mainFeedTimelineId'],
+      followedPodcasts: snapshot.data()['followedPodcasts'] == null ? null : snapshot.data()['followedPodcasts'].map<String>((entry) {
         String podcastUrl = entry;
         return podcastUrl.replaceFirst('http:', 'https:');
       }).toList(),
-      timelinesIncluded: snapshot.data['timelinesIncluded'] == null ? null : snapshot.data['timelinesIncluded'].entries.map<String>((entry) {
+      timelinesIncluded: snapshot.data()['timelinesIncluded'] == null ? null : snapshot.data()['timelinesIncluded'].entries.map<String>((entry) {
         print('timelines');
         String timelineId = entry.key;
         return timelineId;
       }).toList(),
-      directConversationMap: snapshot.data['directConversationMap'] == null ? null : Map.from(snapshot.data['directConversationMap']),
-      posts: snapshot.data['posts'] == null ? null : snapshot.data['posts'].entries.map<String>((entry) {
+      directConversationMap: snapshot.data()['directConversationMap'] == null ? null : Map.from(snapshot.data()['directConversationMap']),
+      posts: snapshot.data()['posts'] == null ? null : snapshot.data()['posts'].entries.map<String>((entry) {
         String postId = entry.key;
         return postId;
       }).toList(),
@@ -75,7 +75,7 @@ class User {
 }
 
 class CurrentUser {
-  User user;
+  PerklUser user;
   bool isLoaded = true;
 
   CurrentUser({this.user, this.isLoaded});
@@ -90,9 +90,9 @@ class DiscoverTag {
 
   factory DiscoverTag.fromFirestore(DocumentSnapshot snap) {
     return DiscoverTag(
-      value: snap.data['value'],
-      rank: snap.data['rank'],
-      type: snap.data['type'],
+      value: snap.data()['value'],
+      rank: snap.data()['rank'],
+      type: snap.data()['type'],
     );
   }
 }
@@ -118,13 +118,13 @@ class Conversation {
 
   factory Conversation.fromFirestore(DocumentSnapshot snapshot) {
     return Conversation(
-      id: snapshot.documentID,
-      memberList: snapshot.data['memberList'] == null ? null : snapshot.data['memberList'].map<String>((value) => value.toString()).toList(),
-      lastDate: snapshot.data['lastDate'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snapshot.data['lastDate'].millisecondsSinceEpoch),
-      lastPostUsername: snapshot.data['lastPostUsername'],
-      lastPostUserId: snapshot.data['lastPostUserId'],
-      conversationMembers: snapshot.data['conversationMembers'] == null ? null : Map<String, dynamic>.from(snapshot.data['conversationMembers']),
-      postMap: snapshot.data['postMap'] == null ? null : Map<String, dynamic>.from(snapshot.data['postMap']),
+      id: snapshot.reference.id,
+      memberList: snapshot.data()['memberList'] == null ? null : snapshot.data()['memberList'].map<String>((value) => value.toString()).toList(),
+      lastDate: snapshot.data()['lastDate'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snapshot.data()['lastDate'].millisecondsSinceEpoch),
+      lastPostUsername: snapshot.data()['lastPostUsername'],
+      lastPostUserId: snapshot.data()['lastPostUserId'],
+      conversationMembers: snapshot.data()['conversationMembers'] == null ? null : Map<String, dynamic>.from(snapshot.data()['conversationMembers']),
+      postMap: snapshot.data()['postMap'] == null ? null : Map<String, dynamic>.from(snapshot.data()['postMap']),
     );
   }
 }
@@ -173,24 +173,24 @@ class DirectPost {
 
   factory DirectPost.fromFirestore(DocumentSnapshot snap) {
     return DirectPost(
-      id: snap.documentID,
-      conversationId: snap.data['conversationId'],
-      senderUID: snap.data['senderUID'],
-      senderUsername: snap.data['senderUsername'],
-      audioFileLocation: snap.data['audioFileLocation'],
-      datePosted: DateTime.fromMillisecondsSinceEpoch(snap.data['datePosted'].millisecondsSinceEpoch),
-      messageTitle: snap.data['messageTitle'],
-      secondsLength: snap.data['secondsLength'],
-      author: snap.data['author'],
-      podcastLink: snap.data['podcast-link'],
-      podcastUrl: snap.data['podcast-url'],
-      podcastTitle: snap.data['podcast-title'],
-      podcastImage: snap.data['podcast-image'],
-      episodeGuid: snap.data['episode-guid'],
-      episodeLink: snap.data['episode-link'],
-      episodeDescription: snap.data['episode-description'],
-      msLength: snap.data['ms-length'],
-      shared: snap.data['shared']
+      id: snap.reference.id,
+      conversationId: snap.data()['conversationId'],
+      senderUID: snap.data()['senderUID'],
+      senderUsername: snap.data()['senderUsername'],
+      audioFileLocation: snap.data()['audioFileLocation'],
+      datePosted: DateTime.fromMillisecondsSinceEpoch(snap.data()['datePosted'].millisecondsSinceEpoch),
+      messageTitle: snap.data()['messageTitle'],
+      secondsLength: snap.data()['secondsLength'],
+      author: snap.data()['author'],
+      podcastLink: snap.data()['podcast-link'],
+      podcastUrl: snap.data()['podcast-url'],
+      podcastTitle: snap.data()['podcast-title'],
+      podcastImage: snap.data()['podcast-image'],
+      episodeGuid: snap.data()['episode-guid'],
+      episodeLink: snap.data()['episode-link'],
+      episodeDescription: snap.data()['episode-description'],
+      msLength: snap.data()['ms-length'],
+      shared: snap.data()['shared']
     );
   }
 
@@ -244,17 +244,17 @@ class Post {
 
   factory Post.fromFirestore(DocumentSnapshot snap) {
     return Post(
-      id: snap.documentID,
-      userUID: snap.data['userUID'],
-      username: snap.data['username'],
-      postTitle: snap.data['postTitle'],
-      datePosted: DateTime.fromMillisecondsSinceEpoch(snap.data['datePosted'].millisecondsSinceEpoch),
-      postValue: snap.data['postValue'],
-      audioFileLocation: snap.data['audioFileLocation'],
-      listenCount: snap.data['listenCount'],
-      secondsLength: snap.data['secondsLength'],
-      streamList: snap.data['streamList'] == null ? null : snap.data['streamList'].map<String>((item) => item.toString()).toList(),
-      timelines: snap.data['timelines'] == null ? null : snap.data['timelines'].map<String>((item) => item.toString()).toList(),
+      id: snap.reference.id,
+      userUID: snap.data()['userUID'],
+      username: snap.data()['username'],
+      postTitle: snap.data()['postTitle'],
+      datePosted: DateTime.fromMillisecondsSinceEpoch(snap.data()['datePosted'].millisecondsSinceEpoch),
+      postValue: snap.data()['postValue'],
+      audioFileLocation: snap.data()['audioFileLocation'],
+      listenCount: snap.data()['listenCount'],
+      secondsLength: snap.data()['secondsLength'],
+      streamList: snap.data()['streamList'] == null ? null : snap.data()['streamList'].map<String>((item) => item.toString()).toList(),
+      timelines: snap.data()['timelines'] == null ? null : snap.data()['timelines'].map<String>((item) => item.toString()).toList(),
     );
   }
 
@@ -358,6 +358,53 @@ class PostPodItem {
     return Text('Error getting username!');
   }
 
+  String titleTextString() {
+    if(type == PostType.POST) {
+      return post.postTitle ?? DateFormat("MMMM dd, yyyy").format(post.datePosted).toString();
+    }
+    if(type == PostType.DIRECT_POST) {
+      return directPost.messageTitle != null ? '${directPost.messageTitle}' : DateFormat('MMMM dd, yyyy h:mm a').format(directPost.datePosted);
+    }
+    if(type == PostType.PODCAST_EPISODE) {
+      return episode.title;
+    }
+    if(type == PostType.EPISODE_REPLY) {
+      return episodeReply.replyTitle ?? DateFormat("MMMM dd, yyyy").format(episodeReply.replyDate).toString();
+    }
+    return 'untitled';
+  }
+
+  String subtitleTextString() {
+    if(type == PostType.POST) {
+      return '@${post.username}';
+    }
+    if(type == PostType.DIRECT_POST) {
+      return '@${directPost.senderUsername}';
+    }
+    if(type == PostType.PODCAST_EPISODE) {
+      return episode.author;
+    }
+    if(type == PostType.EPISODE_REPLY) {
+      return episodeReply.posterUsername;
+    }
+    return '';
+  }
+
+  Duration getDuration() {
+    if(post != null && post.secondsLength != null) {
+      return Duration(seconds: post.secondsLength);
+    }
+    if(directPost != null && (directPost.secondsLength != null || directPost.msLength != null)) {
+      return directPost.msLength != null ? Duration(milliseconds: directPost.msLength) : Duration(seconds: directPost.secondsLength);
+    }
+    if(episode != null && episode.duration != null) {
+      return episode.duration;
+    }
+    if(episodeReply != null && episodeReply.replyDuration != null) {
+      return episodeReply.replyDuration;
+    }
+    return Duration(seconds: 0);
+  }
 
   factory PostPodItem.fromPost(Post post) {
     return PostPodItem(
@@ -432,17 +479,17 @@ class EpisodeReply {
 
   factory EpisodeReply.fromFirestore(DocumentSnapshot snap) {
     return EpisodeReply(
-      id: snap.documentID,
-      uniqueId: snap.data['unique_id'],
-      episodeName: snap.data['episode_name'],
-      episodeDate: DateTime.fromMillisecondsSinceEpoch(snap.data['episode_date'].millisecondsSinceEpoch),
-      podcastName: snap.data['podcast_name'],
-      audioFileLocation: snap.data['audioFileLocation'],
-      posterUid: snap.data['posting_uid'],
-      posterUsername: snap.data['posting_username'],
-      replyDate: DateTime.fromMillisecondsSinceEpoch(snap.data['reply_date'].millisecondsSinceEpoch),
-      replyDuration: Duration(milliseconds: snap.data['reply_ms']),
-      replyTitle: snap.data['reply_title'],
+      id: snap.reference.id,
+      uniqueId: snap.data()['unique_id'],
+      episodeName: snap.data()['episode_name'],
+      episodeDate: DateTime.fromMillisecondsSinceEpoch(snap.data()['episode_date'].millisecondsSinceEpoch),
+      podcastName: snap.data()['podcast_name'],
+      audioFileLocation: snap.data()['audioFileLocation'],
+      posterUid: snap.data()['posting_uid'],
+      posterUsername: snap.data()['posting_username'],
+      replyDate: DateTime.fromMillisecondsSinceEpoch(snap.data()['reply_date'].millisecondsSinceEpoch),
+      replyDuration: Duration(milliseconds: snap.data()['reply_ms']),
+      replyTitle: snap.data()['reply_title'],
     );
   }
 }
