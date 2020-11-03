@@ -1,6 +1,7 @@
 import 'package:Perkl/MainPageTemplate.dart';
 import 'package:Perkl/services/db_services.dart';
 import 'package:Perkl/services/models.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:cloud_firestore/cloud_firestore.dart';
@@ -356,6 +357,8 @@ class ConversationPageMobile extends StatelessWidget {
   build(BuildContext context) {
     User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
     return MultiProvider(
       providers: [
         StreamProvider<List<DirectPost>>(create: (_) => DBService().streamDirectPosts(conversationId)),
@@ -458,12 +461,12 @@ class ConversationPageMobile extends StatelessWidget {
                                                           width: 35,
                                                           decoration: BoxDecoration(
                                                               shape: BoxShape.circle,
-                                                              color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
+                                                              color: currentMediaItem.id == directPost.audioFileLocation ? Colors.red : Colors.deepPurple
                                                           ),
-                                                          child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                                          child: Center(child: FaIcon(currentMediaItem.id == directPost.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                                         ),
                                                         onTap: () {
-                                                          mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));
+                                                          playbackState.playing != null && playbackState.playing && currentMediaItem.id == directPost.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));
                                                           mp.notifyListeners();
                                                         },
                                                       ),

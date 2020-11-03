@@ -45,13 +45,8 @@ class PostAudioPlayer {
 */
 
 class ActivityManager {
-  //FlutterSound soundManager = new FlutterSound();
-  //FlutterSoundRecorder fsRecorder = new FlutterSoundRecorder();
   SoundRecorder recorder = new SoundRecorder(playInBackground: true);
   LocalService localService = new LocalService();
-  //PostAudioPlayer currentPost;
-  //AudioPlayer currentlyPlayingPlayer;
-  //List<PostAudioPlayer> timelinePlaylist = new List();
   StreamController playlistStreamController = new StreamController<bool>.broadcast();
   Stream get playlistPlaying => playlistStreamController.stream.asBroadcastStream();
   //StreamSubscription<RecordStatus> recordingSubscription;
@@ -376,6 +371,7 @@ class ActivityManager {
       Wakelock.enable();
       await recorder.record(Track.fromFile(tempFilePath, mediaFormat: WellKnownMediaFormats.adtsAac));
       recorder.dispositionStream().listen((disposition) {
+        print('recording disposition: $disposition');
         mp.setRecordingTime(disposition.duration);
       });
       DateTime startRecordDateTime = DateTime.now();
@@ -520,7 +516,7 @@ class ActivityManager {
       batch.update(followedUserDoc, {'followers': newFollowers, 'timelinesIncluded': newTimelinesIncluded});
     }
 
-      //add current user's main feed timeline to list of timelines for all posts from the newly followed
+      //add current user's main feedL timeline to list of timelines for all posts from the newly followed
     await FirebaseFirestore.instance.collection('/posts').where('userUID', isEqualTo: newFollowUID).get().then((QuerySnapshot snapshot) {
       print('post list snapshot data: ${snapshot.docs}');
       if(snapshot.docs.isEmpty) {

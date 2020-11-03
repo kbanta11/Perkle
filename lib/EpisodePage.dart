@@ -1,4 +1,5 @@
 import 'package:Perkl/MainPageTemplate.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,9 @@ class EpisodePage extends StatelessWidget {
   @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
+    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
     print('Episode Guid: ${_episode.guid}/Episode Link: ${_episode.link}');
 
     String getDurationString(Duration duration) {
@@ -94,12 +98,12 @@ class EpisodePage extends StatelessWidget {
                                     width: 35,
                                     decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: mp.currentPostPodId == (_episode.guid == null ? _episode.link : _episode.guid) ? Colors.red : Colors.deepPurple//mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
+                                        color: currentMediaItem != null && currentMediaItem.id == _episode.contentUrl ? Colors.red : Colors.deepPurple//mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
                                     ),
-                                    child: Center(child: FaIcon(mp.isPlaying && mp.currentPostPodId == (_episode.guid == null ? _episode.link : _episode.guid) ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                    child: Center(child: FaIcon(playbackState.playing && currentMediaItem.id == _episode.contentUrl ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                   ),
                                   onTap: () {
-                                    if(mp.isPlaying && mp.currentPostPodId == (_episode.guid == null ? _episode.link : _episode.guid))
+                                    if(playbackState != null && currentMediaItem != null && playbackState.playing && currentMediaItem.id == _episode.contentUrl)
                                       mp.pausePost();
                                     else
                                       mp.playPost(PostPodItem.fromEpisode(_episode, _podcast));
@@ -112,12 +116,12 @@ class EpisodePage extends StatelessWidget {
                                     width: 35,
                                     decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: mp.queue.where((p) => p.id == (_episode.guid != null ? _episode.guid : _episode.link)).length > 0 ? Colors.grey : Colors.deepPurple
+                                        color: mediaQueue != null && mediaQueue.where((p) => p.id == _episode.contentUrl).length > 0 ? Colors.grey : Colors.deepPurple
                                     ),
                                     child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
                                   ),
                                   onTap: () {
-                                    if(mp.queue.where((PostPodItem p) => p.id == (_episode.guid != null ? _episode.guid : _episode.link)).length <= 0)
+                                    if(mediaQueue == null || mediaQueue.where((MediaItem p) => p.id == _episode.contentUrl).length <= 0)
                                       mp.addPostToQueue(PostPodItem.fromEpisode(_episode, _podcast));
                                   },
                                 ),
@@ -211,12 +215,12 @@ class EpisodePage extends StatelessWidget {
                                         width: 35,
                                         decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: mp.currentPostPodId == reply.id ? Colors.red : Colors.deepPurple
+                                            color: currentMediaItem.id == reply.audioFileLocation ? Colors.red : Colors.deepPurple
                                         ),
-                                        child: Center(child: FaIcon(mp.currentPostPodId == reply.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                        child: Center(child: FaIcon(currentMediaItem.id == reply.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                       ),
                                       onTap: () {
-                                        mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == reply.id ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
+                                        playbackState.playing != null && playbackState.playing && currentMediaItem.id == reply.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
                                       },
                                     ),
                                     SizedBox(width: 5,),
@@ -226,12 +230,12 @@ class EpisodePage extends StatelessWidget {
                                         width: 35,
                                         decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: mp.queue.where((p) => p.id == reply.id).length > 0 ? Colors.grey : Colors.deepPurple
+                                            color: AudioServiceBackground.queue != null && AudioServiceBackground.queue.where((p) => p.id == reply.audioFileLocation).length > 0 ? Colors.grey : Colors.deepPurple
                                         ),
                                         child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
                                       ),
                                       onTap: () {
-                                        if(mp.queue.where((p) => p.id == reply.id).length <= 0)
+                                        if(AudioServiceBackground.queue != null && AudioServiceBackground.queue.where((p) => p.id == reply.audioFileLocation).length <= 0)
                                           mp.addPostToQueue(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
                                       },
                                     )

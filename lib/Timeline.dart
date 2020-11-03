@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:Perkl/services/ActivityManagement.dart';
 import 'package:Perkl/services/UserManagement.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -39,8 +40,12 @@ class Timeline extends StatelessWidget {
   build(BuildContext context) {
     User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
+    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
     PerklUser currentUser = Provider.of<PerklUser>(context);
     //print('TimelineId: $timelineId/StreamTag: $tagStream/UserId: $userId');
+    print('Current Media Item: $currentMediaItem/Playback State: $playbackState');
     Stream postStream;
     if(tagStream != null) {
       postStream = tagStream;
@@ -116,7 +121,6 @@ class Timeline extends StatelessWidget {
           stream: postStream,
           builder: (context, AsyncSnapshot<List<PostPodItem>> postListSnap) {
             List<PostPodItem> postList = postListSnap.data;
-            print('Post List: $postList');
             String emptyText = 'Looks like there are\'nt any posts to show here!';
             if(type == TimelineType.MAINFEED)
               emptyText = 'Your Timeline is Empty! Try following some users!';
@@ -179,6 +183,7 @@ class Timeline extends StatelessWidget {
                     Column(
                       children: day.list.map((post) {
                         if(post is Episode) {
+                          Episode _post = post;
                           return Card(
                               elevation: 5,
                               color: Colors.pink[50],
@@ -198,12 +203,12 @@ class Timeline extends StatelessWidget {
                                                 color: Colors.deepPurple,
                                                 image: DecorationImage(
                                                     fit: BoxFit.cover,
-                                                    image: NetworkImage(post.podcast.image ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
+                                                    image: NetworkImage(_post.podcast.image ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
                                                 )
                                             )
                                         ),
-                                        title: Text(post.title),
-                                        subtitle: Text('${post.podcast.title}'),
+                                        title: Text(_post.title),
+                                        subtitle: Text('${_post.podcast.title}'),
                                         trailing: Container(
                                             width: 85,
                                             child: Column(
@@ -218,12 +223,12 @@ class Timeline extends StatelessWidget {
                                                             width: 35,
                                                             decoration: BoxDecoration(
                                                               shape: BoxShape.circle,
-                                                              color: mp.currentPostPodId == (post.guid == null ? post.link : post.guid) ? Colors.red : Colors.deepPurple,
+                                                              color: currentMediaItem != null && currentMediaItem.id == _post.contentUrl ? Colors.red : Colors.deepPurple,
                                                             ),
-                                                            child: Center(child: FaIcon(mp.currentPostPodId == (post.guid == null ? post.link : post.guid) && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                                            child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.contentUrl && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
                                                           ),
                                                           onTap: () {
-                                                            if(mp.currentPostPodId == (post.guid == null ? post.link : post.guid) && mp.isPlaying) {
+                                                            if(currentMediaItem != null && currentMediaItem.id == _post.contentUrl && playbackState.playing) {
                                                               mp.pausePost();
                                                               return;
                                                             }
@@ -237,12 +242,12 @@ class Timeline extends StatelessWidget {
                                                             width: 35,
                                                             decoration: BoxDecoration(
                                                               shape: BoxShape.circle,
-                                                              color: mp.queue.where((item) => item.id == (post.guid == null ? post.link : post.guid)).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                              color: mediaQueue != null && mediaQueue.where((item) => item.id == _post.contentUrl).length > 0  ? Colors.grey : Colors.deepPurple,
                                                             ),
                                                             child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
                                                           ),
                                                           onTap: () {
-                                                            if(mp.queue.where((item) => item.id == (post.guid == null ? post.link : post.guid)).length == 0)
+                                                            if(mediaQueue == null || mediaQueue.where((item) => item.id == _post.contentUrl).length == 0)
                                                               mp.addPostToQueue(PostPodItem.fromEpisode(post, post.podcast));
                                                           }
                                                       )
@@ -295,8 +300,10 @@ class Timeline extends StatelessWidget {
                               )
                           );
                         }
+
+                        Post _post = post;
                         return StreamProvider<PerklUser>(
-                          create: (context) => UserManagement().streamUserDoc(post.userUID),
+                          create: (context) => UserManagement().streamUserDoc(_post.userUID),
                           child: Consumer<PerklUser>(
                             builder: (context, poster, _) {
                               return Card(
@@ -350,9 +357,9 @@ class Timeline extends StatelessWidget {
                                         title: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: <Widget>[
-                                            Text('@${post.username}'),
-                                            Text('${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy h:mm a').format(post.datePosted)}', style: TextStyle(fontSize: 14)),
-                                            post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy h:mm a').format(post.datePosted), style: TextStyle(fontSize: 14, color: Colors.black45))  : Container(),
+                                            Text('@${_post.username}'),
+                                            Text('${_post.postTitle != null ? _post.postTitle : DateFormat('MMMM dd, yyyy h:mm a').format(_post.datePosted)}', style: TextStyle(fontSize: 14)),
+                                            _post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy h:mm a').format(_post.datePosted), style: TextStyle(fontSize: 14, color: Colors.black45))  : Container(),
                                           ],
                                         ),
                                         trailing: Column(
@@ -369,12 +376,12 @@ class Timeline extends StatelessWidget {
                                                       width: 35,
                                                       decoration: BoxDecoration(
                                                           shape: BoxShape.circle,
-                                                          color: mp.currentPostPodId == post.id ? Colors.red : Colors.deepPurple
+                                                          color: currentMediaItem != null && currentMediaItem.id == _post.audioFileLocation ? Colors.red : Colors.deepPurple
                                                       ),
-                                                      child: Center(child: FaIcon(mp.currentPostPodId == post.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                                      child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                                     ),
                                                     onTap: () {
-                                                      mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == post.id ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
+                                                      playbackState != null && playbackState.playing != null && playbackState.playing && currentMediaItem.id == _post.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
                                                     },
                                                   ),
                                                   SizedBox(width: 5,),
@@ -384,12 +391,12 @@ class Timeline extends StatelessWidget {
                                                       width: 35,
                                                       decoration: BoxDecoration(
                                                           shape: BoxShape.circle,
-                                                          color: mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
+                                                          color: mediaQueue != null && mediaQueue.where((p) => p.id == _post.audioFileLocation).length > 0 ? Colors.grey : Colors.deepPurple
                                                       ),
                                                       child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
                                                     ),
                                                     onTap: () {
-                                                      if(mp.queue.where((p) => p.id == post.id).length <= 0)
+                                                      if(mediaQueue == null || mediaQueue.where((p) => p.id == _post.audioFileLocation).length <= 0)
                                                         mp.addPostToQueue(PostPodItem.fromPost(post));
                                                     },
                                                   )

@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 //import 'package:firebase_storage/firebase_storage.dart';
 //import 'package:intl/intl.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock/wakelock.dart';
@@ -151,12 +152,15 @@ class TopPanel extends StatelessWidget {
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     MainTemplateProvider templateProvider = Provider.of<MainTemplateProvider>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    //print('Position in playback state: ${playbackState.currentPosition}');
+    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
+    //print('Current Media Item: $currentMediaItem');
+    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
 
     String playingPostText = '';
-    if(mp != null) {
-      if(mp.currentPostPodItem != null) {
-        playingPostText = mp.currentPostPodItem.displayText;
-      }
+    if(currentMediaItem != null) {
+      playingPostText = '${currentMediaItem.title} | ${currentMediaItem.artist}';
     }
     String getDurationString(Duration duration) {
       int hours = duration.inHours;
@@ -286,6 +290,9 @@ class TopPanel extends StatelessWidget {
                       ) : Container()
                     ),
                     SizedBox(width: 5),
+                    Text('${playbackState == null || playbackState.currentPosition == null || playbackState.currentPosition.inMilliseconds == 0 ? '' : '${getDurationString(playbackState.currentPosition)}/'}${currentMediaItem == null || currentMediaItem.duration == null ? '' : getDurationString(currentMediaItem.duration)}',
+                        style: TextStyle(color: Colors.white, fontSize: 16)),
+                    /*
                     StreamBuilder(
                       stream: mp.player.onDurationChanged,
                       builder: (context, AsyncSnapshot<Duration> durationSnap) {
@@ -297,13 +304,12 @@ class TopPanel extends StatelessWidget {
                             //print('Duration: $duration/Position: $position');
                             if (duration == null || position == null)
                               return Container();
-                            return Text('${getDurationString(
-                                position)}/${getDurationString(duration)}',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 16));
+                            return Text('${getDurationString(position)}/${getDurationString(duration)}',
+                                style: TextStyle(color: Colors.white, fontSize: 16));
                           });
                       },
                     ),
+                    */
                     //mp.position == null || mp.postLength == null ? Container() : Text('${mp.position.getPostPosition()}/${mp.postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ],
                 ),
@@ -313,7 +319,7 @@ class TopPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 IconButton(
-                  icon: Icon(Icons.queue_music, color: mp.queue.length > 0 ? Colors.white : Colors.grey),
+                  icon: Icon(Icons.queue_music, color: mediaQueue != null && mediaQueue.length > 0 ? Colors.white : Colors.grey),
                   onPressed: () {
                     //Go to Queue page
                     Navigator.push(context, MaterialPageRoute(
@@ -323,41 +329,45 @@ class TopPanel extends StatelessWidget {
                   }
                 ),
                 IconButton(
-                    icon: Icon(Icons.replay_30, color: mp.currentPostPodItem != null ? Colors.white : Colors.grey),
+                    icon: Icon(Icons.replay_30, color: currentMediaItem != null ? Colors.white : Colors.grey),
                     onPressed: () async {
-                      await mp.skipBack();
+                      if(currentMediaItem != null && playbackState != null && playbackState.position != null) {
+                        await AudioService.rewind();
+                      }
                     }
                 ),
                 IconButton(
-                    icon: Icon(mp.isPlaying ? Icons.pause : Icons.play_arrow, color: mp.queue.length > 0 || mp.currentPostPodItem != null ? Colors.white : Colors.grey,),
+                    icon: Icon(playbackState != null && playbackState.playing ? Icons.pause : Icons.play_arrow, color: (mediaQueue != null && mediaQueue.length > 0) || currentMediaItem != null ? Colors.white : Colors.grey,),
                     onPressed: () {
-                      if(mp.isPlaying) {
+                      if(playbackState.playing) {
                         //print('pausing post');
                         mp.pausePost();
                         return;
                       }
-                      if(mp.currentPostPodItem != null) {
-                        mp.playPost(mp.currentPostPodItem);
+                      if(currentMediaItem != null) {
+                        AudioService.play();
                         return;
                       }
-                      if(mp.queue.length > 0) {
-                        mp.playPostFromQueue();
+                      if(mediaQueue != null && mediaQueue.length > 0) {
+                        AudioService.skipToNext();
                         return;
                       }
                     }
                 ),
                 IconButton(
-                  icon: Icon(Icons.forward_30, color: mp.currentPostPodItem != null ? Colors.white : Colors.grey),
+                  icon: Icon(Icons.forward_30, color: currentMediaItem != null ? Colors.white : Colors.grey),
                   onPressed: () async {
-                    await mp.skipAhead();
+                    if(currentMediaItem != null && playbackState != null && playbackState.position != null) {
+                      await AudioService.fastForward();
+                    }
                   }
                 ),
                 IconButton(
-                    icon: Icon(Icons.skip_next, color: mp.queue.length > 0 ? Colors.white : Colors.grey),
+                    icon: Icon(Icons.skip_next, color: mediaQueue != null && mediaQueue.length > 0 ? Colors.white : Colors.grey),
                     onPressed: () {
-                      if(mp.isPlaying)
-                        mp.stopPost();
-                      mp.playPostFromQueue();
+                      if(mediaQueue != null && mediaQueue.length > 0) {
+                        AudioService.skipToNext();
+                      }
                     }
                 )
               ],
@@ -1554,7 +1564,7 @@ class _RecordingPulseState extends State<RecordingPulse> with SingleTickerProvid
 
   @override
   initState() {
-    _animationController = AnimationController(vsync:this, duration: Duration(seconds: 2));
+    _animationController = AnimationController(duration: Duration(seconds: 2), vsync: this);
     _animationController.repeat();
     _animation =  Tween(begin: 2.0, end: widget.maxSize).animate(_animationController)..addListener((){
       setState(() {

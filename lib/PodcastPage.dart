@@ -1,6 +1,7 @@
 import 'package:Perkl/main.dart';
 //import 'package:Perkl/services/UserManagement.dart';
 import 'package:Perkl/services/db_services.dart';
+import 'package:audio_service/audio_service.dart';
 //import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:flutter/gestures.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -26,6 +27,9 @@ class PodcastPage extends StatelessWidget {
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     PerklUser user = Provider.of<PerklUser>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
+    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
     //print('Followed Podcasts: ${user.followedPodcasts}/Podcast URL: ${podcast.url}/${user.followedPodcasts.contains(podcast.url)}');
     bool podcastFollowed = user.followedPodcasts != null && user.followedPodcasts.contains(podcast.url.replaceFirst('http:', 'https:'));
     return podcast == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
@@ -141,12 +145,12 @@ class PodcastPage extends StatelessWidget {
                                                     width: 35,
                                                     decoration: BoxDecoration(
                                                       shape: BoxShape.circle,
-                                                      color: mp.currentPostPodId == (ep.guid == null ? ep.link : ep.guid) ? Colors.red : Colors.deepPurple,
+                                                      color: currentMediaItem != null && currentMediaItem.id == ep.contentUrl ? Colors.red : Colors.deepPurple,
                                                     ),
-                                                    child: Center(child: FaIcon(mp.currentPostPodId == (ep.guid == null ? ep.link : ep.guid) && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                                    child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == ep.contentUrl && playbackState != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
                                                   ),
                                                   onTap: () {
-                                                    if(mp.currentPostPodId == (ep.guid == null ? ep.link : ep.guid) && mp.isPlaying) {
+                                                    if(currentMediaItem != null && currentMediaItem.id == ep.contentUrl && playbackState != null && playbackState.playing) {
                                                       mp.pausePost();
                                                       return;
                                                     }
@@ -160,12 +164,12 @@ class PodcastPage extends StatelessWidget {
                                                     width: 35,
                                                     decoration: BoxDecoration(
                                                       shape: BoxShape.circle,
-                                                      color: mp.queue.where((item) => item.id == (ep.guid == null ? ep.link : ep.guid)).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                      color: mediaQueue != null && mediaQueue.where((item) => item.id == ep.contentUrl).length > 0  ? Colors.grey : Colors.deepPurple,
                                                     ),
                                                     child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
                                                   ),
                                                   onTap: () {
-                                                    if(mp.queue.where((item) => item.id == (ep.guid == null ? ep.link : ep.guid)).length == 0)
+                                                    if(mediaQueue == null || mediaQueue.where((item) => item.id == ep.contentUrl).length == 0)
                                                       mp.addPostToQueue(PostPodItem.fromEpisode(ep, podcast));
                                                   }
                                               )

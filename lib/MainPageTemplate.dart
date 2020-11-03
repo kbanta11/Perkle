@@ -38,7 +38,7 @@ class MainPageTemplate extends StatelessWidget {
       child: Consumer<MainTemplateProvider>(
           builder: (context, tempProvider, _) {
             PerklUser currentUser = Provider.of<PerklUser>(context);
-            print('Padding: ${MediaQuery.of(context).viewPadding}');
+            //print('Padding: ${MediaQuery.of(context).viewPadding}');
             return Scaffold(
               backgroundColor: Colors.white,
               body: SlidingUpPanel(

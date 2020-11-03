@@ -43,7 +43,11 @@ exports.indexUsersToElastic = functions.firestore.document('/users/{uid}').onWri
 	
 	let elasticSearchConfig = functions.config().elasticsearch;
 	let elasticSearchUrl = elasticSearchConfig.url + '/users/_doc/' + userId;
-	let elasticSearchMethod = userData ? 'POST' : 'DELETE';
+	let elasticSearchMethod = 'POST'; 
+	if(!userId) {
+		console.log('Deleting User from ElasticSearch due to empty user data: ' + userData);
+		elasticSearchMethod = 'DELETE';
+	};
 	
 	let elasticSearchRequest = {
 		method: elasticSearchMethod,

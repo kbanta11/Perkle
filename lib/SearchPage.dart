@@ -269,7 +269,7 @@ class SearchPageMobile extends StatelessWidget {
                       stream: searchRequestDoc.snapshots(),
                       builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> asyncSearchDocSnap) {
                         if(spp.type == SearchType.PODCASTS && asyncSearchDocSnap.hasData) {
-                          if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data == null)
+                          if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data() == null)
                             return Center(child: CircularProgressIndicator());
                           return FutureBuilder<SearchResult>(
                             future: Search().search(asyncSearchDocSnap.data.data()['searchTerm'], limit: 50),
@@ -317,9 +317,9 @@ class SearchPageMobile extends StatelessWidget {
                         }
 
                         List<String> results;
-                        if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data == null)
+                        if(asyncSearchDocSnap.data == null || asyncSearchDocSnap.data.data() == null)
                           return Center(child: Text('There are no results for this search...'));
-                        print('Snapshot: $asyncSearchDocSnap/Snapshot term: ${asyncSearchDocSnap.data.data()['searchTerm']}/Results: ${asyncSearchDocSnap.data.data()["results"]}');
+                        //print('Snapshot: $asyncSearchDocSnap/Snapshot term: ${asyncSearchDocSnap.data.data()['searchTerm']}/Results: ${asyncSearchDocSnap.data.data()["results"]}');
                         results = asyncSearchDocSnap.data.data()['results'] == null ? null : asyncSearchDocSnap.data.data()['results'].map<String>((value) => value.toString()).toList();
                         print('Query Results: $results');
 

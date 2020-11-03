@@ -74,7 +74,7 @@ class DBService {
             String feedUrl = data['podcast_feed'];
             if(feedUrl != null)
               feedUrl = feedUrl.replaceFirst('https:', 'http:');
-            print('feedUrl: $feedUrl');
+            //print('feedUrl: $feedUrl');
             Podcast pod = new Podcast.of(url: feedUrl, description: data['podcast_description'] != null ? data['podcast_description'].toString() : null, title: doc.data()['podcast_title'], image: doc.data()['image_url']);
             //print('$itemType: ${data['audio_url']} | Episode: ${data['episode']} | Guid: ${data['episode_guid']} | Title: ${data['title']} | Author: ${pod.title} | Duration: ${data['itunes_duration']} | Description: ${data['description']}');
             Episode ep = new Episode.of(guid: doc.data()['episode_guid'],
@@ -103,7 +103,6 @@ class DBService {
           //print(newItem);
           return newItem;
         }).toList();
-        print('List length: ${list.length}');
         return list;
       }).handleError((error) {print('Error getting timeline items: $error');});
     }

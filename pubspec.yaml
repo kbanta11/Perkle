@@ -30,7 +30,11 @@ dependencies:
   image_cropper:
   intl:
   wakelock:
-  sounds: ^1.0.0-beta.5
+  audio_service:
+  #sounds: ^0.9.3
+  sounds:
+    path: ../sounds
+  #audio_recorder:
   flutter_launcher_icons:
   flushbar:
   url_launcher:
@@ -43,7 +47,6 @@ dependencies:
   font_awesome_flutter:
   marquee:
   permission_handler:
-  audio_service:
   http:
   package_info:
   launch_review:

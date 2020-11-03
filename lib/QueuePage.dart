@@ -1,6 +1,7 @@
 import 'package:Perkl/ConversationPage.dart';
 import 'package:Perkl/MainPageTemplate.dart';
 import 'package:Perkl/PodcastPage.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -14,6 +15,9 @@ class QueuePage extends StatelessWidget {
   @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
+    List<MediaItem> queueItems = Provider.of<List<MediaItem>>(context);
     List<Widget> queueWidgets = new List<Widget>();
 
     tapItemTile(PostPodItem item) {
@@ -79,22 +83,22 @@ class QueuePage extends StatelessWidget {
       }
     }
 
-    if(mp.currentPostPodItem != null)
+    if(currentMediaItem != null)
       queueWidgets.add(Card(
         color: Colors.greenAccent[100],
         margin: EdgeInsets.all(5),
         child: Padding(
           padding: EdgeInsets.all(5),
           child: ListTile(
-            title: mp.currentPostPodItem.titleText(),
-            subtitle: mp.currentPostPodItem.subtitleText(),
+            title: Text(currentMediaItem.title),
+            subtitle: Text(currentMediaItem.artist),
             onTap: () {
-              tapItemTile(mp.currentPostPodItem);
+              //tapItemTile(mp.currentPostPodItem);
             },
           ),
         )
       ));
-    queueWidgets.addAll(mp.queue.map((PostPodItem item) {
+    queueWidgets.addAll(queueItems.map((MediaItem item) {
       return Card(
           color: Colors.deepPurple[50],
           margin: EdgeInsets.all(5),
@@ -102,8 +106,8 @@ class QueuePage extends StatelessWidget {
           child: Padding(
               padding: EdgeInsets.all(5),
               child: ListTile(
-                title: item.titleText(),
-                subtitle: item.subtitleText(),
+                title: Text(item.title),
+                subtitle: Text(item.artist),
                 trailing: Container(
                   width: 85,
                   child: Column(
@@ -117,12 +121,12 @@ class QueuePage extends StatelessWidget {
                               width: 35,
                               decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: mp.currentPostPodId == item.id ? Colors.red : Colors.deepPurple
+                                  color: currentMediaItem.id == item.id ? Colors.red : Colors.deepPurple
                               ),
-                              child: Center(child: FaIcon(mp.currentPostPodId == item.id && mp.isPlaying != null && mp.isPlaying ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                              child: Center(child: FaIcon(currentMediaItem.id == item.id && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                             ),
                             onTap: () {
-                              mp.isPlaying != null && mp.isPlaying && mp.currentPostPodId == item.id ? mp.pausePost() : mp.playPost(item);
+                              playbackState.playing != null && playbackState.playing && mp.currentPostPodId == item.id ? mp.pausePost() : AudioService.playMediaItem(item);
                             },
                           ),
                           SizedBox(width: 5,),
@@ -137,8 +141,7 @@ class QueuePage extends StatelessWidget {
                               child: Center(child: FaIcon(FontAwesomeIcons.minus, color: Colors.white, size: 16)),
                             ),
                             onTap: () {
-                              if(mp.queue.where((p) => p.id == item.id).length > 0)
-                                mp.removeFromQueue(item);
+                              AudioService.removeQueueItem(item);
                             },
                           )
                         ],
@@ -147,7 +150,7 @@ class QueuePage extends StatelessWidget {
                   ),
                 ),
                 onTap: () {
-                  tapItemTile(item);
+                  //tapItemTile(item);
                 },
               )
           )
