@@ -6,12 +6,14 @@ import 'package:podcast_search/podcast_search.dart';
 import 'package:intl/intl.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'local_services.dart';
 import 'dart:io';
 import 'models.dart';
 import 'Helper.dart';
 
 class DBService {
   FirebaseFirestore _db = FirebaseFirestore.instance;
+  LocalService _localService = new LocalService();
   Future<int> getConfigMinBuildNumber() async {
     int buildNumber = await _db.collection('config').doc('config').get().then((snap) {
       return snap.data()[Platform.isAndroid ? 'minimum_android_version' : 'minimum_ios_version'];
@@ -287,6 +289,42 @@ class DBService {
       }
       return;
     });
+  }
+
+  Future<void> syncConversationPostsHeard() async {
+    Map<String, dynamic> heardPostMap = await _localService.getData('conversation-heard-posts');
+    String currentUserId = FirebaseAuth.instance.currentUser.uid;
+    if(heardPostMap != null) {
+      heardPostMap.forEach((key, val) async {
+        String conversationId = key;
+        List<String> localPostsHeard;
+        if(val[currentUserId] != null)  {
+          localPostsHeard = val[currentUserId].cast<String>();
+        } else {
+          print('This user is not in this conversation or doesn\'t have any posts listened to currently');
+          return;
+        }
+        DocumentReference docRef = _db.collection('conversations').doc(conversationId).collection('heard-posts').doc(currentUserId);
+        List<String> fbPostsHeard = await docRef.get().then((snap) => snap.data()['id_list'].cast<String>());
+        if(fbPostsHeard == null) {
+          //set posts heard for this conversation to the local list
+          print('setting new list of posts heard to local list');
+          _db.runTransaction((transaction) {
+            transaction.update(docRef, {'id_list': localPostsHeard});
+            return;
+          });
+          return;
+        } else {
+          localPostsHeard.forEach((postId) async {
+            if(!fbPostsHeard.contains(postId)) {
+              print('adding post ($postId) to heard for conversation: $conversationId');
+              await markDirectPostHeard(conversationId: conversationId, userId: currentUserId, postId: postId);
+            }
+          });
+          return;
+        }
+      });
+    }
   }
 
   Future<List<DirectPost>> getDirectPosts(String conversationId) {

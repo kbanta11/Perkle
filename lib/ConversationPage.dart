@@ -461,9 +461,9 @@ class ConversationPageMobile extends StatelessWidget {
                                                           width: 35,
                                                           decoration: BoxDecoration(
                                                               shape: BoxShape.circle,
-                                                              color: currentMediaItem.id == directPost.audioFileLocation ? Colors.red : Colors.deepPurple
+                                                              color: currentMediaItem != null && currentMediaItem.id == directPost.audioFileLocation ? Colors.red : Colors.deepPurple
                                                           ),
-                                                          child: Center(child: FaIcon(currentMediaItem.id == directPost.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                                          child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == directPost.audioFileLocation && playbackState != null && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                                         ),
                                                         onTap: () {
                                                           playbackState.playing != null && playbackState.playing && currentMediaItem.id == directPost.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));

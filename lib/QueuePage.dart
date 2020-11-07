@@ -121,9 +121,9 @@ class QueuePage extends StatelessWidget {
                               width: 35,
                               decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: currentMediaItem.id == item.id ? Colors.red : Colors.deepPurple
+                                  color: currentMediaItem != null && currentMediaItem.id == item.id ? Colors.red : Colors.deepPurple
                               ),
-                              child: Center(child: FaIcon(currentMediaItem.id == item.id && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                              child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == item.id && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                             ),
                             onTap: () {
                               playbackState.playing != null && playbackState.playing && mp.currentPostPodId == item.id ? mp.pausePost() : AudioService.playMediaItem(item);

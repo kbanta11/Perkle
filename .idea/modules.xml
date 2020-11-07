@@ -3,41 +3,36 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Perkle.iml" filepath="$PROJECT_DIR$/Perkle.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/webview_flutter/intermediates/aapt_friendly_merged_manifests/release/aapt/aapt.iml" filepath="$PROJECT_DIR$/build/webview_flutter/intermediates/aapt_friendly_merged_manifests/release/aapt/aapt.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/wakelock/intermediates/aapt_friendly_merged_manifests/debug/aapt/aapt.iml" filepath="$PROJECT_DIR$/build/wakelock/intermediates/aapt_friendly_merged_manifests/debug/aapt/aapt.iml" />
       <module fileurl="file://$PROJECT_DIR$/build/flutter_plugin_android_lifecycle/generated/source/buildConfig/buildConfig.iml" filepath="$PROJECT_DIR$/build/flutter_plugin_android_lifecycle/generated/source/buildConfig/buildConfig.iml" />
       <module fileurl="file://$PROJECT_DIR$/build/path_provider/generated/source/buildConfig/buildConfig1.iml" filepath="$PROJECT_DIR$/build/path_provider/generated/source/buildConfig/buildConfig1.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/sounds/generated/source/buildConfig/buildConfig10.iml" filepath="$PROJECT_DIR$/build/sounds/generated/source/buildConfig/buildConfig10.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/flutter_ffmpeg/generated/source/buildConfig/buildConfig11.iml" filepath="$PROJECT_DIR$/build/flutter_ffmpeg/generated/source/buildConfig/buildConfig11.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/device_info/generated/source/buildConfig/buildConfig10.iml" filepath="$PROJECT_DIR$/build/device_info/generated/source/buildConfig/buildConfig10.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/sounds/generated/source/buildConfig/buildConfig11.iml" filepath="$PROJECT_DIR$/build/sounds/generated/source/buildConfig/buildConfig11.iml" />
       <module fileurl="file://$PROJECT_DIR$/build/image_cropper/generated/source/buildConfig/buildConfig12.iml" filepath="$PROJECT_DIR$/build/image_cropper/generated/source/buildConfig/buildConfig12.iml" />
       <module fileurl="file://$PROJECT_DIR$/build/wakelock/generated/source/buildConfig/buildConfig13.iml" filepath="$PROJECT_DIR$/build/wakelock/generated/source/buildConfig/buildConfig13.iml" />
       <module fileurl="file://$PROJECT_DIR$/build/firebase_messaging/generated/source/buildConfig/buildConfig14.iml" filepath="$PROJECT_DIR$/build/firebase_messaging/generated/source/buildConfig/buildConfig14.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/video_player/generated/source/buildConfig/buildConfig15.iml" filepath="$PROJECT_DIR$/build/video_player/generated/source/buildConfig/buildConfig15.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/screen/generated/source/buildConfig/buildConfig16.iml" filepath="$PROJECT_DIR$/build/screen/generated/source/buildConfig/buildConfig16.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/firebase_database/generated/source/buildConfig/buildConfig17.iml" filepath="$PROJECT_DIR$/build/firebase_database/generated/source/buildConfig/buildConfig17.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/app/generated/source/buildConfig/buildConfig18.iml" filepath="$PROJECT_DIR$/build/app/generated/source/buildConfig/buildConfig18.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/firebase_auth/generated/source/buildConfig/buildConfig19.iml" filepath="$PROJECT_DIR$/build/firebase_auth/generated/source/buildConfig/buildConfig19.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/google_sign_in/generated/source/buildConfig/buildConfig2.iml" filepath="$PROJECT_DIR$/build/google_sign_in/generated/source/buildConfig/buildConfig2.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/launch_review/generated/source/buildConfig/buildConfig20.iml" filepath="$PROJECT_DIR$/build/launch_review/generated/source/buildConfig/buildConfig20.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/cloud_firestore/generated/source/buildConfig/buildConfig21.iml" filepath="$PROJECT_DIR$/build/cloud_firestore/generated/source/buildConfig/buildConfig21.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/firebase_auth_web/generated/source/buildConfig/buildConfig22.iml" filepath="$PROJECT_DIR$/build/firebase_auth_web/generated/source/buildConfig/buildConfig22.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/audioplayers/generated/source/buildConfig/buildConfig23.iml" filepath="$PROJECT_DIR$/build/audioplayers/generated/source/buildConfig/buildConfig23.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/firebase_core_web/generated/source/buildConfig/buildConfig24.iml" filepath="$PROJECT_DIR$/build/firebase_core_web/generated/source/buildConfig/buildConfig24.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/firebase_storage/generated/source/buildConfig/buildConfig25.iml" filepath="$PROJECT_DIR$/build/firebase_storage/generated/source/buildConfig/buildConfig25.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/permission_handler/generated/source/buildConfig/buildConfig26.iml" filepath="$PROJECT_DIR$/build/permission_handler/generated/source/buildConfig/buildConfig26.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/cloud_firestore_web/generated/source/buildConfig/buildConfig27.iml" filepath="$PROJECT_DIR$/build/cloud_firestore_web/generated/source/buildConfig/buildConfig27.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/image_picker/generated/source/buildConfig/buildConfig28.iml" filepath="$PROJECT_DIR$/build/image_picker/generated/source/buildConfig/buildConfig28.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/firebase_core/generated/source/buildConfig/buildConfig3.iml" filepath="$PROJECT_DIR$/build/firebase_core/generated/source/buildConfig/buildConfig3.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/cloud_functions_web/generated/source/buildConfig/buildConfig4.iml" filepath="$PROJECT_DIR$/build/cloud_functions_web/generated/source/buildConfig/buildConfig4.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/webview_flutter/generated/source/buildConfig/buildConfig5.iml" filepath="$PROJECT_DIR$/build/webview_flutter/generated/source/buildConfig/buildConfig5.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/firebase_database/generated/source/buildConfig/buildConfig15.iml" filepath="$PROJECT_DIR$/build/firebase_database/generated/source/buildConfig/buildConfig15.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/flutter_isolate/generated/source/buildConfig/buildConfig16.iml" filepath="$PROJECT_DIR$/build/flutter_isolate/generated/source/buildConfig/buildConfig16.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/firebase_auth/generated/source/buildConfig/buildConfig17.iml" filepath="$PROJECT_DIR$/build/firebase_auth/generated/source/buildConfig/buildConfig17.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/launch_review/generated/source/buildConfig/buildConfig18.iml" filepath="$PROJECT_DIR$/build/launch_review/generated/source/buildConfig/buildConfig18.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/cloud_firestore/generated/source/buildConfig/buildConfig19.iml" filepath="$PROJECT_DIR$/build/cloud_firestore/generated/source/buildConfig/buildConfig19.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/sqflite/generated/source/buildConfig/buildConfig2.iml" filepath="$PROJECT_DIR$/build/sqflite/generated/source/buildConfig/buildConfig2.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/audioplayers/generated/source/buildConfig/buildConfig20.iml" filepath="$PROJECT_DIR$/build/audioplayers/generated/source/buildConfig/buildConfig20.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/import_js_library/generated/source/buildConfig/buildConfig21.iml" filepath="$PROJECT_DIR$/build/import_js_library/generated/source/buildConfig/buildConfig21.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/firebase_storage/generated/source/buildConfig/buildConfig22.iml" filepath="$PROJECT_DIR$/build/firebase_storage/generated/source/buildConfig/buildConfig22.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/permission_handler/generated/source/buildConfig/buildConfig23.iml" filepath="$PROJECT_DIR$/build/permission_handler/generated/source/buildConfig/buildConfig23.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/image_picker/generated/source/buildConfig/buildConfig24.iml" filepath="$PROJECT_DIR$/build/image_picker/generated/source/buildConfig/buildConfig24.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/audio_service/generated/source/buildConfig/buildConfig25.iml" filepath="$PROJECT_DIR$/build/audio_service/generated/source/buildConfig/buildConfig25.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/audio_session/generated/source/buildConfig/buildConfig3.iml" filepath="$PROJECT_DIR$/build/audio_session/generated/source/buildConfig/buildConfig3.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/google_sign_in/generated/source/buildConfig/buildConfig4.iml" filepath="$PROJECT_DIR$/build/google_sign_in/generated/source/buildConfig/buildConfig4.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/firebase_core/generated/source/buildConfig/buildConfig5.iml" filepath="$PROJECT_DIR$/build/firebase_core/generated/source/buildConfig/buildConfig5.iml" />
       <module fileurl="file://$PROJECT_DIR$/build/package_info/generated/source/buildConfig/buildConfig6.iml" filepath="$PROJECT_DIR$/build/package_info/generated/source/buildConfig/buildConfig6.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/file_picker/generated/source/buildConfig/buildConfig7.iml" filepath="$PROJECT_DIR$/build/file_picker/generated/source/buildConfig/buildConfig7.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/cloud_functions/generated/source/buildConfig/buildConfig8.iml" filepath="$PROJECT_DIR$/build/cloud_functions/generated/source/buildConfig/buildConfig8.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/device_info/generated/source/buildConfig/buildConfig9.iml" filepath="$PROJECT_DIR$/build/device_info/generated/source/buildConfig/buildConfig9.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/app/intermediates/bundle_manifest/release/processReleaseManifest/bundle-manifest/bundle-manifest.iml" filepath="$PROJECT_DIR$/build/app/intermediates/bundle_manifest/release/processReleaseManifest/bundle-manifest/bundle-manifest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/webview_flutter/intermediates/library_manifest/debug/debug.iml" filepath="$PROJECT_DIR$/build/webview_flutter/intermediates/library_manifest/debug/debug.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/url_launcher/generated/source/buildConfig/buildConfig7.iml" filepath="$PROJECT_DIR$/build/url_launcher/generated/source/buildConfig/buildConfig7.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/file_picker/generated/source/buildConfig/buildConfig8.iml" filepath="$PROJECT_DIR$/build/file_picker/generated/source/buildConfig/buildConfig8.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/cloud_functions/generated/source/buildConfig/buildConfig9.iml" filepath="$PROJECT_DIR$/build/cloud_functions/generated/source/buildConfig/buildConfig9.iml" />
+      <module fileurl="file://$PROJECT_DIR$/build/wakelock/intermediates/library_manifest/debug/debug.iml" filepath="$PROJECT_DIR$/build/wakelock/intermediates/library_manifest/debug/debug.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/app/src/main/main.iml" filepath="$PROJECT_DIR$/android/app/src/main/main.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/app/src/profile/profile.iml" filepath="$PROJECT_DIR$/android/app/src/profile/profile.iml" />
-      <module fileurl="file://$PROJECT_DIR$/build/app/generated/not_namespaced_r_class_sources/release/release.iml" filepath="$PROJECT_DIR$/build/app/generated/not_namespaced_r_class_sources/release/release.iml" />
     </modules>
   </component>
 </project>

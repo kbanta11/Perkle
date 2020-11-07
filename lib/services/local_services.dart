@@ -23,6 +23,9 @@ class LocalService {
   }
 
   update() async {
+    if(!_isInitialized) {
+      await this.initialize();
+    }
     try {
       data = jsonDecode(await file.readAsString());
     } catch (e) {

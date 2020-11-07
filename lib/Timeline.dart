@@ -45,7 +45,7 @@ class Timeline extends StatelessWidget {
     List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
     PerklUser currentUser = Provider.of<PerklUser>(context);
     //print('TimelineId: $timelineId/StreamTag: $tagStream/UserId: $userId');
-    print('Current Media Item: $currentMediaItem/Playback State: $playbackState');
+    //print('Current Media Item: $currentMediaItem/Playback State: $playbackState');
     Stream postStream;
     if(tagStream != null) {
       postStream = tagStream;

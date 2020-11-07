@@ -113,54 +113,59 @@ class MainAppState extends State<MainApp> {
                   DBService().updateTimeline(timelineId: user.mainFeedTimelineId, user: user, reload: true);
                   return ChangeNotifierProvider<MainAppProvider>(
                       create: (_) => MainAppProvider(),
-                      child: AudioServiceWidget(
-                        child: MultiProvider(
-                          providers: [
-                            StreamProvider<PlaybackState>(create: (_) => AudioService.playbackStateStream,),
-                            StreamProvider<List<MediaItem>>(create: (_) => AudioService.queueStream),
-                            StreamProvider<MediaItem>(create: (_) => AudioService.currentMediaItemStream),
-                          ],
-                          child: MaterialApp(
-                            title: 'Perkl',
-                            theme: new ThemeData (
-                                primarySwatch: Colors.deepPurple
-                            ),
-                            home: promptUpdate == null ? Center(child: CircularProgressIndicator()) : promptUpdate ? Scaffold(body: Container(
-                              decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
-                                  fit: BoxFit.cover,
+                      child: Consumer<MainAppProvider>(
+                        builder: (context, map, _) {
+                          DBService().syncConversationPostsHeard();
+                          return AudioServiceWidget(
+                            child: MultiProvider(
+                              providers: [
+                                StreamProvider<PlaybackState>(create: (_) => AudioService.playbackStateStream,),
+                                StreamProvider<List<MediaItem>>(create: (_) => AudioService.queueStream),
+                                StreamProvider<MediaItem>(create: (_) => AudioService.currentMediaItemStream),
+                              ],
+                              child: MaterialApp(
+                                title: 'Perkl',
+                                theme: new ThemeData (
+                                    primarySwatch: Colors.deepPurple
                                 ),
-                              ),
-                              child: SimpleDialog(
-                                contentPadding: EdgeInsets.fromLTRB(10, 15, 10, 5),
-                                title: Center(child: Text('Update Required!', style: TextStyle(color: Colors.deepPurple),)),
-                                children: <Widget>[
-                                  Center(child: Text('It looks like you have an outdated version of our app. You\'ll need to upgrade before you can continue.', style: TextStyle(fontSize: 16),)),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
+                                home: promptUpdate == null ? Center(child: CircularProgressIndicator()) : promptUpdate ? Scaffold(body: Container(
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  child: SimpleDialog(
+                                    contentPadding: EdgeInsets.fromLTRB(10, 15, 10, 5),
+                                    title: Center(child: Text('Update Required!', style: TextStyle(color: Colors.deepPurple),)),
                                     children: <Widget>[
-                                      FlatButton(
-                                          child: Text('Upgrade Now!', style: TextStyle(color: Colors.white),),
-                                          color: Colors.deepPurple,
-                                          onPressed: () {
-                                            LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
-                                          }
+                                      Center(child: Text('It looks like you have an outdated version of our app. You\'ll need to upgrade before you can continue.', style: TextStyle(fontSize: 16),)),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: <Widget>[
+                                          FlatButton(
+                                              child: Text('Upgrade Now!', style: TextStyle(color: Colors.white),),
+                                              color: Colors.deepPurple,
+                                              onPressed: () {
+                                                LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
+                                              }
+                                          )
+                                        ],
                                       )
                                     ],
-                                  )
-                                ],
+                                  ),
+                                )) : HomePageMobile(),
+                                routes: <String, WidgetBuilder> {
+                                  '/landingpage': (BuildContext context) => new MainApp(),
+                                  '/signup': (BuildContext context) => new SignUpPage(),
+                                  '/homepage': (BuildContext context) => new HomePageMobile(),
+                                  '/searchpage': (BuildContext context) => new SearchPageMobile(),
+                                  // '/dashboard': (BuildContext context) => new DashboardPage(),
+                                },
                               ),
-                            )) : HomePageMobile(),
-                            routes: <String, WidgetBuilder> {
-                              '/landingpage': (BuildContext context) => new MainApp(),
-                              '/signup': (BuildContext context) => new SignUpPage(),
-                              '/homepage': (BuildContext context) => new HomePageMobile(),
-                              '/searchpage': (BuildContext context) => new SearchPageMobile(),
-                              // '/dashboard': (BuildContext context) => new DashboardPage(),
-                            },
-                          ),
-                        ),
+                            ),
+                          );
+                        }
                       )
                   );
                 }
@@ -196,23 +201,22 @@ class MainAppProvider extends ChangeNotifier {
       id: newPostPod.audioUrl,
       title: newPostPod.titleTextString(),
       artist: newPostPod.subtitleTextString(),
+      extras: {
+        'isDirect': newPostPod.type == PostType.DIRECT_POST ? true : false,
+        'conversationId': newPostPod.directPost != null ? newPostPod.directPost.conversationId : null,
+        'userId': newPostPod.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
+        'postId': newPostPod.directPost != null ? newPostPod.directPost.id : null,
+      },
     );
     if(AudioService.running) {
       print('playing audio service: ${AudioService.running}');
       AudioService.playMediaItem(mediaItem);
     } else {
       print('starting audio service');
-      bool started = await AudioService.start(
+      await AudioService.start(
         backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
         params: {'mediaItem': mediaItem.toJson()},
       );
-      print('audio service started');
-      if(AudioService.running) {
-        print('starting to play via media service');
-        //AudioService.playMediaItem(mediaItem);
-      } else {
-        print('Audio Service not yet started: $started');
-      }
     }
 
 /*
@@ -220,7 +224,7 @@ class MainAppProvider extends ChangeNotifier {
       player.stop();
       player.dispose();
     }
-*/
+
     if(currentPostPodItem != null && currentPostPodItem.id == newPostPod.id && currentPostPodItem.type == newPostPod.type) {
       AudioService.play();
       //player.resume();
@@ -242,6 +246,7 @@ class MainAppProvider extends ChangeNotifier {
       User user = FirebaseAuth.instance.currentUser;
       await DBService().markDirectPostHeard(conversationId: newPostPod.directPost.conversationId, userId: user.uid, postId: newPostPod.directPost.id);
     }
+ */
     notifyListeners();
   }
 
@@ -273,6 +278,12 @@ class MainAppProvider extends ChangeNotifier {
       id: post.audioUrl,
       title: post.titleTextString(),
       artist: post.subtitleTextString(),
+      extras: {
+        'isDirect': post.type == PostType.DIRECT_POST ? true : false,
+        'conversationId': post.directPost != null ? post.directPost.conversationId : null,
+        'userId': post.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
+        'postId': post.directPost != null ? post.directPost.id : null,
+      }
     );
     if(!AudioService.running) {
       await AudioService.start(
@@ -291,19 +302,32 @@ class MainAppProvider extends ChangeNotifier {
       id: post.audioUrl,
       title: post.titleTextString(),
       artist: post.subtitleTextString(),
+      extras: {
+        'isDirect': post.type == PostType.DIRECT_POST ? true : false,
+        'conversationId': post.directPost != null ? post.directPost.conversationId : null,
+        'userId': post.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
+        'postId': post.directPost != null ? post.directPost.id : null,
+      }
     );
     if(!AudioService.running) {
       await AudioService.start(
         backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
-        params: {'mediaItem': mediaItem.toJson()},
+        params: {},
       );
     }
     //queue.insert(0, post);
+    print('Media Item: $mediaItem');
     AudioService.addQueueItemAt(mediaItem, 0);
     notifyListeners();
   }
 
   addUnheardToQueue({String conversationId, String userId}) async {
+    if(!AudioService.running) {
+      await AudioService.start(
+        backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
+        params: {},
+      );
+    }
     List<DirectPost> unheardPosts = List<DirectPost>();
     List<String> heardPostIDs = await DBService().getHeardPostIds(conversationId: conversationId, userId: userId);
     List<DirectPost> conversationPosts = await DBService().getDirectPosts(conversationId);
@@ -316,7 +340,7 @@ class MainAppProvider extends ChangeNotifier {
       PostPodItem newItem = PostPodItem.fromDirectPost(post);
       insertPostToQueueFirst(newItem);
     });
-    await AudioService.play();
+    await AudioService.skipToNext();
   }
 
   removeFromQueue(PostPodItem post) {
@@ -324,6 +348,12 @@ class MainAppProvider extends ChangeNotifier {
       id: post.audioUrl,
       title: post.titleTextString(),
       artist: post.subtitleTextString(),
+      extras: {
+        'isDirect': post.type == PostType.DIRECT_POST ? true : false,
+        'conversationId': post.directPost != null ? post.directPost.conversationId : null,
+        'userId': post.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
+        'postId': post.directPost != null ? post.directPost.id : null,
+      }
     );
     //queue.removeWhere((element) => element.id == post.id);
     AudioService.removeQueueItem(mediaItem);

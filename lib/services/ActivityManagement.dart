@@ -45,10 +45,10 @@ class PostAudioPlayer {
 */
 
 class ActivityManager {
-  SoundRecorder recorder = new SoundRecorder(playInBackground: true);
+  SoundRecorder recorder = new SoundRecorder(playInBackground: true,);
   LocalService localService = new LocalService();
-  StreamController playlistStreamController = new StreamController<bool>.broadcast();
-  Stream get playlistPlaying => playlistStreamController.stream.asBroadcastStream();
+  Timer recordingTimer;
+  Duration recordingDuration;
   //StreamSubscription<RecordStatus> recordingSubscription;
 
   bool isLoggedIn() {
@@ -58,16 +58,7 @@ class ActivityManager {
       return false;
     }
   }
-/*
-  setCurrentPost(PostAudioPlayer player) {
-    if(this.currentPost != null) {
-      this.currentPost.stop();
-      this.currentPost.isPlaying = false;
-    }
-    this.currentPost = player;
-    this.currentlyPlayingPlayer = player.postPlayer;
-  }
-*/
+
   addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic> sendToUsers, Map<String, dynamic> addToConversations) async {
     if (isLoggedIn()) {
       print('Starting post add');
@@ -343,15 +334,14 @@ class ActivityManager {
   }
 
   Future<List<dynamic>> startRecordNewPost(MainAppProvider mp) async {
+    if(recorder != null) {
+      recorder.release();
+      print('creating new sound recorder');
+      recorder = new SoundRecorder(playInBackground: true);
+    }
     print('start recording');
     try {
-      //await fsRecorder.openAudioSession(focus: AudioFocus.requestFocusAndStopOthers);
       recorder.initialize();
-      //final appDataDir = await getApplicationDocumentsDirectory();
-      //String localPath = appDataDir.path;
-      //String extension = '.aac';
-      //String filePath = '$localPath/tempAudio$extension';
-      //print('File Path: $filePath');
 
       //Check if have permissions for microphone or ask
       if(await Permission.microphone.isUndetermined) {
@@ -370,10 +360,18 @@ class ActivityManager {
        */
       Wakelock.enable();
       await recorder.record(Track.fromFile(tempFilePath, mediaFormat: WellKnownMediaFormats.adtsAac));
+      recordingDuration = Duration(milliseconds: 0);
+      mp.setRecordingTime(recordingDuration);
+      recordingTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+        recordingDuration = Duration(seconds: recordingDuration.inSeconds + 1);
+        mp.setRecordingTime(recordingDuration);
+      });
+      /*
       recorder.dispositionStream().listen((disposition) {
         print('recording disposition: $disposition');
         mp.setRecordingTime(disposition.duration);
       });
+       */
       DateTime startRecordDateTime = DateTime.now();
       print('Recording started at: $startRecordDateTime');
       return [Platform.isIOS ? tempFilePath.replaceAll('file://', '') : tempFilePath, startRecordDateTime];
@@ -389,6 +387,7 @@ class ActivityManager {
       //await fsRecorder.stopRecorder();
       await recorder.stop();
       recorder.release();
+      recordingTimer.cancel();
       recorder = new SoundRecorder();
       DateTime endRecordDateTime = DateTime.now();
       Duration recordingTime = endRecordDateTime.difference(startDateTime);
@@ -402,52 +401,6 @@ class ActivityManager {
     }
     return null;
   }
-
-  /*
-  pausePlaying() async {
-    int result = await this.currentPost.postPlayer.pause();
-    this.playlistStreamController.add(false);
-    print('pausing player');
-  }
-
-  resumePlaying() async {
-    int result = await this.currentPost.postPlayer.resume();
-    print('resume playing');
-  }
-
-  PostAudioPlayer addPostToPlaylist(String postAudioUrl, AudioPlayer postPlayer) {
-    PostAudioPlayer postObject = new PostAudioPlayer(postAudioUrl, postPlayer);
-    this.timelinePlaylist.add(postObject);
-    print('Post added to timeline playlist');
-    return postObject;
-  }
-
-  playPlaylist() async {
-    List<PostAudioPlayer> unheardPosts = this.timelinePlaylist.where((player) {
-      return player.hasPlayed == false;
-    }).toList();
-    PostAudioPlayer currentPost = unheardPosts[0];
-    print('Current Playlist Post: $currentPost');
-    if(currentPost != null) {
-      print('Has Played: ${currentPost.hasPlayed}; Is Currently Playing ${currentPost.isPlaying}');
-      if (!currentPost.hasPlayed && !currentPost.isPlaying) {
-        print('Starting next post player');
-        this.setCurrentPost(currentPost);
-        this.playlistStreamController.add(true);
-        currentPost.play();
-      }
-      if(this.currentlyPlayingPlayer != null) {
-        this.playlistStreamController.add(true);
-        this.currentlyPlayingPlayer.resume();
-      }
-    }
-  }
-
-  pausePlaylist() async {
-    this.pausePlaying();
-    this.playlistStreamController.add(false);
-  }
-*/
 
   Future<void> followUser(String newFollowUID) async {
     WriteBatch batch = FirebaseFirestore.instance.batch();

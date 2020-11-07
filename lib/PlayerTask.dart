@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 class PlayerTask extends BackgroundAudioTask {
   AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
   Duration currentPosition = Duration();
+  LocalService _localService = new LocalService();
 
   _playCurrentItem({MediaItem item}) async {
     if(player.state == AudioPlayerState.PLAYING) {
@@ -22,6 +23,36 @@ class PlayerTask extends BackgroundAudioTask {
       if(currentMs >= 15000) {
         startDuration = new Duration(milliseconds: currentMs - 10000);
       }
+    }
+    Map<String, dynamic> extraData = item.extras;
+    if(extraData != null && extraData['isDirect'] != null && extraData['isDirect']) {
+      //Mark down whether direct post has been listened
+      print('marking direct post heard: ${extraData['conversationId']}/${extraData['userId']}/${extraData['postId']}');
+      Map<String, dynamic> heardPostMap = await _localService.getData('conversation-heard-posts');
+      if(heardPostMap == null) {
+        //create heard post map and add this conversation, user and post heard list with this post
+        heardPostMap = new Map<String, dynamic>();
+        heardPostMap[extraData['conversationId']] = {extraData['userId']: [extraData['postId']]};
+      } else if (heardPostMap.containsKey(extraData['conversationId'])) {
+        //add this user or add post to this user
+        Map<String, dynamic> conversationMap = heardPostMap[extraData['conversationId']];
+        if(conversationMap.containsKey(extraData['userId'])) {
+          //add this post id to this users post list
+          List<String> postList = conversationMap[extraData['userId']].cast<String>();
+          if(!postList.contains(extraData['postId'])) {
+            postList.add(extraData['postId']);
+            conversationMap[extraData['userId']] = postList;
+          }
+        } else {
+          //add user and this post in post list
+          conversationMap[extraData['userId']] = [extraData['postId']];
+        }
+        heardPostMap[extraData['conversationId']] = conversationMap;
+      } else {
+        heardPostMap[extraData['conversationId']] = {extraData['userId']: [extraData['postId']]};
+      }
+      //Save heardPostMap to local storage for sync when app is open
+      await _localService.setData('conversation-heard-posts', heardPostMap);
     }
     await player.play(item.id, stayAwake: true, position: startDuration);
     //Set Duration once it's available
@@ -63,14 +94,26 @@ class PlayerTask extends BackgroundAudioTask {
       processingState: AudioProcessingState.connecting
     );
     MediaItem item = MediaItem.fromJson(params['mediaItem']);
-    print('Playing item: ${item.title}');
-    await _playCurrentItem(item: item);
-    AudioServiceBackground.setMediaItem(item);
-    AudioServiceBackground.setState(
-        controls: [MediaControl.rewind, MediaControl.pause, MediaControl.fastForward, AudioServiceBackground.queue != null && AudioServiceBackground.queue.length > 0 ? MediaControl.skipToNext : null].where((element) => element != null).toList(),
+    if(item != null) {
+      print('Playing item: ${item.title}');
+      await _playCurrentItem(item: item);
+      AudioServiceBackground.setMediaItem(item);
+      AudioServiceBackground.setState(
+        controls: [
+          MediaControl.rewind,
+          MediaControl.pause,
+          MediaControl.fastForward,
+          AudioServiceBackground.queue != null &&
+              AudioServiceBackground.queue.length > 0
+              ? MediaControl.skipToNext
+              : null
+        ].where((element) => element != null).toList(),
         playing: true,
         processingState: AudioProcessingState.ready,
-    );
+      );
+    } else {
+      AudioServiceBackground.setState(controls: [MediaControl.stop], processingState: AudioProcessingState.none, playing: false);
+    }
     return;
   }
 
@@ -148,7 +191,18 @@ class PlayerTask extends BackgroundAudioTask {
       tempQueue.add(item);
     }
     AudioServiceBackground.setQueue(tempQueue);
-    print('adding item to queue ${AudioServiceBackground.queue}');
+  }
+
+  @override
+  Future<void> onAddQueueItemAt(MediaItem item, int position) {
+    List<MediaItem> tempQueue = AudioServiceBackground.queue;
+    if(tempQueue == null) {
+      tempQueue = new List<MediaItem>();
+      tempQueue.add(item);
+    } else {
+      tempQueue.insert(0, item);
+    }
+    AudioServiceBackground.setQueue(tempQueue);
   }
 
   @override
