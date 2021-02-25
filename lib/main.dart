@@ -4,30 +4,51 @@ import 'package:Perkl/services/db_services.dart';
 import 'package:Perkl/services/models.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:launch_review/launch_review.dart';
-import 'package:path_provider/path_provider.dart';
+//import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:audioplayers/audioplayers.dart';
+//import 'package:audioplayers/audioplayers.dart';
 import 'package:package_info/package_info.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'services/local_services.dart';
 import 'AddPostDialog.dart';
 import 'LoginPage.dart';
-import 'PlayerTask.dart';
+//import 'PlayerTask.dart';
 import 'ShareToDialog.dart';
 import 'SignUpPage.dart';
 import 'HomePage.dart';
 import 'SearchPage.dart';
 import 'ReplyToEpisode.dart';
+import 'PlayerAudioHandler.dart';
+
+AudioHandler _audioHandler;
+
 
 void main() async {
+  _audioHandler = await AudioService.init(
+    builder: () => PlayerAudioHandler(),
+    config: AudioServiceConfig(
+      androidNotificationChannelName: 'Perkl',
+      androidNotificationOngoing: true,
+      androidEnableQueue: true,
+    ),
+  );
+  print('Audio Handler: $_audioHandler');
   runApp(new MainApp());
+  print('app running');
+}
+
+class TestApp extends StatelessWidget {
+  @override
+  build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(body: Text('test'),)
+    );
+  }
 }
 
 class MainApp extends StatefulWidget {
@@ -60,6 +81,7 @@ class MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
+    print('Main App init State');
     initialize();
   }
 
@@ -69,6 +91,7 @@ class MainAppState extends State<MainApp> {
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
+    print('Building Main App State');
     return fbApp == null ? Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -106,7 +129,7 @@ class MainAppState extends State<MainApp> {
             child: Consumer<PerklUser>(
                 builder: (context, user, _) {
                   //print('Temporary User: $userTemp/Firebase User: $firebaseUser');
-                  print('Temp User Followed Podcasts: ${user != null ? user.followedPodcasts : ''}');
+                  //print('Temp User Followed Podcasts: ${user != null ? user.followedPodcasts : ''}');
                   if(user == null) {
                     return Center(child: CircularProgressIndicator());
                   }
@@ -116,53 +139,52 @@ class MainAppState extends State<MainApp> {
                       child: Consumer<MainAppProvider>(
                         builder: (context, map, _) {
                           DBService().syncConversationPostsHeard();
-                          return AudioServiceWidget(
-                            child: MultiProvider(
-                              providers: [
-                                StreamProvider<PlaybackState>(create: (_) => AudioService.playbackStateStream,),
-                                StreamProvider<List<MediaItem>>(create: (_) => AudioService.queueStream),
-                                StreamProvider<MediaItem>(create: (_) => AudioService.currentMediaItemStream),
-                              ],
-                              child: MaterialApp(
-                                title: 'Perkl',
-                                theme: new ThemeData (
-                                    primarySwatch: Colors.deepPurple
-                                ),
-                                home: promptUpdate == null ? Center(child: CircularProgressIndicator()) : promptUpdate ? Scaffold(body: Container(
-                                  decoration: BoxDecoration(
-                                    image: DecorationImage(
-                                      image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                  child: SimpleDialog(
-                                    contentPadding: EdgeInsets.fromLTRB(10, 15, 10, 5),
-                                    title: Center(child: Text('Update Required!', style: TextStyle(color: Colors.deepPurple),)),
-                                    children: <Widget>[
-                                      Center(child: Text('It looks like you have an outdated version of our app. You\'ll need to upgrade before you can continue.', style: TextStyle(fontSize: 16),)),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: <Widget>[
-                                          FlatButton(
-                                              child: Text('Upgrade Now!', style: TextStyle(color: Colors.white),),
-                                              color: Colors.deepPurple,
-                                              onPressed: () {
-                                                LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
-                                              }
-                                          )
-                                        ],
-                                      )
-                                    ],
-                                  ),
-                                )) : HomePageMobile(),
-                                routes: <String, WidgetBuilder> {
-                                  '/landingpage': (BuildContext context) => new MainApp(),
-                                  '/signup': (BuildContext context) => new SignUpPage(),
-                                  '/homepage': (BuildContext context) => new HomePageMobile(),
-                                  '/searchpage': (BuildContext context) => new SearchPageMobile(),
-                                  // '/dashboard': (BuildContext context) => new DashboardPage(),
-                                },
+                          return MultiProvider(
+                            providers: [
+                              StreamProvider<PlaybackState>(create: (_) => _audioHandler.playbackState,),
+                              StreamProvider<List<MediaItem>>(create: (_) => _audioHandler.queue),
+                              StreamProvider<MediaItem>(create: (_) => _audioHandler.mediaItem),
+                            ],
+                            child: MaterialApp(
+                              title: 'Perkl',
+                              theme: new ThemeData (
+                                  primarySwatch: Colors.deepPurple
                               ),
+                              home: promptUpdate == null ?
+                              Center(child: CircularProgressIndicator()) : promptUpdate ? Scaffold(body: Container(
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                child: SimpleDialog(
+                                  contentPadding: EdgeInsets.fromLTRB(10, 15, 10, 5),
+                                  title: Center(child: Text('Update Required!', style: TextStyle(color: Colors.deepPurple),)),
+                                  children: <Widget>[
+                                    Center(child: Text('It looks like you have an outdated version of our app. You\'ll need to upgrade before you can continue.', style: TextStyle(fontSize: 16),)),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: <Widget>[
+                                        FlatButton(
+                                            child: Text('Upgrade Now!', style: TextStyle(color: Colors.white),),
+                                            color: Colors.deepPurple,
+                                            onPressed: () {
+                                              LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
+                                            }
+                                        )
+                                      ],
+                                    )
+                                  ],
+                                ),
+                              )) : HomePageMobile(),
+                              routes: <String, WidgetBuilder> {
+                                '/landingpage': (BuildContext context) => new MainApp(),
+                                '/signup': (BuildContext context) => new SignUpPage(),
+                                '/homepage': (BuildContext context) => new HomePageMobile(),
+                                '/searchpage': (BuildContext context) => new SearchPageMobile(),
+                                // '/dashboard': (BuildContext context) => new DashboardPage(),
+                              },
                             ),
                           );
                         }
@@ -201,6 +223,7 @@ class MainAppProvider extends ChangeNotifier {
       id: newPostPod.audioUrl,
       title: newPostPod.titleTextString(),
       artist: newPostPod.subtitleTextString(),
+      album: '',
       extras: {
         'isDirect': newPostPod.type == PostType.DIRECT_POST ? true : false,
         'conversationId': newPostPod.directPost != null ? newPostPod.directPost.conversationId : null,
@@ -208,6 +231,8 @@ class MainAppProvider extends ChangeNotifier {
         'postId': newPostPod.directPost != null ? newPostPod.directPost.id : null,
       },
     );
+    _audioHandler.playMediaItem(mediaItem);
+    /*
     if(AudioService.running) {
       print('playing audio service: ${AudioService.running}');
       AudioService.playMediaItem(mediaItem);
@@ -218,6 +243,7 @@ class MainAppProvider extends ChangeNotifier {
         params: {'mediaItem': mediaItem.toJson()},
       );
     }
+    */
 
 /*
     if(isPlaying) {
@@ -253,7 +279,8 @@ class MainAppProvider extends ChangeNotifier {
   stopPost() {
     //isPlaying = false;
     currentPostPodItem = null;
-    AudioService.stop();
+    _audioHandler.stop();
+    //AudioService.stop();
     //player.stop();
     //player.dispose();
     //player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
@@ -263,7 +290,8 @@ class MainAppProvider extends ChangeNotifier {
   pausePost() {
     //print('Pausing...');
     //player.pause();
-    AudioService.pause();
+    _audioHandler.pause();
+    //AudioService.pause();
     //isPlaying = false;
     notifyListeners();
   }
@@ -278,6 +306,7 @@ class MainAppProvider extends ChangeNotifier {
       id: post.audioUrl,
       title: post.titleTextString(),
       artist: post.subtitleTextString(),
+      album: '',
       extras: {
         'isDirect': post.type == PostType.DIRECT_POST ? true : false,
         'conversationId': post.directPost != null ? post.directPost.conversationId : null,
@@ -285,6 +314,8 @@ class MainAppProvider extends ChangeNotifier {
         'postId': post.directPost != null ? post.directPost.id : null,
       }
     );
+    _audioHandler.addQueueItem(mediaItem);
+    /*
     if(!AudioService.running) {
       await AudioService.start(
         backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
@@ -293,6 +324,7 @@ class MainAppProvider extends ChangeNotifier {
     } else {
       AudioService.addQueueItem(mediaItem);
     }
+    */
     //queue.add(post);
     notifyListeners();
   }
@@ -302,6 +334,7 @@ class MainAppProvider extends ChangeNotifier {
       id: post.audioUrl,
       title: post.titleTextString(),
       artist: post.subtitleTextString(),
+      album: '',
       extras: {
         'isDirect': post.type == PostType.DIRECT_POST ? true : false,
         'conversationId': post.directPost != null ? post.directPost.conversationId : null,
@@ -309,25 +342,32 @@ class MainAppProvider extends ChangeNotifier {
         'postId': post.directPost != null ? post.directPost.id : null,
       }
     );
+    /*
     if(!AudioService.running) {
       await AudioService.start(
         backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
         params: {},
       );
     }
+     */
+
     //queue.insert(0, post);
     print('Media Item: $mediaItem');
-    AudioService.addQueueItemAt(mediaItem, 0);
+    _audioHandler.insertQueueItem(0, mediaItem);
+    //AudioService.addQueueItemAt(mediaItem, 0);
     notifyListeners();
   }
 
   addUnheardToQueue({String conversationId, String userId}) async {
+    /*
     if(!AudioService.running) {
       await AudioService.start(
         backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
         params: {},
       );
     }
+     */
+
     List<DirectPost> unheardPosts = List<DirectPost>();
     List<String> heardPostIDs = await DBService().getHeardPostIds(conversationId: conversationId, userId: userId);
     List<DirectPost> conversationPosts = await DBService().getDirectPosts(conversationId);
@@ -340,7 +380,7 @@ class MainAppProvider extends ChangeNotifier {
       PostPodItem newItem = PostPodItem.fromDirectPost(post);
       insertPostToQueueFirst(newItem);
     });
-    await AudioService.skipToNext();
+    await _audioHandler.skipToNext();
   }
 
   removeFromQueue(PostPodItem post) {
@@ -348,6 +388,7 @@ class MainAppProvider extends ChangeNotifier {
       id: post.audioUrl,
       title: post.titleTextString(),
       artist: post.subtitleTextString(),
+      album: '',
       extras: {
         'isDirect': post.type == PostType.DIRECT_POST ? true : false,
         'conversationId': post.directPost != null ? post.directPost.conversationId : null,
@@ -356,7 +397,8 @@ class MainAppProvider extends ChangeNotifier {
       }
     );
     //queue.removeWhere((element) => element.id == post.id);
-    AudioService.removeQueueItem(mediaItem);
+    _audioHandler.removeQueueItem(mediaItem);
+    //AudioService.removeQueueItem(mediaItem);
     notifyListeners();
   }
 
@@ -370,11 +412,13 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   startRecording() async {
-    if(AudioService.playbackState != null && AudioService.playbackState.playing) {
+    if(_audioHandler.playbackState != null && _audioHandler.playbackState.value.playing) {
       pausePost();
     }
     isRecording = true;
+    print('starting recorder...');
     List<dynamic> startRecordVals = await activityManager.startRecordNewPost(this);
+    print('Start Record Vals: $startRecordVals');
     String postPath = startRecordVals[0];
     DateTime startDate = startRecordVals[1];
     _postAudioPath = postPath;
@@ -405,7 +449,7 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   replyToEpisode(Episode episode, Podcast podcast, BuildContext context) {
-    if(AudioService.playbackState.playing) {
+    if(_audioHandler.playbackState.value.playing) {
       pausePost();
     }
     showDialog(
@@ -424,8 +468,4 @@ class MainAppProvider extends ChangeNotifier {
       }
     );
   }
-}
-
-_backgroundTaskEntrypoint() {
-  AudioServiceBackground.run(() => PlayerTask());
 }

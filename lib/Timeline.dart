@@ -273,8 +273,8 @@ class Timeline extends StatelessWidget {
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: <Widget>[
-                                          FaIcon(FontAwesomeIcons.reply, color: Colors.white),
-                                          Text('Respond', style: TextStyle(color: Colors.white))
+                                          FaIcon(FontAwesomeIcons.comments, color: Colors.white),
+                                          Text('Discuss', style: TextStyle(color: Colors.white))
                                         ],
                                       ),
                                       onTap: () async {
@@ -287,8 +287,8 @@ class Timeline extends StatelessWidget {
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: <Widget>[
-                                          FaIcon(FontAwesomeIcons.comments, color: Colors.white),
-                                          Text('Discuss', style: TextStyle(color: Colors.white))
+                                          FaIcon(FontAwesomeIcons.share, color: Colors.white),
+                                          Text('Share', style: TextStyle(color: Colors.white))
                                         ],
                                       ),
                                       onTap: () {

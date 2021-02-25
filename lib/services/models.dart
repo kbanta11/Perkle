@@ -60,7 +60,7 @@ class PerklUser {
         return podcastUrl.replaceFirst('http:', 'https:');
       }).toList(),
       timelinesIncluded: snapshot.data()['timelinesIncluded'] == null ? null : snapshot.data()['timelinesIncluded'].entries.map<String>((entry) {
-        print('timelines');
+        //print('timelines');
         String timelineId = entry.key;
         return timelineId;
       }).toList(),

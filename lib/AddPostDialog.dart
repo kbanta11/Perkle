@@ -30,9 +30,22 @@ class _AddPostDialogState extends State<AddPostDialog> {
   bool _sendAsGroup = false;
   bool _isPlayingRecorder = false;
   bool _isRecording = false;
+  String _recordingLocation;
+  DateTime _startDate;
+  int _secondsLength;
   AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
   Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
   Map<String, dynamic> _addToConversations = new Map<String, dynamic>();
+
+  @override
+  initState() {
+    setState(() {
+      _recordingLocation = widget.recordingLocation;
+      _startDate = widget.date;
+      _secondsLength = widget.secondsLength;
+    });
+    super.initState();
+  }
 
   @override
   build(BuildContext context) {
@@ -76,28 +89,32 @@ class _AddPostDialogState extends State<AddPostDialog> {
                           child: Center(child: Icon(Icons.mic, color: _isRecording ? Colors.red : Colors.white,)),
                           onTap: () async {
                             if(_isRecording) {
-                              List<dynamic> stopRecordVals = await mp.activityManager.stopRecordNewPost(widget.recordingLocation, widget.date);
+                              print('recording location when stopping: ${_recordingLocation}');
+                              List<dynamic> stopRecordVals = await mp.activityManager.stopRecordNewPost(_recordingLocation, _startDate);
                               String recordingLocation = stopRecordVals[0];
                               int secondsLength = stopRecordVals[1];
 
                               print('$recordingLocation -/- Length: $secondsLength');
                               setState(() {
                                 _isRecording = !_isRecording;
-                                widget.secondsLength = secondsLength;
+                                _secondsLength = secondsLength;
                               });
-                              print('getting date');
+                              //print('getting date');
                               DateTime date = new DateTime.now();
-                              print('date before dialog: $date');
+                              //print('date before dialog: $date');
+                              print('widget recording location: ${_recordingLocation}\nMatching: ${widget.recordingLocation == recordingLocation}');
                               //await addPostDialog(context, date, recordingLocation, secondsLength);
                             } else {
                               List<dynamic> startRecordVals = await mp.activityManager.startRecordNewPost(mp);
                               String postPath = startRecordVals[0];
                               DateTime startDate = startRecordVals[1];
+                              print('Post Path of new recording: $postPath');
                               setState(() {
                                 _isRecording = !_isRecording;
-                                widget.recordingLocation = postPath;
-                                widget.date = startDate;
+                                _recordingLocation = postPath;
+                                _startDate = startDate;
                               });
+                              print('recording location after state set: ${_recordingLocation}');
                             }
                           },
                         ),
@@ -108,7 +125,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                   Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: widget.recordingLocation == null ? Colors.grey : Colors.deepPurple,
+                      color: _recordingLocation == null ? Colors.grey : Colors.deepPurple,
                     ),
                     height: 50,
                     width: 50,
@@ -116,7 +133,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                       borderRadius: BorderRadius.all(Radius.circular(25)),
                       child: Icon(_isPlayingRecorder ? Icons.pause : Icons.play_arrow, color: Colors.white,),
                       onTap: () {
-                        if(widget.recordingLocation == null) {
+                        if(_recordingLocation == null) {
                           return;
                         }
                         if(_isPlayingRecorder) {
@@ -125,7 +142,10 @@ class _AddPostDialogState extends State<AddPostDialog> {
                             _isPlayingRecorder = false;
                           });
                         } else {
-                          player.play(widget.recordingLocation, isLocal: true);
+                          print('Playing recording at: ${_recordingLocation}');
+                          player.dispose();
+                          player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
+                          player.play(_recordingLocation, isLocal: true);
                           player.onPlayerCompletion.listen((event) {
                             setState(() {
                               _isPlayingRecorder = false;
@@ -301,7 +321,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                           Navigator.of(context).pop();
                         }
                     ),
-                    widget.recordingLocation == null ? OutlineButton(
+                    _recordingLocation == null ? OutlineButton(
                       color: Colors.red,
                       borderSide: BorderSide(color: Colors.red),
                       child: Text('Record First'),
@@ -314,13 +334,13 @@ class _AddPostDialogState extends State<AddPostDialog> {
 
                         textColor: Colors.white,
                         onPressed: () async {
-                          if(widget.recordingLocation != null) {
+                          if(_recordingLocation != null) {
                             List<String> tagList = processTagString(_postTags);
                             print({"postTitle": _postTitle,
-                              "localRecordingLocation": widget.recordingLocation,
-                              "date": widget.date,
+                              "localRecordingLocation": _recordingLocation,
+                              "date": _startDate,
                               "listens": 0,
-                              "secondsLength": widget.secondsLength,
+                              "secondsLength": _secondsLength,
                               "streamList": tagList,
                               "test": "tester",
                             });
@@ -332,10 +352,10 @@ class _AddPostDialogState extends State<AddPostDialog> {
                                 _isLoading = true;
                               });
                               await ActivityManager().addPost(context, {"postTitle": _postTitle,
-                                "localRecordingLocation": widget.recordingLocation,
-                                "date": widget.date,
+                                "localRecordingLocation": _recordingLocation,
+                                "date": _startDate,
                                 "listens": 0,
-                                "secondsLength": widget.secondsLength,
+                                "secondsLength": _secondsLength,
                                 "streamList": tagList,
                               }, _addToTimeline, _sendAsGroup, _sendToUsers, _addToConversations);
                               print('Post added');

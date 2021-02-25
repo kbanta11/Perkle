@@ -54,7 +54,7 @@ class DBService {
   }
 
   Stream<List<PostPodItem>> streamTimelinePosts(PerklUser currentUser, {String timelineId, String streamTag, String userId, TimelineType type, bool reload}) {
-    print('TimelineId: $timelineId ---- StreamTag: $streamTag ---- UserId: $userId');
+    //print('TimelineId: $timelineId ---- StreamTag: $streamTag ---- UserId: $userId');
     if(streamTag != null) {
       return _db.collection('posts').where('streamList', arrayContains: streamTag).orderBy('datePosted', descending: true).snapshots().map((qs) {
         return qs.docs.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
@@ -148,8 +148,8 @@ class DBService {
           return;
         });
       }
-      final HttpsCallable callable = CloudFunctions.instance.getHttpsCallable(
-        functionName: 'getTimeline',
+      final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable(
+        'getTimeline',
       );
       dynamic resp = await callable.call(<String, dynamic>{
         'timelineId': timelineId,
@@ -226,9 +226,9 @@ class DBService {
       //Get audio file
       File audioFile = File(filePath);
       String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(replyDate).toString();
-      final StorageReference storageRef = FirebaseStorage.instance.ref().child(user.uid).child('episode-replies').child('$episodeId-$dateString');
-      final StorageUploadTask uploadTask = storageRef.putFile(audioFile);
-      String _fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+      final Reference storageRef = FirebaseStorage.instance.ref().child(user.uid).child('episode-replies').child('$episodeId-$dateString');
+      final UploadTask uploadTask = storageRef.putFile(audioFile);
+      String _fileUrl = await uploadTask.snapshot.ref.getDownloadURL();//await (await uploadTask.onComplete).ref.getDownloadURL();
       fileUrlString = _fileUrl.toString();
     }
 
@@ -305,7 +305,7 @@ class DBService {
           return;
         }
         DocumentReference docRef = _db.collection('conversations').doc(conversationId).collection('heard-posts').doc(currentUserId);
-        List<String> fbPostsHeard = await docRef.get().then((snap) => snap.data()['id_list'].cast<String>());
+        List<String> fbPostsHeard = await docRef.get().then((snap) => snap.data() != null ? snap.data()['id_list'].cast<String>() : null);
         if(fbPostsHeard == null) {
           //set posts heard for this conversation to the local list
           print('setting new list of posts heard to local list');

@@ -426,13 +426,13 @@ class UploadProfilePic extends StatefulWidget {
 
 class _UploadProfilePicState extends State<UploadProfilePic> {
   static DateTime date = DateTime.now();
-  StorageUploadTask _uploadTask;
+  UploadTask _uploadTask;
   String fileUrl;
   String fileUrlString;
 
   _startUpload() async {
 
-    final StorageReference storageRef = FirebaseStorage.instance.ref().child(widget.userId).child('profile-pics').child('${date.toString()}-pic.jpg');
+    final Reference storageRef = FirebaseStorage.instance.ref().child(widget.userId).child('profile-pics').child('${date.toString()}-pic.jpg');
 
     setState(() {
       _uploadTask = storageRef.putFile(widget.picFile);
@@ -440,7 +440,7 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
   }
 
   updateUserDoc(BuildContext context) async {
-    fileUrl = await (await _uploadTask.onComplete).ref.getDownloadURL();
+    fileUrl = await _uploadTask.snapshot.ref.getDownloadURL();
     fileUrlString = fileUrl.toString();
 
     await UserManagement().updateUser(context, {'profilePicUrl': fileUrlString}).then((_) {
@@ -452,10 +452,10 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
   @override
   Widget build(BuildContext context) {
     if(_uploadTask != null) {
-      return StreamBuilder<StorageTaskEvent>(
-        stream: _uploadTask.events,
-        builder: (context, snapshot) {
-          if(!snapshot.hasData)
+      return StreamBuilder<TaskSnapshot>(
+        stream: _uploadTask.snapshotEvents,
+        builder: (context, AsyncSnapshot<TaskSnapshot> snapshot) {
+          if(!snapshot.hasData) {
             return SizedBox(
                 width: double.infinity,
                 child: Padding(
@@ -463,11 +463,12 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
                   padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
                 )
             );
-          var event = snapshot.data.snapshot;
-          if(_uploadTask.isComplete){
+          }
+          TaskState event = snapshot.data.state;
+          if(event == TaskState.success){
             updateUserDoc(context);
           }
-          double progressPercent = event != null ? event.bytesTransferred / event.totalByteCount : 0;
+          double progressPercent = snapshot.data != null ? snapshot.data.bytesTransferred / snapshot.data.totalBytes : 0;
           return SizedBox(
             width: double.infinity,
             child: Padding(

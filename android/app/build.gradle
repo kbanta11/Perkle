@@ -13,7 +13,7 @@ if (flutterRoot == null) {
 
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
 if (flutterVersionCode == null) {
-    flutterVersionCode = '28'
+    flutterVersionCode = '29'
 }
 
 def flutterVersionName = localProperties.getProperty('flutter.versionName')
@@ -87,7 +87,6 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-    implementation 'com.google.firebase:firebase-core:17.2.1'
     implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
     compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x64/flutter.jar")
 }

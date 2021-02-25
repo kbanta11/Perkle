@@ -72,14 +72,24 @@ class ActivityManager {
 
         //Upload file to firebase storage -- need to serialize date into filename
         File audioFile = new File(postData['localRecordingLocation']);
-        String filename = postData['dateString'].toString().replaceAll(new RegExp(r' '), '_');
-        print(filename);
-        final StorageReference fsRef = FirebaseStorage.instance.ref().child(userId).child('$filename');
-        //print('Post storage ref: $fsRef');
-        //print('File ($audioFile) exists: ${audioFile.existsSync()}');
-        final StorageUploadTask uploadTask = fsRef.putFile(audioFile);
-        print('$uploadTask');
-        String fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+        String filename = postData['date'].toString().replaceAll(new RegExp(r' '), '_');
+        print('Filename: $filename');
+        final Reference fsRef = FirebaseStorage.instance.ref().child(userId).child('$filename');
+        print('Post storage ref: $fsRef');
+        print('File ($audioFile) exists: ${audioFile.existsSync()}');
+        final UploadTask uploadTask = fsRef.putFile(audioFile);
+        uploadTask.snapshotEvents.listen((snap) {
+          print('${snap.bytesTransferred / 1000}/${snap.totalBytes / 1000} (${snap.bytesTransferred/snap.totalBytes * 100})');
+        });
+        print('waiting for upload to complete...');
+        await uploadTask.whenComplete(() => null).catchError((e) {
+          print('Error waiting for upload task complete: $e');
+        });
+        String fileUrl = await fsRef.getDownloadURL().then((val) {
+          return val;
+        }).catchError((e) {
+          print('error getting download url: $e');
+        });
         String fileUrlString = fileUrl.toString();
 
         if(addToTimeline) {
@@ -208,9 +218,14 @@ class ActivityManager {
           //Get audio file
           File audioFile = File(audioPath);
           String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(date).toString();
-          final StorageReference storageRef = FirebaseStorage.instance.ref().child(postingUserID).child('direct-posts').child(dateString);
-          final StorageUploadTask uploadTask = storageRef.putFile(audioFile);
-          String _fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
+          final Reference storageRef = FirebaseStorage.instance.ref().child(postingUserID).child('direct-posts').child(dateString);
+          final UploadTask uploadTask = storageRef.putFile(audioFile);
+          uploadTask.snapshotEvents.listen((snap) {
+            print('${snap.bytesTransferred / 1000}/${snap.totalBytes / 1000} (${snap.bytesTransferred/snap.totalBytes * 100})');
+          });
+          await uploadTask.whenComplete(() => null);
+
+          String _fileUrl = await storageRef.getDownloadURL();
           fileUrlString = _fileUrl.toString();
         } else {
           fileUrlString = fileUrl.toString();
@@ -346,11 +361,13 @@ class ActivityManager {
       //Check if have permissions for microphone or ask
       if(await Permission.microphone.isUndetermined) {
         print('asking for mic permissions');
-        await Permission.microphone.request();
+        await Permission.microphone.request().catchError((e) {
+          print('Error request permission for microphone: $e');
+        });
       }
       // String length
       //await fsRecorder.startRecorder(toFile: filePath, bitRate: 100000, codec: Codec.aacMP4);
-      String tempFilePath = Track.tempFile(WellKnownMediaFormats.adtsAac);
+      String tempFilePath = Track.tempFile(CustomMediaFormat());
       print('TempFilePath: $tempFilePath');
       /*
       recorder.onRequestPermissions = (Track track) async {
@@ -359,7 +376,7 @@ class ActivityManager {
       };
        */
       Wakelock.enable();
-      await recorder.record(Track.fromFile(tempFilePath, mediaFormat: WellKnownMediaFormats.adtsAac));
+      await recorder.record(Track.fromFile(tempFilePath, mediaFormat: CustomMediaFormat()));
       recordingDuration = Duration(milliseconds: 0);
       mp.setRecordingTime(recordingDuration);
       recordingTimer = Timer.periodic(Duration(seconds: 1), (timer) {
@@ -373,7 +390,7 @@ class ActivityManager {
       });
        */
       DateTime startRecordDateTime = DateTime.now();
-      print('Recording started at: $startRecordDateTime');
+      print('Recording started at: $startRecordDateTime at $tempFilePath');
       return [Platform.isIOS ? tempFilePath.replaceAll('file://', '') : tempFilePath, startRecordDateTime];
     } catch (e) {
       print('Start recorder error: $e');
@@ -557,17 +574,6 @@ class ActivityManager {
     if(hours > 0)
       return '$hours:$minutesString:$secondsString';
     return '$minutesString:$secondsString';
-  }
-
-  updateTimeListened(Duration time, String url) async {
-    Map<String, dynamic> postsInProgress = await localService.getData('posts_in_progress');
-    if(postsInProgress != null) {
-      postsInProgress[url] = time.inMilliseconds;
-    } else {
-      postsInProgress = new Map<String, dynamic>();
-      postsInProgress[url] = time.inMilliseconds;
-    }
-    await localService.setData('posts_in_progress', postsInProgress);
   }
 }
 
@@ -862,4 +868,34 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
     );
   }
 
+}
+
+//
+class CustomMediaFormat extends NativeMediaFormat {
+  /// ctor
+  const CustomMediaFormat({
+    int sampleRate = 16000,
+    int numChannels = 1,
+    int bitRate = 16000,
+  }) : super.detail(
+    name: 'aac',
+    sampleRate: 16000,
+    numChannels: 1,
+    bitRate: 16000,
+  );
+
+  @override
+  String get extension => 'aac';
+
+  // Whilst the actual index is MediaRecorder.AudioEncoder.AAC (3)
+  @override
+  int get androidEncoder => 3;
+
+  /// MediaRecorder.OutputFormat.AAC_ADTS
+  @override
+  int get androidFormat => 2;
+
+  /// kAudioFormatMPEG4AAC
+  @override
+  int get iosFormat => 1633772320;
 }

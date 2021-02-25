@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 //import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flushbar/flushbar.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -30,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
   String _password;
   String _errorMessage;
   //final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   bool _redirectOnNotification = true;
 
   StreamSubscription iosSubscription;
@@ -46,14 +47,54 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    print('Building Login Page');
     if (Platform.isIOS) {
-      iosSubscription = _firebaseMessaging.onIosSettingsRegistered.listen((data) {
-        // save the token  OR subscribe to a topic here
-      });
-
-      _firebaseMessaging.requestNotificationPermissions(IosNotificationSettings());
+      _firebaseMessaging.requestPermission();
     }
 
+    _firebaseMessaging.getInitialMessage().then((initialMessage) {
+      if(initialMessage?.data != null && initialMessage?.data['conversationId'] != null) {
+        Navigator.pushReplacement(context, MaterialPageRoute(
+          builder: (context) => ConversationPageMobile(conversationId: initialMessage.data['conversationId']),
+        )).then((_) {
+          _redirectOnNotification = false;
+        });
+      }
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Remote Message: $message');
+      Flushbar(
+        backgroundColor: Colors.deepPurple,
+        title:  message.data['notification']['title'],
+        message:  message.data['notification']['body'],
+        duration:  Duration(seconds: 3),
+        margin: EdgeInsets.all(8),
+        borderRadius: 8,
+        flushbarPosition: FlushbarPosition.TOP,
+        onTap: (flushbar) {
+          String conversationId = message?.data['conversationId'];
+          if(conversationId != null){
+            Navigator.pushReplacement(context, MaterialPageRoute(
+              builder: (context) => ConversationPageMobile(conversationId: conversationId),
+            ));
+          }
+        },
+      ).show(context);
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print("onResume: $message");
+      String conversationId = message?.data['conversationId'];
+      if(conversationId != null && _redirectOnNotification){
+        Navigator.pushReplacement(context, MaterialPageRoute(
+          builder: (context) => ConversationPageMobile(conversationId: conversationId),
+        )).then((_) {
+          _redirectOnNotification = false;
+        });
+      }
+    });
+/*
     _firebaseMessaging.configure(
       onMessage: (Map<String, dynamic> message) async {
         print("onMessage: $message");
@@ -102,6 +143,7 @@ class _LoginPageState extends State<LoginPage> {
         }
       },
     );
+ */
     //_checkLoggedIn();
   }
 

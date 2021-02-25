@@ -14,7 +14,14 @@ class LocalService {
     filepath = await getApplicationDocumentsDirectory().then((directory) => directory.path);
     file = await File('$filepath/$filename').exists() ? File('$filepath/$filename') : null;
     if(file != null) {
-      data = jsonDecode(await file.readAsString());
+      print('Local Data File Exists, start decoding... \n${await file.readAsString()}');
+      try {
+        data = jsonDecode(await file.readAsString());
+      } on Exception catch (e) {
+        file = new File('$filepath/$filename');
+        data = new Map<String, dynamic>();
+      }
+      //print('Decoding complete!');
     } else {
       file = new File('$filepath/$filename');
       data = new Map<String, dynamic>();

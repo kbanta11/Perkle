@@ -2,5 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/ios/.symlinks/plugins/audio_service" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/ios/.symlinks/plugins/sounds" vcs="Git" />
   </component>
 </project>
