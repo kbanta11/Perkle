@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share/share.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'dart:io';
 import 'dart:async';
@@ -25,6 +26,11 @@ import 'services/ActivityManagement.dart';
 import 'services/local_services.dart';
 import 'package:flushbar/flushbar.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
+List<Map<String, dynamic>> currentTutorials = [{'index': 0, 'file': 'https://firebasestorage.googleapis.com/v0/b/flutter-fire-test-be63e.appspot.com/o/AppFiles%2FPerkl_Tutorial-Posting.mp4?alt=media&token=4b25145f-64de-4b92-bd52-1bb6a083c375', 'text': 'How To Post'},
+  {'index': 1, 'file': 'https://firebasestorage.googleapis.com/v0/b/flutter-fire-test-be63e.appspot.com/o/AppFiles%2FPerkl_Tutorial-Following.mp4?alt=media&token=f9c9c761-db53-4b4c-bce2-e81365377c31', 'text': 'Finding and Following'},
+  {'index': 2, 'file': 'https://firebasestorage.googleapis.com/v0/b/flutter-fire-test-be63e.appspot.com/o/AppFiles%2FPerkl_Tutorial-Conversation.mp4?alt=media&token=85f46bad-23dc-4461-b410-ed3aff12f4a9', 'text': 'Conversation on Perkl'}
+  ];
 
 // Show Username dialog
 Future<void> _showUsernameDialog(BuildContext context) async {
@@ -82,30 +88,131 @@ class HomePageMobileState extends State<HomePageMobile> {
     }
   }
 
-  Future<bool> showTutorial() async {
+  Future<void> showTutorial() async {
     LocalService localService = new LocalService();
-    bool tutorialCompleted = await localService.getData('tutorial_complete') ?? false;
-
-    //Change to show tutorial screens for production
-    return true; //return tutorialCompleted?
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    showTutorial().then((show) {
-      if(!show) {
+    List<dynamic> tutorialCompleted = await localService.getData('tutorial_index_complete');
+    if(tutorialCompleted == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) {
+              return TutorialDialog(currentTutorials: currentTutorials,);
+            }
+        );
+      });
+    } else {
+      //List<int> tutorialsToComplete = CURRENT_TUTORIAL_INDICES.removeWhere((element) => tutorialCompleted.contains(element));
+      //Get current tutorials whose index is not the index of a completed tutorial
+      if(currentTutorials.where((element) => !tutorialCompleted.map((completed) => completed['index']).toList().contains(element['index'])).length > 0) {
+        print('Already completed index list: ${tutorialCompleted.map((completed) => completed['index']).toList()}');
+        print('Unheard tutorials: ${currentTutorials.where((element) {
+          List<dynamic> completedIndices = tutorialCompleted.map((completed) => completed['index']).toList();
+         return !(completedIndices.contains(element['index']));
+        })}');
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           await showDialog(
               context: context,
               barrierDismissible: false,
               builder: (context) {
-                return TutorialDialog();
+                return TutorialDialog(currentTutorials: currentTutorials.where((element) => !tutorialCompleted.map((completed) => completed['index']).toList().contains(element['index'])).toList());
               }
           );
         });
       }
+    }
+
+    //Change to show tutorial screens for production
+    return; //return tutorialCompleted?
+  }
+
+  Future<void> promptShare(BuildContext context) async {
+    int lastPromptedMilliseconds = await LocalService().getData('lastPromptedMilliseconds');
+    if(lastPromptedMilliseconds == null) {
+      WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+        await showDialog(
+          context: context,
+          builder: (context) {
+            return SimpleDialog(
+              contentPadding: EdgeInsets.all(15),
+              title: Center(child: Text('Invite your Friends!')),
+              children: [
+                Center(child: Text('The perfect way to get started is to invite your friends to join you!', textAlign: TextAlign.center,)),
+                SizedBox(height: 10,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      FlatButton(
+                        child: Text('Not now.'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      FlatButton(
+                        child: Text('Share!', style: TextStyle(color: Colors.white)),
+                        color: Colors.deepPurple,
+                        onPressed: () {
+                          Share.share('Hey! I wanna hear your voice! Join me on Perkl @ https://www.perklapp.com', subject: 'Hey! Join me on Perkl!');
+                        },
+                      )
+                    ]
+                ),
+              ],
+            );
+          }
+        ).then((_) {
+          LocalService().setData('lastPromptedMilliseconds', DateTime.now().millisecondsSinceEpoch);
+        });
+      });
+    } else {
+      if(DateTime.now().millisecondsSinceEpoch - lastPromptedMilliseconds > 604800000) {
+        WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+          await showDialog(
+              context: context,
+              builder: (context) {
+                return SimpleDialog(
+                  contentPadding: EdgeInsets.all(15),
+                  title: Center(child: Text('Invite your Friends!')),
+                  children: [
+                    Center(child: Text('Liking Perkl? Invite your friends to come join you!', textAlign: TextAlign.center)),
+                    Row(
+                      children: [
+                        FlatButton(
+                          child: Text('Not now.'),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        FlatButton(
+                          child: Text('Share!'),
+                          color: Colors.deepPurple,
+                          onPressed: () {
+                            Share.share('Hey! I wanna hear your voice! Join me on Perkl @ https://www.perklapp.com', subject: 'Hey! Join me on Perkl!');
+                          },
+                        )
+                      ]
+                    ),
+                  ],
+                );
+              }
+          ).then((_) {
+            LocalService().setData('lastPromptedMilliseconds', DateTime.now().millisecondsSinceEpoch);
+          });
+        });
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    promptShare(context).then((_) {
+      showTutorial();
     });
+
+    //showTutorial().then((_) {
+    //  promptShare(context);
+    //});
     //print('Skipping checking username');
     _saveDeviceToken();
   }

@@ -1,13 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:podcast_search/podcast_search.dart';
-import 'db_services.dart';
-//import 'package:html_unescape/html_unescape.dart';
-import 'UserManagement.dart';
-import 'ActivityManagement.dart';
+import 'package:audio_service/audio_service.dart';
 
 class PerklUser {
   String uid;
@@ -242,6 +237,22 @@ class Post {
     this.timelines,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': this.id,
+      'userUID': this.userUID,
+      'username': this.username,
+      'postTitle': this.postTitle,
+      'datePosted': this.datePosted,
+      'postValue': this.postValue,
+      'audioFileLocation': this.audioFileLocation,
+      'listenCount': this.listenCount,
+      'secondsLength': this.secondsLength,
+      'streamList': this.streamList,
+      'timelines': this.timelines,
+    };
+  }
+
   factory Post.fromFirestore(DocumentSnapshot snap) {
     return Post(
       id: snap.reference.id,
@@ -446,6 +457,25 @@ class PostPodItem {
       podcast: podcast,
       audioUrl: reply.audioFileLocation,
       displayText: '${reply.posterUsername} | ${reply.replyTitle != null ? reply.replyTitle : DateFormat("MMMM dd, yyyy @HH:mm").format(reply.replyDate).toString()}'
+    );
+  }
+
+  MediaItem toMediaItem(String currentUserId) {
+    return MediaItem(
+      id: this.audioUrl,
+      title: this.titleTextString(),
+      artist: this.subtitleTextString(),
+      album: '',
+      extras: {
+        'type': this.type.toString(),
+        'episode': this.episode != null ? this.episode.toJson() : null,
+        'podcast_url': this.podcast!= null ? this.podcast.url : null,
+        'isDirect': this.type == PostType.DIRECT_POST ? true : false,
+        'conversationId': this.directPost != null ? this.directPost.conversationId : null,
+        'userId': this.type == PostType.DIRECT_POST ? currentUserId : null,
+        'postId': this.directPost != null ? this.directPost.id : null,
+        'post': this.post != null ? this.post.toJson() : null,
+      },
     );
   }
 }

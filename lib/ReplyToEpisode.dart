@@ -158,9 +158,9 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     }
 
     _isRecording = true;
-    String tempFilePath = Track.tempFile(WellKnownMediaFormats.adtsAac);
+    String tempFilePath = Track.tempFile(CustomMediaFormat());
     print('TempFilePath: $tempFilePath');
-    await recorder.record(Track.fromFile(tempFilePath, mediaFormat: WellKnownMediaFormats.adtsAac));
+    await recorder.record(Track.fromFile(tempFilePath, mediaFormat: CustomMediaFormat()));
     recorder.dispositionStream().listen((disposition) {
       setRecordingTime(disposition.duration);
     });

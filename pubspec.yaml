@@ -11,7 +11,7 @@ description: The Place for Personal Podcasts
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.0.29
+version: 0.1.0
 
 environment:
   sdk: ">=2.7.0 <3.0.0"
@@ -28,6 +28,7 @@ dependencies:
   google_sign_in:
   image_picker:
   image_cropper:
+  share:
   intl:
   wakelock:
   audio_service:
@@ -57,6 +58,7 @@ dependencies:
   flutter_html:
   flutter_slidable:
   flutter_spinkit:
+  video_player:
 
 
   flutter:
@@ -101,6 +103,7 @@ flutter:
     - assets/images/drawable-xhdpi/
     - assets/images/drawable-xxhdpi/
     - assets/images/drawable-xxxhdpi/
+    #- assets/videos/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.io/assets-and-images/#resolution-aware.

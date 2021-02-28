@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert';
-import 'package:Perkl/MainPageTemplate.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -733,6 +732,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
   @override
   Widget build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
     return SimpleDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
       contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
@@ -770,6 +770,9 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                         heroTag: null,
                         elevation: _isRecording ? 0.0 : 5.0,
                         onPressed: () async {
+                          if(playbackState != null && playbackState.playing) {
+                            mp.pausePost();
+                          }
                           if(_isRecording) {
                             List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
                             String recordingLocation = stopRecordVals[0];

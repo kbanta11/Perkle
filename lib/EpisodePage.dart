@@ -37,7 +37,7 @@ class EpisodePage extends StatelessWidget {
         return '$hours:$minutesString:$secondsString';
       return '$minutesString:$secondsString';
     }
-
+    List<MediaItem> queueSnap = Provider.of<List<MediaItem>>(context);
     return MainPageTemplate(
       bottomNavIndex: 1,
       noBottomNavSelected: true,
@@ -85,7 +85,7 @@ class EpisodePage extends StatelessWidget {
                                         shape: BoxShape.circle,
                                         color: Colors.deepPurple// mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
                                     ),
-                                    child: Center(child: FaIcon(FontAwesomeIcons.reply, color: Colors.white, size: 16)),
+                                    child: Center(child: FaIcon(FontAwesomeIcons.comments, color: Colors.white, size: 16)),
                                   ),
                                   onTap: () {
                                     mp.replyToEpisode(_episode, _podcast, context);
@@ -215,12 +215,12 @@ class EpisodePage extends StatelessWidget {
                                         width: 35,
                                         decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: currentMediaItem.id == reply.audioFileLocation ? Colors.red : Colors.deepPurple
+                                            color: currentMediaItem?.id == reply.audioFileLocation ? Colors.red : Colors.deepPurple
                                         ),
-                                        child: Center(child: FaIcon(currentMediaItem.id == reply.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                        child: Center(child: FaIcon(currentMediaItem?.id == reply.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                       ),
                                       onTap: () {
-                                        playbackState.playing != null && playbackState.playing && currentMediaItem.id == reply.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
+                                        playbackState.playing != null && playbackState.playing && currentMediaItem?.id == reply.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
                                       },
                                     ),
                                     SizedBox(width: 5,),
@@ -230,12 +230,12 @@ class EpisodePage extends StatelessWidget {
                                         width: 35,
                                         decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: AudioServiceBackground.queue != null && AudioServiceBackground.queue.where((p) => p.id == reply.audioFileLocation).length > 0 ? Colors.grey : Colors.deepPurple
+                                            color: queueSnap != null && queueSnap.where((p) => p.id == reply.audioFileLocation).length > 0 ? Colors.grey : Colors.deepPurple
                                         ),
                                         child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
                                       ),
                                       onTap: () {
-                                        if(AudioServiceBackground.queue != null && AudioServiceBackground.queue.where((p) => p.id == reply.audioFileLocation).length <= 0)
+                                        if(queueSnap != null && queueSnap.where((p) => p.id == reply.audioFileLocation).length <= 0)
                                           mp.addPostToQueue(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
                                       },
                                     )

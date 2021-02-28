@@ -10,6 +10,8 @@ class LocalService {
   String filename = 'local_data.json';
   File file;
 
+  LocalService({this.filename});
+
   initialize() async {
     filepath = await getApplicationDocumentsDirectory().then((directory) => directory.path);
     file = await File('$filepath/$filename').exists() ? File('$filepath/$filename') : null;
@@ -34,9 +36,19 @@ class LocalService {
       await this.initialize();
     }
     try {
+      print('Data json ###: ${jsonEncode(data)}');
+      print('Data String ###: ${await file.readAsString()}');
       data = jsonDecode(await file.readAsString());
     } catch (e) {
-      print('Error Updating file: $e');
+      await file.writeAsString(jsonEncode(data), flush: true, mode: FileMode.write,);
+      try {
+        print('Data json ***: ${jsonEncode(data)}');
+        print('Data String ***: ${await file.readAsString()}');
+        data = jsonDecode(await file.readAsString());
+      } on Exception catch (e) {
+        print('Still an error after rewrite: $e');
+      }
+      print('Rewrote data: $e');
     }
   }
 
@@ -58,7 +70,8 @@ class LocalService {
     }
     try {
       data[key] = value;
-      await file.writeAsString(jsonEncode(data));
+      print('writing updated data file: ${jsonEncode(data)}');
+      await file.writeAsString(jsonEncode(data), flush: true, mode: FileMode.write,);
       await update();
     } catch (e) {
       print('Error writing update to file: $e\n$key/$value');

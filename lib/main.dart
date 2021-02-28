@@ -26,9 +26,12 @@ import 'ReplyToEpisode.dart';
 import 'PlayerAudioHandler.dart';
 
 AudioHandler _audioHandler;
+FirebaseApp fbApp;
 
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  fbApp = await Firebase.initializeApp();
   _audioHandler = await AudioService.init(
     builder: () => PlayerAudioHandler(),
     config: AudioServiceConfig(
@@ -59,7 +62,6 @@ class MainApp extends StatefulWidget {
 }
 
 class MainAppState extends State<MainApp> {
-  FirebaseApp fbApp;
 
   Future<bool> updateNeeded() async {
     int minBuildNumber = await DBService().getConfigMinBuildNumber();
@@ -71,18 +73,10 @@ class MainAppState extends State<MainApp> {
     return buildNumber < minBuildNumber;
   }
 
-  initialize() async {
-    final app = await Firebase.initializeApp();
-    setState(() {
-      fbApp = app;
-    });
-  }
-
   @override
   void initState() {
     super.initState();
     print('Main App init State');
-    initialize();
   }
 
   @override
@@ -167,7 +161,7 @@ class MainAppState extends State<MainApp> {
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: <Widget>[
                                         FlatButton(
-                                            child: Text('Upgrade Now!', style: TextStyle(color: Colors.white),),
+                                            child: Text('Update Now!', style: TextStyle(color: Colors.white),),
                                             color: Colors.deepPurple,
                                             onPressed: () {
                                               LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
@@ -219,60 +213,8 @@ class MainAppProvider extends ChangeNotifier {
   DateTime _startRecordDate;
 
   playPost(PostPodItem newPostPod) async {
-    MediaItem mediaItem = MediaItem(
-      id: newPostPod.audioUrl,
-      title: newPostPod.titleTextString(),
-      artist: newPostPod.subtitleTextString(),
-      album: '',
-      extras: {
-        'isDirect': newPostPod.type == PostType.DIRECT_POST ? true : false,
-        'conversationId': newPostPod.directPost != null ? newPostPod.directPost.conversationId : null,
-        'userId': newPostPod.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
-        'postId': newPostPod.directPost != null ? newPostPod.directPost.id : null,
-      },
-    );
+    MediaItem mediaItem = newPostPod.toMediaItem(FirebaseAuth.instance.currentUser.uid);
     _audioHandler.playMediaItem(mediaItem);
-    /*
-    if(AudioService.running) {
-      print('playing audio service: ${AudioService.running}');
-      AudioService.playMediaItem(mediaItem);
-    } else {
-      print('starting audio service');
-      await AudioService.start(
-        backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
-        params: {'mediaItem': mediaItem.toJson()},
-      );
-    }
-    */
-
-/*
-    if(isPlaying) {
-      player.stop();
-      player.dispose();
-    }
-
-    if(currentPostPodItem != null && currentPostPodItem.id == newPostPod.id && currentPostPodItem.type == newPostPod.type) {
-      AudioService.play();
-      //player.resume();
-      //isPlaying = true;
-      notifyListeners();
-      return;
-    }
-
-    //player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
-
-    currentPostPodItem = newPostPod;
-    currentPostType = newPostPod.type;
-    currentPostPodId = newPostPod.id;
-    //isPlaying = true;
-    //Remove from queue if playing item thats already in queue - TO DO
-
-    AudioService.playMediaItem(mediaItem);
-    if(newPostPod.type == PostType.DIRECT_POST) {
-      User user = FirebaseAuth.instance.currentUser;
-      await DBService().markDirectPostHeard(conversationId: newPostPod.directPost.conversationId, userId: user.uid, postId: newPostPod.directPost.id);
-    }
- */
     notifyListeners();
   }
 
@@ -280,10 +222,6 @@ class MainAppProvider extends ChangeNotifier {
     //isPlaying = false;
     currentPostPodItem = null;
     _audioHandler.stop();
-    //AudioService.stop();
-    //player.stop();
-    //player.dispose();
-    //player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
     notifyListeners();
   }
 
@@ -302,18 +240,7 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   addPostToQueue(PostPodItem post) async {
-    MediaItem mediaItem = MediaItem(
-      id: post.audioUrl,
-      title: post.titleTextString(),
-      artist: post.subtitleTextString(),
-      album: '',
-      extras: {
-        'isDirect': post.type == PostType.DIRECT_POST ? true : false,
-        'conversationId': post.directPost != null ? post.directPost.conversationId : null,
-        'userId': post.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
-        'postId': post.directPost != null ? post.directPost.id : null,
-      }
-    );
+    MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
     _audioHandler.addQueueItem(mediaItem);
     /*
     if(!AudioService.running) {
@@ -330,27 +257,7 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   insertPostToQueueFirst(PostPodItem post) async {
-    MediaItem mediaItem = MediaItem(
-      id: post.audioUrl,
-      title: post.titleTextString(),
-      artist: post.subtitleTextString(),
-      album: '',
-      extras: {
-        'isDirect': post.type == PostType.DIRECT_POST ? true : false,
-        'conversationId': post.directPost != null ? post.directPost.conversationId : null,
-        'userId': post.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
-        'postId': post.directPost != null ? post.directPost.id : null,
-      }
-    );
-    /*
-    if(!AudioService.running) {
-      await AudioService.start(
-        backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
-        params: {},
-      );
-    }
-     */
-
+    MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
     //queue.insert(0, post);
     print('Media Item: $mediaItem');
     _audioHandler.insertQueueItem(0, mediaItem);
@@ -376,26 +283,33 @@ class MainAppProvider extends ChangeNotifier {
       unheardPosts.removeWhere((DirectPost post) => heardPostIDs.contains(post.id));
     }
     unheardPosts.removeWhere((DirectPost post) => post.senderUID == userId);
+    //print('Unheard posts: $unheardPosts');
+    List<MediaItem> currentQueue = _audioHandler.queue.value;
+    List<MediaItem> unheardMediaItems = unheardPosts.map((item) {
+      PostPodItem post = PostPodItem.fromDirectPost(item);
+      MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
+      return mediaItem;
+    }).toList();
+    //print('Unheard media items: $unheardMediaItems');
+    if(currentQueue == null || currentQueue.length == 0) {
+      print('setting queue to just unheard items: $unheardMediaItems');
+      await _audioHandler.updateQueue(unheardMediaItems.reversed.toList());
+    } else {
+      print('adding unheard to current queue');
+      currentQueue.insertAll(0, unheardMediaItems.reversed.toList());
+      await _audioHandler.updateQueue(currentQueue);
+    }
+    /*
     unheardPosts.forEach((DirectPost post) {
       PostPodItem newItem = PostPodItem.fromDirectPost(post);
       insertPostToQueueFirst(newItem);
     });
+     */
     await _audioHandler.skipToNext();
   }
 
   removeFromQueue(PostPodItem post) {
-    MediaItem mediaItem = MediaItem(
-      id: post.audioUrl,
-      title: post.titleTextString(),
-      artist: post.subtitleTextString(),
-      album: '',
-      extras: {
-        'isDirect': post.type == PostType.DIRECT_POST ? true : false,
-        'conversationId': post.directPost != null ? post.directPost.conversationId : null,
-        'userId': post.type == PostType.DIRECT_POST ? FirebaseAuth.instance.currentUser.uid : null,
-        'postId': post.directPost != null ? post.directPost.id : null,
-      }
-    );
+    MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
     //queue.removeWhere((element) => element.id == post.id);
     _audioHandler.removeQueueItem(mediaItem);
     //AudioService.removeQueueItem(mediaItem);

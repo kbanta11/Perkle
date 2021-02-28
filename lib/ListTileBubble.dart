@@ -57,39 +57,5 @@ class ListTileBubble extends StatelessWidget {
         }
       },
     );
-    /*
-    return Card(
-      elevation: 5,
-      color: color ?? Colors.white,
-      margin: EdgeInsets.all(5),
-      child: Container(
-        width: width,
-        padding: padding ?? EdgeInsets.all(5),
-        child: InkWell(
-          child: Row(
-            mainAxisAlignment: alignment ?? MainAxisAlignment.start,
-            children: <Widget>[
-              leading ?? Container(),
-              leading != null ? SizedBox(width: 5) : Container(),
-              Column(
-                crossAxisAlignment: alignment == MainAxisAlignment.end ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: <Widget>[
-                  title ?? Container(),
-                  subTitle ?? Container(),
-                ],
-              ),
-              trailing != null ? SizedBox(width: 5) : Container(),
-              trailing ?? Container(),
-            ],
-          ),
-          onTap: () {
-            if(onTap != null) {
-              onTap();
-            }
-          },
-        ),
-      ),
-    );
-     */
   }
 }

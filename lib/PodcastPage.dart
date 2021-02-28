@@ -268,10 +268,17 @@ class EpisodeDialog extends StatelessWidget {
               child: Text('Go to episode', style: TextStyle(color: Colors.white)),
               color: Colors.deepPurple,
               onPressed: () async {
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                );
                 if(podcast.episodes == null){
                   print('Podcast URL: ${podcast.url}/Title: ${podcast.title}');
                   podcast = await Podcast.loadFeed(url: podcast.url, timeout: 50000);
                 }
+                Navigator.of(context).pop();
                 Navigator.push(context, MaterialPageRoute(
                   builder: (context) => EpisodePage(ep, podcast),
                 ));

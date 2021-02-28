@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:audioplayers/audioplayers.dart' as AP;
 import 'services/local_services.dart';
+import 'services/db_services.dart';
 import 'package:audio_session/audio_session.dart';
 
 class PlayerAudioHandler extends BaseAudioHandler
@@ -8,6 +9,7 @@ class PlayerAudioHandler extends BaseAudioHandler
   AP.AudioPlayer player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
   Duration currentPosition = Duration();
   LocalService _localService = new LocalService();
+  DBService _dbService = new DBService();
 
   PlayerAudioHandler() {
     _init();
@@ -39,13 +41,13 @@ class PlayerAudioHandler extends BaseAudioHandler
     }
   }
 
-  updateLocalQueue(List<MediaItem> queue) {
+  updateLocalQueue(List<MediaItem> queue) async {
     List<Map> queueList = queue.map((MediaItem item) {
       print('Item in Queue JSON: ${item.toJson()}');
       return item.toJson();
     }).toList();
     print('queue list: $queueList');
-    _localService.setData('queue', queueList);
+    await _localService.setData('queue', queueList);
   }
 
   _playCurrentItem({MediaItem item}) async {
@@ -56,7 +58,7 @@ class PlayerAudioHandler extends BaseAudioHandler
     player.dispose();
     player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
     Duration startDuration = new Duration(milliseconds: 0);
-    Map<String, dynamic> postsInProgress = await LocalService().getData('posts_in_progress');
+    Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
     if(postsInProgress != null && postsInProgress[item.id] != null) {
       int currentMs = postsInProgress[item.id];
       if(currentMs >= 15000) {
@@ -67,7 +69,8 @@ class PlayerAudioHandler extends BaseAudioHandler
     if(extraData != null && extraData['isDirect'] != null && extraData['isDirect']) {
       //Mark down whether direct post has been listened
       print('marking direct post heard: ${extraData['conversationId']}/${extraData['userId']}/${extraData['postId']}');
-      Map<String, dynamic> heardPostMap = await _localService.getData('conversation-heard-posts');
+      LocalService conversationService = LocalService(filename: 'conversations.json');
+      Map<String, dynamic> heardPostMap = await conversationService.getData('conversation-heard-posts');
       if(heardPostMap == null) {
         //create heard post map and add this conversation, user and post heard list with this post
         heardPostMap = new Map<String, dynamic>();
@@ -91,7 +94,8 @@ class PlayerAudioHandler extends BaseAudioHandler
         heardPostMap[extraData['conversationId']] = {extraData['userId']: [extraData['postId']]};
       }
       //Save heardPostMap to local storage for sync when app is open
-      await _localService.setData('conversation-heard-posts', heardPostMap);
+      await conversationService.setData('conversation-heard-posts', heardPostMap);
+      await _dbService.syncConversationPostsHeard();
     }
     print('*** playing Item...: ${item.id}');
     await player.play(item.id, stayAwake: true, position: startDuration).catchError((e) {
@@ -304,7 +308,7 @@ class PlayerAudioHandler extends BaseAudioHandler
   }
 
   @override
-  Future<void> addQueueItem(MediaItem item) {
+  Future<void> addQueueItem(MediaItem item) async {
     List<MediaItem> tempQueue = queue.value;
     if(tempQueue == null) {
       tempQueue = new List<MediaItem>();
@@ -314,12 +318,12 @@ class PlayerAudioHandler extends BaseAudioHandler
     }
     queue.add(tempQueue);
     //AudioServiceBackground.setQueue(tempQueue);
-    updateLocalQueue(tempQueue);
+    await updateLocalQueue(tempQueue);
     return null;
   }
 
   @override
-  Future<void> insertQueueItem(int position, MediaItem item) {
+  Future<void> insertQueueItem(int position, MediaItem item) async {
     List<MediaItem> tempQueue = queue.value;
     if(tempQueue == null) {
       tempQueue = new List<MediaItem>();
@@ -329,12 +333,12 @@ class PlayerAudioHandler extends BaseAudioHandler
     }
     queue.add(tempQueue);
     //AudioServiceBackground.setQueue(tempQueue);
-    updateLocalQueue(tempQueue);
+    await updateLocalQueue(tempQueue);
     return null;
   }
 
   @override
-  Future<void> skipToNext() {
+  Future<void> skipToNext() async {
     List<MediaItem> tempQueue = queue.value;
     if(tempQueue != null && tempQueue.length > 0) {
       MediaItem mediaItem = tempQueue.first;
@@ -342,7 +346,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       print('Media Id to skip to: $mediaId');
       queue.add(tempQueue);
       //AudioServiceBackground.setQueue(tempQueue);
-      updateLocalQueue(tempQueue);
+      await updateLocalQueue(tempQueue);
       this.skipToQueueItem(mediaId);
     }
     return null;
@@ -356,7 +360,7 @@ class PlayerAudioHandler extends BaseAudioHandler
     tempQueue.remove(newItem);
     queue.add(tempQueue);
     //AudioServiceBackground.setQueue(tempQueue);
-    updateLocalQueue(tempQueue);
+    await updateLocalQueue(tempQueue);
     print('Skipping to new item: $newItem');
     if(newItem != null) {
       await playMediaItem(newItem);
@@ -364,14 +368,14 @@ class PlayerAudioHandler extends BaseAudioHandler
   }
 
   @override
-  Future<void> removeQueueItem(MediaItem mediaItem) {
+  Future<void> removeQueueItem(MediaItem mediaItem) async {
     print('removing item: $mediaItem');
     List<MediaItem> tempQueue = queue?.value;
     if(tempQueue != null) {
       tempQueue.removeWhere((item) => mediaItem.id == item.id);
       queue.add(tempQueue);
       //AudioServiceBackground.setQueue(AudioServiceBackground.queue);
-      updateLocalQueue(tempQueue);
+      await updateLocalQueue(tempQueue);
       //print(AudioServiceBackground.queue);
     }
     return null;
@@ -379,10 +383,7 @@ class PlayerAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> updateQueue(List<MediaItem> newQueue) {
-    if(queue == null || queue.value == null) {
-      queue.add(newQueue);
-      //AudioServiceBackground.setQueue(queue);
-    }
+    queue.add(newQueue);
     return null;
   }
 }

@@ -228,7 +228,8 @@ class DBService {
       String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(replyDate).toString();
       final Reference storageRef = FirebaseStorage.instance.ref().child(user.uid).child('episode-replies').child('$episodeId-$dateString');
       final UploadTask uploadTask = storageRef.putFile(audioFile);
-      String _fileUrl = await uploadTask.snapshot.ref.getDownloadURL();//await (await uploadTask.onComplete).ref.getDownloadURL();
+      await uploadTask.whenComplete(() => null);
+      String _fileUrl = await storageRef.getDownloadURL();//await (await uploadTask.onComplete).ref.getDownloadURL();
       fileUrlString = _fileUrl.toString();
     }
 
@@ -267,11 +268,13 @@ class DBService {
   }
 
   markDirectPostHeard({String conversationId, String userId, String postId}) async {
+    print('marking direct post heard');
     DocumentReference docRef = _db.collection('conversations').doc(conversationId).collection('heard-posts').doc(userId);
     List<String> idList = List<String>();
     bool docExists = false;
-
+    print('Heard Posts doc: $docRef');
     await docRef.get().then((docSnap) {
+      print('heard posts doc data: ${docSnap.data()}');
       if(docSnap.exists) {
         docExists = true;
         idList.addAll(docSnap.data()['id_list'].cast<String>());
@@ -292,7 +295,7 @@ class DBService {
   }
 
   Future<void> syncConversationPostsHeard() async {
-    Map<String, dynamic> heardPostMap = await _localService.getData('conversation-heard-posts');
+    Map<String, dynamic> heardPostMap = await LocalService(filename: 'conversations.json').getData('conversation-heard-posts');
     String currentUserId = FirebaseAuth.instance.currentUser.uid;
     if(heardPostMap != null) {
       heardPostMap.forEach((key, val) async {
@@ -310,7 +313,7 @@ class DBService {
           //set posts heard for this conversation to the local list
           print('setting new list of posts heard to local list');
           _db.runTransaction((transaction) {
-            transaction.update(docRef, {'id_list': localPostsHeard});
+            transaction.set(docRef, {'id_list': localPostsHeard});
             return;
           });
           return;

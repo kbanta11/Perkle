@@ -440,6 +440,7 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
   }
 
   updateUserDoc(BuildContext context) async {
+    await _uploadTask.whenComplete(() => null);
     fileUrl = await _uploadTask.snapshot.ref.getDownloadURL();
     fileUrlString = fileUrl.toString();
 

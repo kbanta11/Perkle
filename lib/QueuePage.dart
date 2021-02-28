@@ -2,6 +2,7 @@ import 'package:Perkl/ConversationPage.dart';
 import 'package:Perkl/MainPageTemplate.dart';
 import 'package:Perkl/PodcastPage.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:podcast_search/podcast_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -20,39 +21,98 @@ class QueuePage extends StatelessWidget {
     List<MediaItem> queueItems = Provider.of<List<MediaItem>>(context);
     List<Widget> queueWidgets = new List<Widget>();
 
-    tapItemTile(PostPodItem item) {
-      if(item.type == PostType.PODCAST_EPISODE) {
+    tapItemTile(MediaItem item) async {
+      print('item tapped: $item');
+      if(item.extras['type'] == 'PostType.PODCAST_EPISODE') {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return Center(child: CircularProgressIndicator());
+          }
+        );
+        Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
+        Map<String, dynamic> episodeMap = item.extras['episode'];
+        Episode ep = Episode.of(
+            guid: episodeMap['guid'],
+            title: episodeMap['title'],
+            description: episodeMap['description'],
+            link: episodeMap['link'],
+            publicationDate: DateTime.fromMillisecondsSinceEpoch(episodeMap['publicationDate']),
+            author: episodeMap['author'],
+            duration: Duration(milliseconds: episodeMap['duration']),
+            contentUrl: episodeMap['contentUrl'],
+            season: episodeMap['season'],
+            episode: episodeMap['episode'],
+            podcast: podcast
+        );
+        Navigator.of(context).pop();
         showDialog(
             context: context,
             builder: (BuildContext context) {
-              return EpisodeDialog(ep: item.episode, podcast: item.podcast,);
+              return EpisodeDialog(ep: ep, podcast: podcast,);
             }
         );
       }
-      if(item.type == PostType.EPISODE_REPLY){
+      if(item.extras['type'] == 'PostType.EPISODE_REPLY'){
+        showDialog(
+            context: context,
+            builder: (context) {
+              return Center(child: CircularProgressIndicator());
+            }
+        );
+        Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
+        Map<String, dynamic> episodeMap = item.extras['episode'];
+        Episode ep = Episode.of(
+            guid: episodeMap['guid'],
+            title: episodeMap['title'],
+            description: episodeMap['description'],
+            link: episodeMap['link'],
+            publicationDate: DateTime.fromMillisecondsSinceEpoch(episodeMap['publicationDate']),
+            author: episodeMap['author'],
+            duration: Duration(milliseconds: episodeMap['duration']),
+            contentUrl: episodeMap['contentUrl'],
+            season: episodeMap['season'],
+            episode: episodeMap['episode'],
+            podcast: podcast
+        );
+        Navigator.of(context).pop();
         showDialog(
             context: context,
             builder: (BuildContext context) {
-              return EpisodeDialog(ep: item.episode, podcast: item.podcast);
+              return EpisodeDialog(ep: ep, podcast: podcast);
             }
         );
       }
-      if(item.type == PostType.POST) {
+      if(item.extras['type'] == 'PostType.POST') {
+        Map<String, dynamic> postMap = item.extras['post'];
+        Post post = Post(
+          id: postMap['id'],
+          userUID: postMap['userUID'],
+          username: postMap['username'],
+          postTitle: postMap['postTitle'],
+          datePosted: postMap['datePosted'],
+          postValue: postMap['postValue'],
+          audioFileLocation: postMap['audioFileLocation'],
+          listenCount: postMap['listenCount'],
+          secondsLength: postMap['secondsLength'],
+          streamList: postMap['streamList'],
+          timelines: postMap['timelines'],
+        );
         showDialog(
             context: context,
             builder: (BuildContext context) {
               return SimpleDialog(
-                title: Center(child: Text(item.post.postTitle ?? DateFormat("MMMM dd, yyyy @ hh:mm").format(item.post.datePosted).toString())),
+                title: Center(child: Text(post.postTitle ?? DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted).toString())),
                 contentPadding: EdgeInsets.all(10),
                 children: <Widget>[
-                  Text('Posted By:\n@${item.post.username}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
-                  item.post.postValue != null ? Text('${item.post.postValue ?? ''}') : Container(),
+                  Text('Posted By:\n@${post.username}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
+                  post.postValue != null ? Text('${post.postValue ?? ''}') : Container(),
                   SizedBox(height: 10),
-                  Text('Date Posted:\n${DateFormat("MMMM dd, yyyy @ hh:mm").format(item.post.datePosted).toString()}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
+                  Text('Date Posted:\n${DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted).toString()}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
                   SizedBox(height: 10),
-                  item.post.streamList != null && item.post.streamList.length > 0 ? Wrap(
+                  post.streamList != null && post.streamList.length > 0 ? Wrap(
                     spacing: 8,
-                    children: item.post.streamList.map((tag) => InkWell(
+                    children: post.streamList.map((tag) => InkWell(
                         child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
@@ -76,9 +136,9 @@ class QueuePage extends StatelessWidget {
             }
         );
       }
-      if(item.type == PostType.DIRECT_POST) {
+      if(item.extras['type'] == 'PostType.DIRECT_POST') {
         Navigator.push(context, MaterialPageRoute(
-            builder: (context) => ConversationPageMobile(conversationId: item.directPost.conversationId,)
+            builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
         ));
       }
     }
@@ -150,7 +210,7 @@ class QueuePage extends StatelessWidget {
                   ),
                 ),
                 onTap: () {
-                  //tapItemTile(item);
+                  tapItemTile(item);
                 },
               )
           )
