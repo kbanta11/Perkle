@@ -1,6 +1,7 @@
 import 'package:Perkl/services/ActivityManagement.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:podcast_search/podcast_search.dart';
@@ -23,6 +24,8 @@ class ReplyToEpisodeDialog extends StatelessWidget {
   @override
   build(BuildContext context) {
     User firebaseUser = Provider.of<User>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<ReplyToEpisodeProvider>(create: (_) => ReplyToEpisodeProvider(),),
@@ -52,6 +55,9 @@ class ReplyToEpisodeDialog extends StatelessWidget {
                             shape: CircleBorder(side: BorderSide(color: rep._isRecording ? Colors.red : Colors.deepPurple)),
                             heroTag: null,
                             onPressed: () async {
+                              if(playbackState != null && playbackState.playing) {
+                                mp.pausePost();
+                              }
                               if(rep._isRecording) {
                                 rep.stopRecording();
                                 //await addPostDialog(context, date, recordingLocation, secondsLength);

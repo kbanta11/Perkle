@@ -22,68 +22,6 @@ import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'QueuePage.dart';
 
-class TimerDialog extends StatefulWidget {
-  @override _TimerDialogState createState() => _TimerDialogState();
-}
-
-class _TimerDialogState extends State<TimerDialog> {
-  Timer _timer;
-  int _start = 3000;
-  int _printTime;
-  Color _backgroundColor = Colors.white10;
-
-  void startTimer() {
-    Duration period = Duration(milliseconds: 1);
-    _timer = new Timer.periodic(
-      period,
-        (Timer timer) {
-          setState(() {
-            if(_start < 1) {
-              _timer.cancel();
-            }
-            if(_start % 1000 == 0)
-              _backgroundColor = Colors.white70;
-            _printTime = (_start / 1000).ceil();
-            _start = _start - 1;
-          });
-        }
-    );
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    _printTime = (_start / 1000).ceil();
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    startTimer();
-    if(_start < 1)
-      Navigator.pop(context);
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      body: Center(
-        child: Container(
-          height: 100.0,
-          width: 100.0,
-          child: Text('$_printTime',
-            style: TextStyle(
-              fontSize: 64.0
-            ),
-          )
-        )
-      )
-    );
-  }
-}
-
 class RecordButton extends StatefulWidget {
 
   @override
@@ -116,10 +54,6 @@ class _RecordButtonState extends State<RecordButton> {
                       Wakelock.disable();
                       mp.stopRecording(context);
                     } else {
-                      //await showTimer();
-                      //if(widget.activityManager.currentlyPlayingPlayer != null) {
-                      //  widget.activityManager.pausePlaying();
-                      //}
                       Wakelock.enable();
                       mp.startRecording();
                     }
@@ -319,6 +253,19 @@ class TopPanel extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
+                DropdownButton(
+                  underline: Container(),
+                  icon: Text('${playbackState == null ? '' : playbackState.speed}x', style: TextStyle(color: currentMediaItem != null ? Colors.white : Colors.grey)),
+                  items: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0].map((item) {
+                    return DropdownMenuItem(
+                      child: Text('$item${playbackState != null && playbackState.speed == item ? 'x' : ''}',),
+                      value: item
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    mp.setSpeed(value);
+                  },
+                ),
                 IconButton(
                   icon: Icon(Icons.queue_music, color: mediaQueue != null && mediaQueue.length > 0 ? Colors.white : Colors.grey),
                   onPressed: () {
@@ -333,7 +280,7 @@ class TopPanel extends StatelessWidget {
                     icon: Icon(Icons.replay_30, color: currentMediaItem != null ? Colors.white : Colors.grey),
                     onPressed: () async {
                       if(currentMediaItem != null && playbackState != null && playbackState.position != null) {
-                        await AudioService.rewind();
+                        await mp.rewind(Duration(seconds: 30));
                       }
                     }
                 ),
@@ -343,15 +290,15 @@ class TopPanel extends StatelessWidget {
                       print('Button Pressed: Toggling from Current Playback State: ${playbackState.playing}');
                       if(playbackState.playing) {
                         //print('pausing post');
-                        AudioService.pause();
+                        mp.pausePost();
                         return;
                       }
                       if(currentMediaItem != null) {
-                        AudioService.play();
+                        mp.resume();
                         return;
                       }
                       if(mediaQueue != null && mediaQueue.length > 0) {
-                        AudioService.skipToNext();
+                        mp.skipToNext();
                         return;
                       }
                     }
@@ -360,7 +307,7 @@ class TopPanel extends StatelessWidget {
                   icon: Icon(Icons.forward_30, color: currentMediaItem != null ? Colors.white : Colors.grey),
                   onPressed: () async {
                     if(currentMediaItem != null && playbackState != null && playbackState.position != null) {
-                      await AudioService.fastForward();
+                      await mp.fastForward(Duration(seconds: 30));
                     }
                   }
                 ),
@@ -368,7 +315,7 @@ class TopPanel extends StatelessWidget {
                     icon: Icon(Icons.skip_next, color: mediaQueue != null && mediaQueue.length > 0 ? Colors.white : Colors.grey),
                     onPressed: () {
                       if(mediaQueue != null && mediaQueue.length > 0) {
-                        AudioService.skipToNext();
+                        mp.skipToNext();
                       }
                     }
                 )
@@ -383,158 +330,6 @@ class TopPanel extends StatelessWidget {
   }
 }
 
-//Old Version
-/*-----------------------------------
-Widget topPanel(BuildContext context, ActivityManager activityManager, {String pageTitle, bool showSearchBar = false, String searchRequestId}) {
-  return Container(
-    height: 250.0,
-    width: MediaQuery.of(context).size.width,
-    decoration: BoxDecoration(
-      color: Colors.deepPurple,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black,
-          offset: Offset(0.0, 5.0),
-          blurRadius: 20.0,
-        )
-      ],
-      borderRadius: BorderRadius.only(bottomLeft: Radius.elliptical(35.0, 25.0), bottomRight: Radius.elliptical(35.0, 25.0)),
-      image: DecorationImage(
-        fit: BoxFit.cover,
-        image: AssetImage('assets/images/mic-stage.jpg'),
-      ),
-    ),
-    child: Column(
-      children: <Widget>[
-        AppBar(
-          backgroundColor: Colors.transparent,
-          title: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                mainPopMenu(context),
-                Expanded(
-                  child: showSearchBar ? Padding(
-                      padding: EdgeInsets.only(left: 20.0),
-                      child: TextField(
-                        autofocus: true,
-                        decoration: InputDecoration(hintText: 'Search...', hintStyle: TextStyle(color: Colors.white), border: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white),
-                        )),
-                        style: TextStyle(color: Colors.white),
-                        cursorColor: Colors.white,
-                        onChanged: (value) async {
-                          DateTime date = DateTime.now();
-                          await Firestore.instance.collection('requests').document(searchRequestId).setData({'searchTerm': value, "searchDateTime": date});
-                        }
-                      )
-                  ) : Center(child: new Text(pageTitle != null ? pageTitle : 'Perkl')),
-                ),
-              ]
-          ),
-          centerTitle: true,
-          automaticallyImplyLeading: false,
-          titleSpacing: 5.0,
-          actions: <Widget>[
-            IconButton(
-              icon: Icon(showSearchBar ? Icons.cancel : Icons.search),
-              iconSize: 40.0,
-              onPressed: () {
-                showSearchBar ? Navigator.of(context).pop() : Navigator.push(context, MaterialPageRoute(
-                  builder: (context) => SearchPage(activityManager: activityManager),
-                ));
-              },
-            ),
-          ],
-        ),
-        SizedBox(height: 15.0),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: <Widget>[
-            Container(
-              height: 75.0,
-              width: 75.0,
-              child: FittedBox(
-                child: FloatingActionButton(
-                  child: Icon(
-                    Icons.cloud_upload,
-                    color: Colors.white,
-                  ),
-                  heroTag: null,
-                  onPressed: () async {
-                    await showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return UploadPostDialog();
-                      }
-                    );
-                  },
-                )
-              ),
-            ),
-            RecordButton(activityManager: activityManager,)
-          ]
-        ),
-      ]
-    ),
-  );
-}
- -------------------------------------------*/
-/*
-class PlaylistControls extends StatefulWidget {
-  ActivityManager activityManager;
-
-  PlaylistControls({Key key, @required this.activityManager}) : super(key: key);
-
-  @override
-  _PlaylistControlsState createState() => new _PlaylistControlsState();
-}
-
-class _PlaylistControlsState extends State<PlaylistControls> {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        InkWell(
-            child: Text('<<', style: TextStyle(color: Colors.white70, fontSize: 60.0),)
-        ),
-        SizedBox(width: 15.0),
-        Container(
-          height: 120.0,
-          width: 120.0,
-          child: StreamBuilder(
-            stream: widget.activityManager.playlistPlaying,
-            builder: (context, snapshot) {
-              if(snapshot.hasData && snapshot.data == true) {
-                return FloatingActionButton(
-                  elevation: 20,
-                  backgroundColor: Colors.deepPurpleAccent,
-                  child: Icon(Icons.pause, color: Colors.white, size: 90.0,),
-                  onPressed: () {
-                    widget.activityManager.pausePlaylist();
-                  },
-                );
-              }
-              return FloatingActionButton(
-                child: Icon(Icons.play_arrow, color: Colors.white, size: 90.0,),
-                onPressed: () {
-                  widget.activityManager.playPlaylist();
-                },
-              );
-            }
-          )
-        ),
-        SizedBox(width: 15.0),
-        InkWell(
-          child: Text('>>', style: TextStyle(color: Colors.white70, fontSize: 60.0),)
-        ),
-      ]
-    );
-  }
-}
- */
 
 class UserInfoSection extends StatefulWidget {
   final PerklUser user;

@@ -153,7 +153,7 @@ class QueuePage extends StatelessWidget {
             title: Text(currentMediaItem.title),
             subtitle: Text(currentMediaItem.artist),
             onTap: () {
-              //tapItemTile(mp.currentPostPodItem);
+              tapItemTile(currentMediaItem);
             },
           ),
         )
@@ -186,7 +186,7 @@ class QueuePage extends StatelessWidget {
                               child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == item.id && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                             ),
                             onTap: () {
-                              playbackState.playing != null && playbackState.playing && mp.currentPostPodId == item.id ? mp.pausePost() : AudioService.playMediaItem(item);
+                              playbackState.playing != null && playbackState.playing && mp.currentPostPodId == item.id ? mp.pausePost() : mp.playMediaItem(item);
                             },
                           ),
                           SizedBox(width: 5,),
@@ -201,7 +201,7 @@ class QueuePage extends StatelessWidget {
                               child: Center(child: FaIcon(FontAwesomeIcons.minus, color: Colors.white, size: 16)),
                             ),
                             onTap: () {
-                              AudioService.removeQueueItem(item);
+                              mp.removeQueueItem(item);
                             },
                           )
                         ],

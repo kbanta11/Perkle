@@ -894,7 +894,7 @@ class CustomMediaFormat extends NativeMediaFormat {
   @override
   int get androidEncoder => 3;
 
-  /// MediaRecorder.OutputFormat.AAC_ADTS
+  /// MediaRecorder.OutputFormat.MP4
   @override
   int get androidFormat => 2;
 

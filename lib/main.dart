@@ -218,10 +218,25 @@ class MainAppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  playMediaItem(MediaItem mediaItem) async {
+    _audioHandler.playMediaItem(mediaItem);
+    notifyListeners();
+  }
+
   stopPost() {
     //isPlaying = false;
     currentPostPodItem = null;
     _audioHandler.stop();
+    notifyListeners();
+  }
+
+  resume() {
+    _audioHandler.play();
+    notifyListeners();
+  }
+
+  skipToNext() {
+    _audioHandler.skipToNext();
     notifyListeners();
   }
 
@@ -233,6 +248,17 @@ class MainAppProvider extends ChangeNotifier {
     //isPlaying = false;
     notifyListeners();
   }
+
+  rewind(Duration interval) {
+    _audioHandler.rewind(interval);
+    notifyListeners();
+  }
+
+  fastForward(Duration interval) {
+    _audioHandler.fastForward(interval);
+    notifyListeners();
+  }
+
 
   updatePanelState() {
     panelOpen = !panelOpen;
@@ -313,6 +339,17 @@ class MainAppProvider extends ChangeNotifier {
     //queue.removeWhere((element) => element.id == post.id);
     _audioHandler.removeQueueItem(mediaItem);
     //AudioService.removeQueueItem(mediaItem);
+    notifyListeners();
+  }
+
+  removeQueueItem(MediaItem item) {
+    _audioHandler.removeQueueItem(item);
+    //AudioService.removeQueueItem(mediaItem);
+    notifyListeners();
+  }
+
+  setSpeed(double speed) {
+    _audioHandler.setSpeed(speed);
     notifyListeners();
   }
 

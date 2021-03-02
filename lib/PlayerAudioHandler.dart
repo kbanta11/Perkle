@@ -101,6 +101,7 @@ class PlayerAudioHandler extends BaseAudioHandler
     await player.play(item.id, stayAwake: true, position: startDuration).catchError((e) {
       print('error playing item: $e');
     });
+    player.setPlaybackRate(playbackRate: playbackState.value.speed);
     //Set Duration once it's available
     player.onDurationChanged.listen((Duration d) {
       print('Setting duration for: ${item.title}');
@@ -123,6 +124,7 @@ class PlayerAudioHandler extends BaseAudioHandler
             MediaControl.fastForward,
             queue != null && !(await queue.isEmpty) ? MediaControl.skipToNext : null].where((element) => element != null).toList(),
           playing: true,
+          systemActions: Set.from([MediaAction.playPause]),
           updatePosition: d,
           processingState: AudioProcessingState.ready
         ));
@@ -155,50 +157,10 @@ class PlayerAudioHandler extends BaseAudioHandler
           processingState: AudioProcessingState.completed,
           playing: false
         ));
-        /*
-        AudioServiceBackground.setState(
-            controls: [MediaControl.stop,],
-            processingState: AudioProcessingState.completed,
-            playing: false);
-         */
       }
     });
     print('playing item now under way');
   }
-
-  /*
-  @override
-  Future<void> start(Map<String, dynamic> params) async {
-    print('Audio Service Starting up...');
-    AudioServiceBackground.setState(
-        controls: [MediaControl.play, MediaControl.stop],
-        playing: false,
-        processingState: AudioProcessingState.connecting
-    );
-    MediaItem item = MediaItem.fromJson(params['mediaItem']);
-    if(item != null) {
-      print('Playing item: ${item.title}');
-      await _playCurrentItem(item: item);
-      AudioServiceBackground.setMediaItem(item);
-      AudioServiceBackground.setState(
-        controls: [
-          MediaControl.rewind,
-          MediaControl.pause,
-          MediaControl.fastForward,
-          AudioServiceBackground.queue != null &&
-              AudioServiceBackground.queue.length > 0
-              ? MediaControl.skipToNext
-              : null
-        ].where((element) => element != null).toList(),
-        playing: true,
-        processingState: AudioProcessingState.ready,
-      );
-    } else {
-      AudioServiceBackground.setState(controls: [MediaControl.stop], processingState: AudioProcessingState.none, playing: false);
-    }
-    return;
-  }
-  */
 
   @override
   Future<void> fastForward([Duration interval]) async {
@@ -243,6 +205,7 @@ class PlayerAudioHandler extends BaseAudioHandler
         queue != null && !(await queue.isEmpty) ? MediaControl.skipToNext : null
       ].where((element) => element != null).toList(),
       processingState: AudioProcessingState.ready,
+      systemActions: Set.from([MediaAction.playPause]),
       playing: false,
       updatePosition: currentPosition,
     ));
@@ -270,6 +233,7 @@ class PlayerAudioHandler extends BaseAudioHandler
         MediaControl.fastForward,
         queue != null && !(await queue.isEmpty) ? MediaControl.skipToNext : null
       ].where((element) => element != null).toList(),
+        systemActions: Set.from([MediaAction.playPause]),
       playing: true,
       processingState: AudioProcessingState.ready
     ));
@@ -280,6 +244,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       processingState: AudioProcessingState.ready,
     );
      */
+    player.setPlaybackRate(playbackRate: playbackState.value.speed);
     player.resume();
     return null;
   }
@@ -298,6 +263,7 @@ class PlayerAudioHandler extends BaseAudioHandler
         queue != null && !(await queue.isEmpty) ? MediaControl.skipToNext : null
       ].where((element) => element != null).toList(),
       processingState: AudioProcessingState.ready,
+        systemActions: Set.from([MediaAction.playPause]),
       playing: true
     ));
     /*
@@ -378,6 +344,18 @@ class PlayerAudioHandler extends BaseAudioHandler
       await updateLocalQueue(tempQueue);
       //print(AudioServiceBackground.queue);
     }
+    return null;
+  }
+
+  @override
+  Future<void> setSpeed(double speed) {
+    bool isPlaying = playbackState.value.playing;
+    if(isPlaying) {
+      player.setPlaybackRate(playbackRate: speed);
+    }
+    playbackState.add(playbackState.value.copyWith(
+      speed: speed,
+    ));
     return null;
   }
 
