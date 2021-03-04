@@ -1,6 +1,8 @@
 import 'package:Perkl/SignUpPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:crypto/crypto.dart';
 //import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 //import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,12 +14,59 @@ import 'package:flutter/gestures.dart';
 //import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
+import 'dart:convert';
 
 import 'main.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'HomePage.dart';
 import 'ConversationPage.dart';
+
+String generateNonce([int length = 32]) {
+  final charset =
+      '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+  final random = Random.secure();
+  return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+      .join();
+}
+
+/// Returns the sha256 hash of [input] in hex notation.
+String sha256ofString(String input) {
+  final bytes = utf8.encode(input);
+  final digest = sha256.convert(bytes);
+  return digest.toString();
+}
+
+Future<UserCredential> signInWithApple() async {
+  // To prevent replay attacks with the credential returned from Apple, we
+  // include a nonce in the credential request. When signing in in with
+  // Firebase, the nonce in the id token returned by Apple, is expected to
+  // match the sha256 hash of `rawNonce`.
+  final rawNonce = generateNonce();
+  final nonce = sha256ofString(rawNonce);
+
+  // Request credential for the currently signed in Apple account.
+  final appleCredential = await SignInWithApple.getAppleIDCredential(
+    scopes: [
+      AppleIDAuthorizationScopes.email,
+      AppleIDAuthorizationScopes.fullName,
+    ],
+    nonce: nonce,
+  );
+  print('Apple Credential: $appleCredential');
+  // Create an `OAuthCredential` from the credential returned by Apple.
+  final oauthCredential = OAuthProvider("apple.com").credential(
+    idToken: appleCredential.identityToken,
+    rawNonce: rawNonce,
+  );
+
+  // Sign in the user with Firebase. If the nonce we generated earlier does
+  // not match the nonce in `appleCredential.identityToken`, sign in will fail.
+  return await FirebaseAuth.instance.signInWithCredential(oauthCredential).catchError((e) {
+    print('Error signing in with apple: $e');
+  });
+}
 
 final GoogleSignIn _googleSignIn = new GoogleSignIn();
 
@@ -201,6 +250,34 @@ class _LoginPageState extends State<LoginPage> {
                         textColor: Colors.white,
                         elevation: 7.0,
                         onPressed: () {
+                          if(_email == null || _email.length == 0 || _password == null || _password.length == 0) {
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return SimpleDialog(
+                                  contentPadding: EdgeInsets.all(10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
+                                  title: Text('Email or Password is Missing!', textAlign: TextAlign.center,),
+                                  children: [
+                                    Center(child: Text('It looks like you forgot to include your email or password when logging in!', textAlign: TextAlign.center)),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        FlatButton(
+                                          child: Text('OK', style: TextStyle(color: Colors.white)),
+                                          color: Colors.deepPurple,
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                        )
+                                      ],
+                                    )
+                                  ]
+                                );
+                              }
+                            );
+                            return;
+                          }
                           showDialog(
                             context: context,
                             builder: (context) {
@@ -223,32 +300,27 @@ class _LoginPageState extends State<LoginPage> {
                             print('Error Logging In: ${e.code}/${e.message}');
                             Navigator.of(context).pop();
                             switch(e.code) {
-                              case "ERROR_INVALID_EMAIL":
+                              case "invalid-email":
                                 _errorMessage = "Your email address is invalid.";
                                 break;
-                              case "ERROR_WRONG_PASSWORD":
+                              case "wrong-password":
                                 _errorMessage = "Your password is incorrect.";
                                 break;
-                              case "ERROR_USER_NOT_FOUND":
-                                _errorMessage = "A user does not exist for this email address.";
+                              case "user-not-found":
+                                _errorMessage = "A user does not exist for this email address. Sign Up Now!";
                                 break;
-                              case "ERROR_USER_DISABLED":
-                                _errorMessage = "This user has been disabled.";
-                                break;
-                              case "ERROR_TOO_MANY_REQUESTS":
-                                _errorMessage = "Too many failed attempts. Try again later.";
-                                break;
-                              case "ERROR_OPERATION_NOT_ALLOWED":
-                                _errorMessage = "Email and Password login is not enabled.";
+                              case "too-many-requests":
+                                _errorMessage = "Too many failed login attempts. Please try again later.";
                                 break;
                               default:
-                                _errorMessage = "An undefined Error happened.";
+                                _errorMessage = "We're Sorry! It looks like there was an undefined Error logging in. Please try again, or sign up if you don't yet have an account!";
                             }
                             showDialog(
                               context: context,
                               builder: (context) {
                                 return SimpleDialog(
-                                  title: Center(child: Text('Error Logging In')),
+                                  contentPadding: EdgeInsets.all(10),
+                                  title: Center(child: Text('Sorry!')),
                                   children: [
                                     Center(child: Text(_errorMessage, textAlign: TextAlign.center,)),
                                     Row(
@@ -273,6 +345,10 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       _GoogleSignInSection(),
+                      Platform.isIOS ? SignInWithAppleButton(
+                          onPressed: () async {
+                            await signInWithApple();
+                          }) : Container(),
                       SizedBox(height: 100.0),
                       Text('Don\'t have an account?'),
                       SizedBox(height: 10.0),
@@ -366,6 +442,9 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
       print('Error ${e.toString()}');
     });
     print('Google User: $googleUser');
+    if(googleUser == null) {
+      return false;
+    }
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
     final AuthCredential credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,

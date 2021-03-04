@@ -130,11 +130,12 @@ Future<void> missingUsername(BuildContext context) {
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: Text('Username Missing!'),
-        content: const Text('You forgot to enter your username!'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+        title: Text('Username Missing!', textAlign: TextAlign.center),
+        content: Text('You forgot to enter your username!', textAlign: TextAlign.center),
         actions: <Widget>[
           FlatButton(
-            child: Text('Ok'),
+            child: Text('OK'),
             onPressed: () {
               Navigator.of(context).pop();
             },
@@ -150,8 +151,9 @@ Future<void> usernameInUse(BuildContext context) {
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: Text('Username Taken!'),
-        content: const Text('This username is already in use. Please choose a different usename.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
+        title: Text('Username Taken!', textAlign: TextAlign.center),
+        content: Text('This username is already in use. Please choose a different usename.', textAlign: TextAlign.center),
         actions: <Widget>[
           FlatButton(
             child: Text('Ok'),
@@ -170,8 +172,9 @@ Future<void> usernameError(BuildContext context) {
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: Text('Invalid Username!'),
-        content: const Text('The chosen username is invalid.  Usernames must be between 3 and 30 characters and can only contain letters (a-z, A-Z), numbers (0-9), periods (.) and underscores (_).'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
+        title: Text('Invalid Username!', textAlign: TextAlign.center),
+        content: Text('The chosen username is invalid.  Usernames must be between 3 and 30 characters and can only contain letters (a-z, A-Z), numbers (0-9), periods (.) and underscores (_).'),
         actions: <Widget>[
           FlatButton(
             child: Text('Ok'),
@@ -218,6 +221,7 @@ class _UsernameDialogState extends State<UsernameDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
       title: Text('Enter a Username'),
       content: Container(
         width: 150.0,

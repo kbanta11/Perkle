@@ -26,8 +26,10 @@ dependencies:
   firebase_messaging: 8.0.0-dev.15
   cloud_functions:
   google_sign_in:
+  sign_in_with_apple: ^2.5.4
   image_picker:
   image_cropper:
+  crypto: ^2.1.5
   share:
   intl:
   wakelock:
