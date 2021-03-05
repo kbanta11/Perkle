@@ -102,7 +102,6 @@ class _AddPostDialogState extends State<AddPostDialog> {
                               //print('getting date');
                               DateTime date = new DateTime.now();
                               //print('date before dialog: $date');
-                              print('widget recording location: ${_recordingLocation}\nMatching: ${widget.recordingLocation == recordingLocation}');
                               //await addPostDialog(context, date, recordingLocation, secondsLength);
                             } else {
                               List<dynamic> startRecordVals = await mp.activityManager.startRecordNewPost(mp);

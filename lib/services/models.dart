@@ -243,7 +243,7 @@ class Post {
       'userUID': this.userUID,
       'username': this.username,
       'postTitle': this.postTitle,
-      'datePosted': this.datePosted,
+      'datePosted': this.datePosted.millisecondsSinceEpoch,
       'postValue': this.postValue,
       'audioFileLocation': this.audioFileLocation,
       'listenCount': this.listenCount,

@@ -378,14 +378,17 @@ class ActivityManager {
       await recorder.record(Track.fromFile(tempFilePath, mediaFormat: CustomMediaFormat()));
       recordingDuration = Duration(milliseconds: 0);
       mp.setRecordingTime(recordingDuration);
+      recorder.dispositionStream(interval: Duration(seconds: 1)).listen((RecordingDisposition disp) {
+        mp.setRecordingTime(disp.duration);
+      });
+      recorder.onStopped = ({bool wasUser = true}) {
+        print('recorder stopped, duration: ${recorder.duration}');
+        mp.setRecordingTime(recorder.duration);
+      };
+      /*
       recordingTimer = Timer.periodic(Duration(seconds: 1), (timer) {
         recordingDuration = Duration(seconds: recordingDuration.inSeconds + 1);
         mp.setRecordingTime(recordingDuration);
-      });
-      /*
-      recorder.dispositionStream().listen((disposition) {
-        print('recording disposition: $disposition');
-        mp.setRecordingTime(disposition.duration);
       });
        */
       DateTime startRecordDateTime = DateTime.now();
@@ -403,7 +406,7 @@ class ActivityManager {
       //await fsRecorder.stopRecorder();
       await recorder.stop();
       recorder.release();
-      recordingTimer.cancel();
+      //recordingTimer.cancel();
       recorder = new SoundRecorder();
       DateTime endRecordDateTime = DateTime.now();
       Duration recordingTime = endRecordDateTime.difference(startDateTime);

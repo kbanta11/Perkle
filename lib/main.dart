@@ -268,17 +268,6 @@ class MainAppProvider extends ChangeNotifier {
   addPostToQueue(PostPodItem post) async {
     MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
     _audioHandler.addQueueItem(mediaItem);
-    /*
-    if(!AudioService.running) {
-      await AudioService.start(
-        backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
-        params: {'mediaItem': mediaItem.toJson()},
-      );
-    } else {
-      AudioService.addQueueItem(mediaItem);
-    }
-    */
-    //queue.add(post);
     notifyListeners();
   }
 
@@ -292,14 +281,6 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   addUnheardToQueue({String conversationId, String userId}) async {
-    /*
-    if(!AudioService.running) {
-      await AudioService.start(
-        backgroundTaskEntrypoint: _backgroundTaskEntrypoint,
-        params: {},
-      );
-    }
-     */
 
     List<DirectPost> unheardPosts = List<DirectPost>();
     List<String> heardPostIDs = await DBService().getHeardPostIds(conversationId: conversationId, userId: userId);
