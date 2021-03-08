@@ -205,7 +205,24 @@ class Timeline extends StatelessWidget {
                                                     fit: BoxFit.cover,
                                                     image: NetworkImage(_post.podcast.image ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
                                                 )
-                                            )
+                                            ),
+                                          child: InkWell(
+                                            child: Container(),
+                                        onTap: () async {
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) {
+                                                  return Center(child: CircularProgressIndicator());
+                                                }
+                                              );
+                                              Podcast pod = await Podcast.loadFeed(url: _post.podcast.url);
+                                              Navigator.of(context).pop();
+                                          Navigator.push(context, MaterialPageRoute(
+                                            builder: (context) =>
+                                                PodcastPage(pod,),
+                                          ));
+                                        },
+                                      ),
                                         ),
                                         title: Text(_post.title),
                                         subtitle: Text('${_post.podcast.title}'),
@@ -278,7 +295,14 @@ class Timeline extends StatelessWidget {
                                         ],
                                       ),
                                       onTap: () async {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return Center(child: CircularProgressIndicator());
+                                          }
+                                        );
                                         post.podcast = await Podcast.loadFeed(url: post.podcast.url);
+                                        Navigator.of(context).pop();
                                         mp.replyToEpisode(post, post.podcast, context);
                                       },
                                     ),

@@ -94,6 +94,7 @@ class DiscoverTag {
 
 class Conversation {
   String id;
+  String name;
   List<String> memberList;
   DateTime lastDate;
   String lastPostUsername;
@@ -103,6 +104,7 @@ class Conversation {
 
   Conversation({
     this.id,
+    this.name,
     this.memberList,
     this.lastDate,
     this.lastPostUsername,
@@ -114,6 +116,7 @@ class Conversation {
   factory Conversation.fromFirestore(DocumentSnapshot snapshot) {
     return Conversation(
       id: snapshot.reference.id,
+      name: snapshot.data()['name'],
       memberList: snapshot.data()['memberList'] == null ? null : snapshot.data()['memberList'].map<String>((value) => value.toString()).toList(),
       lastDate: snapshot.data()['lastDate'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snapshot.data()['lastDate'].millisecondsSinceEpoch),
       lastPostUsername: snapshot.data()['lastPostUsername'],
@@ -121,6 +124,30 @@ class Conversation {
       conversationMembers: snapshot.data()['conversationMembers'] == null ? null : Map<String, dynamic>.from(snapshot.data()['conversationMembers']),
       postMap: snapshot.data()['postMap'] == null ? null : Map<String, dynamic>.from(snapshot.data()['postMap']),
     );
+  }
+
+  String getTitle(PerklUser user) {
+    String titleText = '';
+    //Map<dynamic, dynamic> memberDetails = this.conversationMembers;
+    if(this.conversationMembers != null){
+      this.conversationMembers.forEach((key, value) {
+        if(key != user.uid) {
+          if(titleText.length > 0)
+            titleText = titleText + ', ' + value['username'];
+          else
+            titleText = value['username'];
+        }
+      });
+    }
+
+    if(this.name != null) {
+      titleText = this.name;
+    }
+
+    if(titleText.length > 50){
+      titleText = titleText.substring(0,47) + '...';
+    }
+    return titleText;
   }
 }
 

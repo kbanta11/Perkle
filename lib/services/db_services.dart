@@ -171,6 +171,10 @@ class DBService {
     });
   }
 
+  Future<PerklUser> getPerklUser(String uid) async {
+    return await _db.collection('users').doc(uid).get().then((snap) => PerklUser.fromFirestore(snap));
+  }
+
   Future<void> updateDeviceToken(String userToken, String uid) async {
     var tokens = _db
         .collection('users')
@@ -442,7 +446,7 @@ class DBService {
       //Create new conversation document and update data
       conversationRef = _db.collection('/conversations').doc();
       convoId = conversationRef.id;
-      print('creating new conversation: $conversationId');
+      //print('creating new conversation: $conversationId');
       Map<String, dynamic> conversationMembers = new Map<String, dynamic>();
       memberMap.forEach((uid, username) {
         if(uid == sender.uid)
@@ -482,6 +486,31 @@ class DBService {
       print('Error committing batch: $error');
     }));
     print('batch committed');
+  }
+
+  Future<Conversation> createNewGroup(String groupName, List<String> memberIds) async {
+    DocumentReference conversationRef = _db.collection('/conversations').doc();
+    String convoId = conversationRef.id;
+    print('creating new conversation: $convoId');
+    List<PerklUser> members = List<PerklUser>();
+    for(String id in memberIds) {
+      members.add(await getPerklUser(id));
+    }
+    Map<String, dynamic> conversationMembers = new Map<String, dynamic>();
+    members.forEach((member) {
+      conversationMembers.addAll({member.uid: {'username': member.username, 'unreadPosts': 0}});
+    });
+    Map<String, dynamic> postMap = Map<String, dynamic>();
+    await _db.runTransaction((transaction) async {
+      return transaction.set(conversationRef, {
+        'name': groupName,
+        'conversationMembers': conversationMembers,
+        'postMap': postMap,
+        'memberList': members.map((user) => user.uid).toList(),
+        'lastDate': DateTime.now(),
+      });
+    });
+    return await conversationRef.get().then((ds) => Conversation.fromFirestore(ds));
   }
 
   //Delete a regular post document (does not delete the audio file)

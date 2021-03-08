@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'CreateGroupDialog.dart';
 import 'main.dart';
 
 
@@ -29,17 +29,109 @@ class _ShareToDialogState extends State<ShareToDialog> {
   Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
   Map<String, dynamic> _addToConversations = new Map<String, dynamic>();
 
+  Widget getSelectList(PerklUser user) {
+    List<String> selectableFollowers = user.followers.where((followerID) => user.following.contains(followerID)).toList();
+    return Expanded(
+        child: StreamBuilder(
+            stream: DBService().streamConversations(user.uid),
+            builder: (context, AsyncSnapshot<List<Conversation>> convoSnap) {
+              print('Convo Snap: ${convoSnap.data}');
+              if(convoSnap.hasData) {
+                List<Conversation> convoList = convoSnap.data;
+                List<Widget> tileList = List<Widget>();
+                for(Conversation convo in convoList) {
+                  if(!_addToConversations.containsKey(convo.id))
+                    _addToConversations.addAll({convo.id: false});
+                  bool _val = _addToConversations[convo.id];
+                  tileList.add(CheckboxListTile(
+                      title: Text(convo.getTitle(user), style: TextStyle(fontSize: 14)),
+                      value: _val,
+                      onChanged: (value) {
+                        print(_addToConversations);
+                        setState(() {
+                          _addToConversations[convo.id] = value;
+                        });
+                      }
+                  ));
+                }
+                if(selectableFollowers != null && selectableFollowers.length > 0) {
+                  tileList.insert(0, ListTile(
+                    title: Text('Create New Group'),
+                    trailing: Icon(Icons.people),
+                    onTap: () async {
+                      await showDialog(
+                          context: context,
+                          builder: (context) {
+                            return CreateGroupDialog(user: user);
+                          }
+                      ).then((val) {
+                        if(val != null) {
+                          //select newly created convo
+                          Conversation newConvo = val;
+                          setState(() {
+                            _addToConversations.addAll({newConvo.id: true});
+                          });
+                        } else {
+                          print('Group Creation Cancelled...');
+                        }
+                        print('Value from create group dialog: $val');
+                      });
+                    },
+                  ));
+                  tileList.insert(1, Divider(height: 5,));
+                  tileList.add(Divider(height: 5));
+                  tileList.add(ListTile(
+                      title: Text('Mutual Followers...', style: TextStyle(color: Colors.deepPurple))
+                  ));
+                  tileList.add(Divider(height: 5));
+                }
+                for(String follower in selectableFollowers) {
+                  if(!_sendToUsers.containsKey(follower)) {
+                    _sendToUsers.addAll({follower: false});
+                  }
+                  bool _val = _sendToUsers[follower];
+                  tileList.add(CheckboxListTile(
+                      title: FutureBuilder(
+                          future: DBService().getPerklUser(follower),
+                          builder: (context, AsyncSnapshot<PerklUser> thisUserSnap) {
+                            if(!thisUserSnap.hasData)
+                              return Container();
+                            return Text(thisUserSnap.data.username, style: TextStyle(fontSize: 14),);
+                          }
+                      ),
+                      value: _val,
+                      onChanged: (value) {
+                        print(_sendToUsers);
+                        setState(() {
+                          _sendToUsers[follower] = value;
+                        });
+                      }
+                  ));
+                }
+                print('Tile List: $tileList');
+                return ListView(
+                  children: tileList != null && tileList.length > 0 ? tileList : [Container()],
+                );
+              }
+              return Container();
+            }
+        )
+    );
+  }
+
   @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    return SimpleDialog(
+    return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
       contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
       title: Center(child: Text('Share and Discuss',
           style: TextStyle(color: Colors.deepPurple)
       )),
-      children: <Widget>[
-        _isLoading ? Center(
+      content: Container(
+        height: MediaQuery.of(context).size.height - 20,
+        width: MediaQuery.of(context).size.width - 20,
+        child: _isLoading ? Center(
             child: Container(
                 height: 75.0,
                 width: 75.0,
@@ -50,6 +142,8 @@ class _ShareToDialogState extends State<ShareToDialog> {
               Center(child: Text('${widget.episode.title}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center,),),
               Center(child: Text('${widget.podcast.title}', style: TextStyle(fontSize: 16), textAlign: TextAlign.center)),
               SizedBox(height: 10),
+              getSelectList(widget.currentUser),
+              /*
               Text('Existing Conversations'),
               Divider(height: 2.5),
               StreamBuilder(
@@ -157,6 +251,7 @@ class _ShareToDialogState extends State<ShareToDialog> {
                       );
                   }
               ),
+              */
               Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
@@ -216,8 +311,8 @@ class _ShareToDialogState extends State<ShareToDialog> {
                   ]
               )
             ]
-        ),
-      ],
+        )
+      ),
     );
   }
 }
