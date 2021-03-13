@@ -8,7 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 //import 'package:cloud_firestore/cloud_firestore.dart';
 //import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flushbar/flushbar.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
 //import 'package:provider/provider.dart';
@@ -102,6 +102,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     _firebaseMessaging.getInitialMessage().then((initialMessage) {
+      print('Initial Message: $initialMessage');
       if(initialMessage?.data != null && initialMessage?.data['conversationId'] != null) {
         Navigator.pushReplacement(context, MaterialPageRoute(
           builder: (context) => ConversationPageMobile(conversationId: initialMessage.data['conversationId']),
@@ -112,14 +113,14 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Remote Message: $message');
+      print('Remote Message: ${message.notification}');
       Flushbar(
         backgroundColor: Colors.deepPurple,
-        title:  message.data['notification']['title'],
-        message:  message.data['notification']['body'],
+        title:  message.notification.title,
+        message:  message.notification.body,
         duration:  Duration(seconds: 3),
         margin: EdgeInsets.all(8),
-        borderRadius: 8,
+        borderRadius: BorderRadius.circular(8),
         flushbarPosition: FlushbarPosition.TOP,
         onTap: (flushbar) {
           String conversationId = message?.data['conversationId'];

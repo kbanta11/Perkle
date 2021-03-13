@@ -2,7 +2,8 @@ import 'package:Perkl/main.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:audioplayers/audioplayers.dart';
+//import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 import 'CreateGroupDialog.dart';
 import 'PageComponents.dart';
 import 'services/db_services.dart';
@@ -32,7 +33,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
   String _recordingLocation;
   DateTime _startDate;
   int _secondsLength;
-  AudioPlayer player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
+  AudioPlayer player = new AudioPlayer();
   Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
   Map<String, dynamic> _addToConversations = new Map<String, dynamic>();
 
@@ -222,7 +223,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                       child: InkWell(
                         borderRadius: BorderRadius.all(Radius.circular(25)),
                         child: Icon(_isPlayingRecorder ? Icons.pause : Icons.play_arrow, color: Colors.white,),
-                        onTap: () {
+                        onTap: () async {
                           if(_recordingLocation == null) {
                             return;
                           }
@@ -234,13 +235,30 @@ class _AddPostDialogState extends State<AddPostDialog> {
                           } else {
                             print('Playing recording at: ${_recordingLocation}');
                             player.dispose();
-                            player = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
-                            player.play(_recordingLocation, isLocal: true);
+                            player = new AudioPlayer();
+                            print('Setting file path');
+                            await player.setFilePath(_recordingLocation).then((Duration d) {
+                              print('Duration of recorded file: ${d.inMilliseconds}');
+                            });
+                            //await Future.delayed(Duration(milliseconds: 500));
+                            print('Starting to play local file');
+                            player.play();
+                            print('player started....');
+                            //player.play(_recordingLocation, isLocal: true);
+                            player.processingStateStream.listen((ProcessingState state) {
+                              if(state == ProcessingState.completed) {
+                                setState(() {
+                                  _isPlayingRecorder = false;
+                                });
+                              }
+                            });
+                            /*
                             player.onPlayerCompletion.listen((event) {
                               setState(() {
                                 _isPlayingRecorder = false;
                               });
                             });
+                            */
                             setState(() {
                               _isPlayingRecorder = true;
                             });

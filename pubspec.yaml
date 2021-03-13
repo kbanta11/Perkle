@@ -18,41 +18,42 @@ environment:
 
 dependencies:
 
-  cloud_firestore:
-  firebase_auth:
-  firebase_core:
-  firebase_database:
-  firebase_storage:
-  firebase_messaging: 8.0.0-dev.15
-  cloud_functions:
-  google_sign_in:
+  cloud_firestore: ^1.0.1
+  firebase_auth: ^1.0.1
+  firebase_core: ^1.0.1
+  firebase_database: ^6.1.0
+  firebase_storage: ^8.0.0
+  firebase_messaging: ^9.0.0
+  cloud_functions: ^1.0.0
+  google_sign_in: ^5.0.0
   sign_in_with_apple: ^2.5.4
-  image_picker:
-  image_cropper:
-  crypto: ^2.1.5
-  share:
-  intl:
-  wakelock:
+  image_picker: ^0.7.2+1
+  image_cropper: ^1.4.0
+  crypto: ^3.0.0
+  share: ^2.0.1
+  intl: ^0.17.0
+  wakelock: ^0.5.0+2
   audio_service:
     path: ../audio_service
   audio_session:
+  just_audio:
+    path: ../just_audio/just_audio
   #sounds: ^0.9.3
   sounds:
     path: ../sounds
-  #audio_recorder:
-  flutter_launcher_icons:
-  flushbar:
-  url_launcher:
-  file_picker:
-  path_provider:
-  audioplayers:
+  #flutter_launcher_icons:
+  another_flushbar: ^1.10.5
+  url_launcher: ^6.0.2
+  file_picker: ^3.0.0
+  path_provider: ^2.0.1
+  #audioplayers:
     #path: ../audioplayers
-  provider:
-  sliding_up_panel:
-  font_awesome_flutter:
-  marquee:
-  permission_handler: 5.0.1+2
-  http:
+  provider: ^5.0.0
+  sliding_up_panel: ^1.0.2
+  font_awesome_flutter: ^8.12.0
+  marquee: ^1.7.0
+  permission_handler: ^6.0.1
+  http: ^0.13.0
   package_info:
   launch_review:
   podcast_search:
@@ -81,8 +82,11 @@ dev_dependencies:
     sdk: flutter
 
 dependency_overrides:
-  flutter_svg: 0.19.0
+  #flutter_svg: 0.19.0
   xml: ^4.5.1
+  uuid: ^3.0.0
+  http_parser: ^4.0.0
+
 
 
 # For information on the generic Dart part of this file, see the

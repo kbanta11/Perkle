@@ -191,7 +191,7 @@ exports.directMessageNotification = functions.firestore.document('/conversations
 		senderUsername = conversationData['lastPostUsername'];
 	
 	Object.keys(conversationMembers).forEach(key => {
-		console.log('Key: ' + key);
+		//console.log('Key: ' + key);
 		if(key !== conversationData['lastPostUserId']) {
 			console.log('Username: ' + conversationMembers[key]['username']);
 			return db.collection('users').doc(key).collection('tokens').get().then(querySnapshot => {

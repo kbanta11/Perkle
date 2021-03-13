@@ -1,14 +1,16 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:audioplayers/audioplayers.dart' as AP;
+//import 'package:audioplayers/audioplayers.dart' as AP;
+import 'package:just_audio/just_audio.dart';
 import 'services/local_services.dart';
 import 'services/db_services.dart';
 import 'package:audio_session/audio_session.dart';
 
 class PlayerAudioHandler extends BaseAudioHandler
     with QueueHandler { // mix in default implementations of queue functionality
-  AP.AudioPlayer player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
+  AudioPlayer player = new AudioPlayer(userAgent: 'Perkl/0.1 (Android 11) https://perklapp.com');
   Duration currentPosition = Duration();
   LocalService _localService = new LocalService();
+  //LocalService _localProgress = new LocalService(filename: 'history.json');
   DBService _dbService = new DBService();
 
   PlayerAudioHandler() {
@@ -19,11 +21,17 @@ class PlayerAudioHandler extends BaseAudioHandler
     final session = await AudioSession.instance;
     await session.configure(AudioSessionConfiguration.speech());
 
+    dynamic currentItem = await _localService.getData('current_item');
+    if(currentItem != null) {
+      mediaItem.add(MediaItem.fromJson(currentItem));
+      player.setUrl(mediaItem.valueWrapper.value.id);
+    }
+
     List<dynamic> localQueue = await _localService.getData('queue');
     if(localQueue != null && localQueue.length > 0) {
       queue.add(localQueue.map((item) => MediaItem.fromJson(item)).toList());
     }
-    print('Queue set: ${queue.value}');
+    print('Queue set: ${queue.valueWrapper.value}');
   }
 
 
@@ -51,12 +59,12 @@ class PlayerAudioHandler extends BaseAudioHandler
   }
 
   _playCurrentItem({MediaItem item}) async {
-    if(player.state == AP.AudioPlayerState.PLAYING) {
+    if(player.playing) {
       print('player currently playing, stopping...');
       await player.stop();
     }
-    player.dispose();
-    player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
+    //player.dispose();
+    //player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
     Duration startDuration = new Duration(milliseconds: 0);
     Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
     if(postsInProgress != null && postsInProgress[item.id] != null) {
@@ -97,19 +105,56 @@ class PlayerAudioHandler extends BaseAudioHandler
       await conversationService.setData('conversation-heard-posts', heardPostMap);
       await _dbService.syncConversationPostsHeard();
     }
+    //Set Current Item in local storage
+    await _localService.setData('current_item', item.toJson());
     print('*** playing Item...: ${item.id}');
+    await player.setUrl(item.id, initialPosition: startDuration);
+    player.play();
+    /* ---Old AudioPlayers Version
     await player.play(item.id, stayAwake: true, position: startDuration).catchError((e) {
       print('error playing item: $e');
     });
-    player.setPlaybackRate(playbackRate: playbackState.value.speed);
+     */
+    await player.setSpeed(playbackState.valueWrapper.value.speed);
+    // ---Old AudioPlayers Version
+    //player.setPlaybackRate(playbackRate: playbackState.value.speed);
     //Set Duration once it's available
+    player.durationStream.listen((Duration d) {
+      print('Setting duration for: ${item.title}');
+      MediaItem newItem = item.copyWith(duration: d);
+      mediaItem.add(newItem);
+    });
+    /*  --- Old AudioPlayers version
     player.onDurationChanged.listen((Duration d) {
       print('Setting duration for: ${item.title}');
       MediaItem newItem = item.copyWith(duration: d);
       mediaItem.add(newItem);
       //AudioServiceBackground.setMediaItem(newItem);
     });
+     */
     //Update time listened to
+    player.positionStream.listen((Duration d) async {
+      if(currentPosition.inMilliseconds == 0) {
+        currentPosition = d;
+      }
+      //print('old Position: ${currentPosition.inMilliseconds} (Seconds: ${currentPosition.inSeconds})\nNew position: ${d.inMilliseconds} (Seconds: ${d.inSeconds})');
+      if(d.inSeconds > currentPosition.inSeconds) {
+        print('audio position changed ###: ${d.inMilliseconds}');
+        updateTimeListened(d, item.id);
+        playbackState.add(playbackState.valueWrapper.value.copyWith(
+            controls: [MediaControl.rewind,
+              MediaControl.pause,
+              MediaControl.fastForward,
+              queue != null && !(await queue.isEmpty) ? MediaControl.skipToNext : null].where((element) => element != null).toList(),
+            playing: true,
+            systemActions: Set.from([MediaAction.playPause]),
+            updatePosition: d,
+            processingState: AudioProcessingState.ready
+        ));
+      }
+      currentPosition = d;
+    });
+    /* --- Old AudioPlayers version
     player.onAudioPositionChanged.listen((Duration d) async {
       if(currentPosition.inMilliseconds == 0) {
         currentPosition = d;
@@ -128,20 +173,30 @@ class PlayerAudioHandler extends BaseAudioHandler
           updatePosition: d,
           processingState: AudioProcessingState.ready
         ));
-        /*
-        AudioServiceBackground.setState(
-          controls: [MediaControl.rewind, MediaControl.pause, MediaControl.fastForward, AudioServiceBackground.queue != null && AudioServiceBackground.queue.length > 0 ? MediaControl.skipToNext : null].where((element) => element != null).toList(),
-          playing: true,
-          processingState: AudioProcessingState.ready,
-          position: d,
-        ).then((_) {
-          print('Audio Position Changed: ${AudioServiceBackground.state.playing}');
-        });
-         */
       }
       currentPosition = d;
     });
+     */
     //Stop on completion and play next
+    player.processingStateStream.listen((ProcessingState processState) {
+      if(processState == ProcessingState.completed) {
+        player.stop();
+        if(queue != null && queue.valueWrapper.value != null && queue.valueWrapper.value.length > 0) {
+          //Play next item in queue
+          print('skipping to next: ${queue.valueWrapper.value}');
+          this.skipToNext();
+        } else {
+          //Stop player and update status
+          print('setting state after player completion');
+          playbackState.add(playbackState.valueWrapper.value.copyWith(
+              controls: [MediaControl.stop],
+              processingState: AudioProcessingState.completed,
+              playing: false
+          ));
+        }
+      }
+    });
+    /*
     player.onPlayerCompletion.listen((_) async {
       //print('Stopping player after completion');
       player.stop();
@@ -159,19 +214,24 @@ class PlayerAudioHandler extends BaseAudioHandler
         ));
       }
     });
+     */
     print('playing item now under way');
   }
 
   @override
   Future<void> fastForward([Duration interval]) async {
-    Duration duration = Duration(milliseconds: await player.getDuration());
-    Duration position = Duration(
-        milliseconds: await player.getCurrentPosition());
+    Duration duration = player.duration;
+    Duration position = player.position;
     //print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
-    if (position.inSeconds + interval.inSeconds >= duration.inSeconds) {
-      player.seek(Duration(seconds: duration.inSeconds - 15));
+    if (position.inSeconds + 30 >= duration.inSeconds) {
+      await player.seek(Duration(seconds: duration.inSeconds - 15));
+      player.play();
     } else {
-      player.seek(Duration(seconds: position.inSeconds + interval.inSeconds));
+      print('Seeking to new position: ${Duration(seconds: position.inSeconds + 30).inSeconds}');
+      await player.seek(Duration(seconds: position.inSeconds + 30));
+      print('Seek complete, playing now');
+      player.play();
+      print('Playing from new position: ${player.position}');
     }
     return;
   }
@@ -179,12 +239,16 @@ class PlayerAudioHandler extends BaseAudioHandler
   @override
   Future<void> rewind([Duration interval]) async {
     //Duration duration = Duration(milliseconds: await player.getDuration());
-    Duration position = Duration(milliseconds: await player.getCurrentPosition());
+    Duration position = player.position;
     //print('Duration ms: ${duration.inSeconds}/Position ms: ${position.inSeconds}');
-    if(position.inSeconds - interval.inSeconds <= 0)
-      player.seek(Duration(seconds: 0));
-    else
-      player.seek(Duration(seconds: position.inSeconds - interval.inSeconds));
+    if(position.inSeconds - 30 <= 0) {
+      await player.seek(Duration(seconds: 0));
+      player.play();
+    }
+    else {
+      await player.seek(Duration(seconds: position.inSeconds - 30));
+      player.play();
+    }
     return;
   }
 
@@ -199,7 +263,7 @@ class PlayerAudioHandler extends BaseAudioHandler
     print('pausing file');
     await player.pause();
     print('file paused');
-    playbackState.add(playbackState.value.copyWith(
+    playbackState.add(playbackState.valueWrapper.value.copyWith(
       controls: [MediaControl.play,
         MediaControl.stop,
         queue != null && !(await queue.isEmpty) ? MediaControl.skipToNext : null
@@ -226,7 +290,7 @@ class PlayerAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> play() async {
-    playbackState.add(playbackState.value.copyWith(
+    playbackState.add(playbackState.valueWrapper.value.copyWith(
       controls: [
         MediaControl.rewind,
         MediaControl.pause,
@@ -244,8 +308,10 @@ class PlayerAudioHandler extends BaseAudioHandler
       processingState: AudioProcessingState.ready,
     );
      */
-    player.setPlaybackRate(playbackRate: playbackState.value.speed);
-    player.resume();
+    await player.setSpeed(playbackState.valueWrapper.value.speed);
+    //player.setPlaybackRate(playbackRate: playbackState.value.speed);
+    player.play();
+    //player.resume();
     return null;
   }
 
@@ -255,7 +321,7 @@ class PlayerAudioHandler extends BaseAudioHandler
     //AudioServiceBackground.setMediaItem(item);
     mediaItem.add(item);
     await _playCurrentItem(item: item);
-    playbackState.add(playbackState.value.copyWith(
+    playbackState.add(playbackState.valueWrapper.value.copyWith(
       controls: [
         MediaControl.rewind,
         MediaControl.pause,
@@ -275,9 +341,9 @@ class PlayerAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> addQueueItem(MediaItem item) async {
-    List<MediaItem> tempQueue = queue.value;
+    List<MediaItem> tempQueue = queue.valueWrapper.value;
     if(tempQueue == null) {
-      tempQueue = new List<MediaItem>();
+      tempQueue = <MediaItem>[];
       tempQueue.add(item);
     } else {
       tempQueue.add(item);
@@ -290,9 +356,9 @@ class PlayerAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> insertQueueItem(int position, MediaItem item) async {
-    List<MediaItem> tempQueue = queue.value;
+    List<MediaItem> tempQueue = queue.valueWrapper.value;
     if(tempQueue == null) {
-      tempQueue = new List<MediaItem>();
+      tempQueue = <MediaItem>[];
       tempQueue.add(item);
     } else {
       tempQueue.insert(0, item);
@@ -305,7 +371,7 @@ class PlayerAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToNext() async {
-    List<MediaItem> tempQueue = queue.value;
+    List<MediaItem> tempQueue = queue.valueWrapper.value;
     if(tempQueue != null && tempQueue.length > 0) {
       MediaItem mediaItem = tempQueue.first;
       String mediaId = mediaItem.id;
@@ -320,7 +386,7 @@ class PlayerAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToQueueItem(String mediaId) async {
-    List<MediaItem> tempQueue = queue.value;
+    List<MediaItem> tempQueue = queue.valueWrapper.value;
     print('Queue: $tempQueue');
     MediaItem newItem = tempQueue.where((item) => item.id == mediaId).first;
     tempQueue.remove(newItem);
@@ -336,7 +402,7 @@ class PlayerAudioHandler extends BaseAudioHandler
   @override
   Future<void> removeQueueItem(MediaItem mediaItem) async {
     print('removing item: $mediaItem');
-    List<MediaItem> tempQueue = queue?.value;
+    List<MediaItem> tempQueue = queue?.valueWrapper?.value;
     if(tempQueue != null) {
       tempQueue.removeWhere((item) => mediaItem.id == item.id);
       queue.add(tempQueue);
@@ -348,12 +414,13 @@ class PlayerAudioHandler extends BaseAudioHandler
   }
 
   @override
-  Future<void> setSpeed(double speed) {
-    bool isPlaying = playbackState.value.playing;
+  Future<void> setSpeed(double speed) async {
+    bool isPlaying = playbackState.valueWrapper.value.playing;
     if(isPlaying) {
-      player.setPlaybackRate(playbackRate: speed);
+      await player.setSpeed(speed);
+      //player.setPlaybackRate(playbackRate: speed);
     }
-    playbackState.add(playbackState.value.copyWith(
+    playbackState.add(playbackState.valueWrapper.value.copyWith(
       speed: speed,
     ));
     return null;

@@ -5,7 +5,8 @@ import 'package:audio_service/audio_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:podcast_search/podcast_search.dart';
-import 'package:audioplayers/audioplayers.dart';
+//import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock/wakelock.dart';
 import 'package:sounds/sounds.dart';
@@ -136,7 +137,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
   DateTime replyDate;
   ActivityManager activityManager = new ActivityManager();
   SoundRecorder recorder = new SoundRecorder(playInBackground: true);
-  AudioPlayer audioPlayer = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
+  AudioPlayer audioPlayer = new AudioPlayer();
   String filePath;
   //Duration replyLength;
   Duration recordingTime;
@@ -158,7 +159,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     //print('File Path: $filePath');
 
     //Check if have permissions for microphone or ask
-    if(await Permission.microphone.isUndetermined) {
+    if(!(await Permission.microphone.isGranted)) {
       print('asking for mic permissions');
       await Permission.microphone.request();
     }
@@ -190,11 +191,14 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  playbackRecording() {
-    audioPlayer.play(filePath, isLocal: true);
-    audioPlayer.onPlayerCompletion.listen((event) {
-      _isPlaybackRecording = false;
-      notifyListeners();
+  playbackRecording() async {
+    await audioPlayer.setFilePath(filePath);
+    audioPlayer.play();
+    audioPlayer.processingStateStream.listen((ProcessingState processState) {
+      if(processState == ProcessingState.completed) {
+        _isPlaybackRecording = false;
+        notifyListeners();
+      }
     });
     _isPlaybackRecording = true;
     notifyListeners();

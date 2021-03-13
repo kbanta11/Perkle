@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
-import 'package:audioplayers/audioplayers.dart';
+//import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
@@ -358,7 +359,7 @@ class ActivityManager {
       recorder.initialize();
 
       //Check if have permissions for microphone or ask
-      if(await Permission.microphone.isUndetermined) {
+      if(!(await Permission.microphone.isGranted)) {
         print('asking for mic permissions');
         await Permission.microphone.request().catchError((e) {
           print('Error request permission for microphone: $e');
@@ -378,8 +379,8 @@ class ActivityManager {
       await recorder.record(Track.fromFile(tempFilePath, mediaFormat: CustomMediaFormat()));
       recordingDuration = Duration(milliseconds: 0);
       mp.setRecordingTime(recordingDuration);
-      recorder.dispositionStream(interval: Duration(seconds: 1)).listen((RecordingDisposition disp) {
-        mp.setRecordingTime(disp.duration);
+      recorder.dispositionStream().listen((disposition) {
+        mp.setRecordingTime(disposition.duration);
       });
       recorder.onStopped = ({bool wasUser = true}) {
         print('recorder stopped, duration: ${recorder.duration}');
@@ -650,10 +651,10 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
             print('Selected File Path: $path');
             print('File: $uploadFile: ${await uploadFile.exists()}');
             AudioPlayer tempPlayer = new AudioPlayer();
-            await tempPlayer.setUrl(path);
-            int audioDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.getDuration());
-            Duration postDuration = Duration(milliseconds: audioDuration);
-            print('Duration: $audioDuration/Seconds: ${postDuration.inSeconds}');
+            await tempPlayer.setFilePath(path);
+            //int audioDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.duration);
+            Duration postDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.duration);
+            //print('Duration: $audioDuration/Seconds: ${postDuration.inSeconds}');
             setState(() {
               filepath = path;
               fileName = path.split('/').last;
@@ -723,7 +724,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
   DateTime _startRecordDate;
   int _secondsLength;
   ActivityManager activityManager = new ActivityManager();
-  AudioPlayer audioPlayer = new AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
+  AudioPlayer audioPlayer = new AudioPlayer();
   bool _isLoading = false;
 
   @override
@@ -809,7 +810,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                   heroTag: 2,
                   backgroundColor: _postAudioPath == null || _isRecording ? Colors.grey : _isPlaybackRecording ? Colors.red : Colors.deepPurple,
                   child: Icon(_isPlaybackRecording ? Icons.pause : Icons.play_arrow, color: Colors.white),
-                  onPressed: () {
+                  onPressed: () async {
                     if(_postAudioPath == null || _isRecording)
                       return;
                     if(_isPlaybackRecording) {
@@ -818,12 +819,23 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                         _isPlaybackRecording = false;
                       });
                     } else {
-                      audioPlayer.play(_postAudioPath, isLocal: true);
+                      await audioPlayer.setFilePath(_postAudioPath);
+                      audioPlayer.play();
+                      //audioPlayer.play(_postAudioPath, isLocal: true);
+                      audioPlayer.processingStateStream.listen((ProcessingState state) {
+                        if(state == ProcessingState.completed) {
+                          setState(() {
+                            _isPlaybackRecording = false;
+                          });
+                        }
+                      });
+                      /*
                       audioPlayer.onPlayerCompletion.listen((event) {
                         setState(() {
                           _isPlaybackRecording = false;
                         });
                       });
+                       */
                       setState(() {
                         _isPlaybackRecording = true;
                       });
@@ -891,7 +903,7 @@ class CustomMediaFormat extends NativeMediaFormat {
   );
 
   @override
-  String get extension => 'aac';
+  String get extension => 'mp4';
 
   // Whilst the actual index is MediaRecorder.AudioEncoder.AAC (3)
   @override

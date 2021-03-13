@@ -516,7 +516,7 @@ class _ProfilePicDialogState extends State<ProfilePicDialog> {
   File _profilePic;
 
   Future<void> getImage(ImageSource source) async {
-    File image = await ImagePicker.pickImage(source: source);
+    File image = File((await ImagePicker().getImage(source: source)).path);
 
     setState(() {
       _profilePic = image;

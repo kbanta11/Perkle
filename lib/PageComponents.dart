@@ -129,6 +129,7 @@ class TopPanel extends StatelessWidget {
           children: <Widget>[
             AppBar(
               backgroundColor: Colors.transparent,
+              brightness: Brightness.dark,
               title: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -280,7 +281,7 @@ class TopPanel extends StatelessWidget {
                     icon: Icon(Icons.replay_30, color: currentMediaItem != null ? Colors.white : Colors.grey),
                     onPressed: () async {
                       if(currentMediaItem != null && playbackState != null && playbackState.position != null) {
-                        await mp.rewind(Duration(seconds: 30));
+                        await mp.rewind();
                       }
                     }
                 ),
@@ -307,7 +308,7 @@ class TopPanel extends StatelessWidget {
                   icon: Icon(Icons.forward_30, color: currentMediaItem != null ? Colors.white : Colors.grey),
                   onPressed: () async {
                     if(currentMediaItem != null && playbackState != null && playbackState.position != null) {
-                      await mp.fastForward(Duration(seconds: 30));
+                      await mp.fastForward();
                     }
                   }
                 ),

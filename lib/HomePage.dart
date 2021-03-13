@@ -24,7 +24,7 @@ import 'services/models.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'services/local_services.dart';
-import 'package:flushbar/flushbar.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 List<Map<String, dynamic>> currentTutorials = [{'index': 0, 'file': 'https://firebasestorage.googleapis.com/v0/b/flutter-fire-test-be63e.appspot.com/o/AppFiles%2FPerkl_Tutorial-Posting.mp4?alt=media&token=4b25145f-64de-4b92-bd52-1bb6a083c375', 'text': 'How To Post'},
@@ -70,7 +70,7 @@ class HomePageMobile extends StatefulWidget {
 }
 
 class HomePageMobileState extends State<HomePageMobile> {
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
   StreamSubscription iosSubscription;
 

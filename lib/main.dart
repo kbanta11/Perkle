@@ -249,13 +249,13 @@ class MainAppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  rewind(Duration interval) {
-    _audioHandler.rewind(interval);
+  rewind() {
+    _audioHandler.rewind();
     notifyListeners();
   }
 
-  fastForward(Duration interval) {
-    _audioHandler.fastForward(interval);
+  fastForward() {
+    _audioHandler.fastForward();
     notifyListeners();
   }
 
@@ -291,7 +291,7 @@ class MainAppProvider extends ChangeNotifier {
     }
     unheardPosts.removeWhere((DirectPost post) => post.senderUID == userId);
     //print('Unheard posts: $unheardPosts');
-    List<MediaItem> currentQueue = _audioHandler.queue.value;
+    List<MediaItem> currentQueue = _audioHandler.queue.valueWrapper.value;
     List<MediaItem> unheardMediaItems = unheardPosts.map((item) {
       PostPodItem post = PostPodItem.fromDirectPost(item);
       MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
@@ -344,7 +344,7 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   startRecording() async {
-    if(_audioHandler.playbackState != null && _audioHandler.playbackState.value.playing) {
+    if(_audioHandler.playbackState != null && _audioHandler.playbackState.valueWrapper.value.playing) {
       pausePost();
     }
     isRecording = true;
@@ -381,7 +381,7 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   replyToEpisode(Episode episode, Podcast podcast, BuildContext context) {
-    if(_audioHandler.playbackState.value.playing) {
+    if(_audioHandler.playbackState.valueWrapper.value.playing) {
       pausePost();
     }
     showDialog(

@@ -27,6 +27,7 @@ class ConversationListPageMobile extends StatelessWidget {
   build(BuildContext context) {
     User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
+    PerklUser currentUser = Provider.of<PerklUser>(context);
     return MultiProvider(
       providers: [
         StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
@@ -70,19 +71,7 @@ class ConversationListPageMobile extends StatelessWidget {
                             children: day.list.map((conversation) {
                               print('conversation: ${conversation.id}');
                               String firstOtherUid = conversation.memberList.where((item) => item != user.uid).first;
-                              String titleText = '';
                               int unreadPosts = 0;
-                              conversation.conversationMembers.forEach((key, userData) {
-                                if(key != user.uid) {
-                                  if(titleText.length > 0) {
-                                    titleText = '$titleText, ${userData['username']}';
-                                  } else {
-                                    titleText = '${userData['username']}';
-                                  }
-                                } else {
-                                  unreadPosts = userData['unreadPosts'] ?? 0;
-                                }
-                              });
 
                               return Card(
                                   elevation: 5,
@@ -121,7 +110,7 @@ class ConversationListPageMobile extends StatelessWidget {
                                                 )
                                             ),
                                             SizedBox(width: 5),
-                                            Expanded(child: Text('$titleText', style: TextStyle(fontSize: 18))),
+                                            Expanded(child: Text('${conversation.getTitle(currentUser)}', style: TextStyle(fontSize: 18))),
                                             SizedBox(width: 5),
                                             Row(
                                               children: <Widget>[
@@ -167,7 +156,7 @@ class ConversationListPageMobile extends StatelessWidget {
                                           //print('go to conversation: ${convoItem.targetUsername} (${convoItem.conversationId})');
                                           DBService().markConversationRead(conversation.id, firebaseUser.uid);
                                           Navigator.push(context, MaterialPageRoute(
-                                            builder: (context) => ConversationPageMobile(conversationId: conversation.id, pageTitle: titleText),
+                                            builder: (context) => ConversationPageMobile(conversationId: conversation.id, pageTitle: conversation.getTitle(currentUser)),
                                           ));
                                         },
                                    ),

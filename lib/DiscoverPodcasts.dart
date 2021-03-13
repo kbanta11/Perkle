@@ -19,7 +19,7 @@ class DiscoverPodcasts extends StatelessWidget {
                 DropdownButton(
                     icon: Icon(Icons.arrow_drop_down),
                     items: [
-                      DropdownMenuItem(child: Text('All'), value: null),
+                      DropdownMenuItem(child: Text('All'), value: Genre.ALL),
                       DropdownMenuItem(child: Text(Genre.ARTS.name), value: Genre.ARTS),
                       DropdownMenuItem(child: Text(Genre.BUSINESS.name), value: Genre.BUSINESS),
                       DropdownMenuItem(child: Text(Genre.COMEDY.name), value: Genre.COMEDY),
@@ -103,7 +103,7 @@ class DiscoverPodcasts extends StatelessWidget {
 
 class DiscoverPodcastsProvider extends ChangeNotifier {
   Search podcastSearch = new Search();
-  Genre selectedGenre;
+  Genre selectedGenre = Genre.ALL;
   List<Item> podcasts;
 
 
@@ -115,7 +115,7 @@ class DiscoverPodcastsProvider extends ChangeNotifier {
   }
 
   Future<void> getPodcasts() async {
-    SearchResult searchResult =  await Search().charts(country: Country.UNITED_STATES, limit: 30, explicit: true, genre: selectedGenre);
+    SearchResult searchResult =  await Search().charts(country: Country.UNITED_STATES, limit: 30, explicit: true, genre: selectedGenre.id > 0 ? selectedGenre : null);
     print(searchResult.items);
     podcasts = searchResult.items.toList();
     notifyListeners();
