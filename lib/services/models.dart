@@ -170,7 +170,10 @@ class DirectPost {
   String episodeDescription;
   String episodeLink;
   bool shared;
-
+  bool clip;
+  Duration startDuration;
+  Duration endDuration;
+  Episode episode;
 
   DirectPost({
     this.id,
@@ -188,12 +191,42 @@ class DirectPost {
     this.episodeDescription,
     this.episodeGuid,
     this.episodeLink,
+    this.episode,
     this.msLength,
     this.shared,
+    this.clip,
+    this.startDuration,
+    this.endDuration,
     this.podcastImage,
   });
 
   factory DirectPost.fromFirestore(DocumentSnapshot snap) {
+    if(snap.data()['episode'] != null) {
+      return DirectPost(
+        id: snap.reference.id,
+        conversationId: snap.data()['conversationId'],
+        senderUID: snap.data()['senderUID'],
+        senderUsername: snap.data()['senderUsername'],
+        audioFileLocation: snap.data()['audioFileLocation'],
+        datePosted: DateTime.fromMillisecondsSinceEpoch(snap.data()['datePosted'].millisecondsSinceEpoch),
+        messageTitle: snap.data()['messageTitle'],
+        secondsLength: snap.data()['secondsLength'],
+        author: snap.data()['author'],
+        podcastLink: snap.data()['podcast-link'],
+        podcastUrl: snap.data()['podcast-url'],
+        podcastTitle: snap.data()['podcast-title'],
+        podcastImage: snap.data()['podcast-image'],
+        episodeGuid: snap.data()['episode-guid'],
+        episodeLink: snap.data()['episode-link'],
+        episodeDescription: snap.data()['episode-description'],
+        msLength: snap.data()['ms-length'],
+        shared: snap.data()['shared'],
+        clip: snap.data()['clip'],
+        startDuration: snap.data()['start-ms'] != null ? Duration(milliseconds: snap.data()['start-ms']) : null,
+        endDuration: snap.data()['end-ms'] != null ? Duration(milliseconds: snap.data()['end-ms']) : null,
+        episode: snap.data()['episode'] != null ? Episode.fromJson(snap.data()['episode']) : null,
+      );
+    }
     return DirectPost(
       id: snap.reference.id,
       conversationId: snap.data()['conversationId'],
@@ -349,6 +382,7 @@ enum PostType {
   DIRECT_POST,
   PODCAST_EPISODE,
   EPISODE_REPLY,
+  EPISODE_CLIP,
 }
 
 class PostPodItem {
@@ -358,11 +392,13 @@ class PostPodItem {
   DirectPost directPost;
   Episode episode;
   Podcast podcast;
+  String podcastUrl;
   EpisodeReply episodeReply;
+  EpisodeClip episodeClip;
   String audioUrl;
   String displayText;
 
-  PostPodItem({this.id, this.type, this.post, this.directPost, this.episode, this.audioUrl, this.displayText, this.episodeReply, this.podcast});
+  PostPodItem({this.id, this.type, this.post, this.directPost, this.episode, this.podcastUrl, this.audioUrl, this.displayText, this.episodeReply, this.episodeClip, this.podcast});
 
   Widget titleText() {
     if(type == PostType.POST) {
@@ -376,6 +412,9 @@ class PostPodItem {
     }
     if(type == PostType.EPISODE_REPLY) {
       return Text(episodeReply.replyTitle ?? DateFormat("MMMM dd, yyyy").format(episodeReply.replyDate).toString());
+    }
+    if(type == PostType.EPISODE_CLIP) {
+      return Text(episodeClip.clipTitle != null ? episodeClip.clipTitle : episodeClip.episode.title);
     }
     return Text('Error Finding Title!');
   }
@@ -393,6 +432,9 @@ class PostPodItem {
     if(type == PostType.EPISODE_REPLY) {
       return Text(episodeReply.posterUsername);
     }
+    if(type == PostType.EPISODE_CLIP){
+      return Text('@${episodeClip.creatorUsername}');
+    }
     return Text('Error getting username!');
   }
 
@@ -409,6 +451,9 @@ class PostPodItem {
     if(type == PostType.EPISODE_REPLY) {
       return episodeReply.replyTitle ?? DateFormat("MMMM dd, yyyy").format(episodeReply.replyDate).toString();
     }
+    if(type == PostType.EPISODE_CLIP) {
+      return episodeClip.clipTitle ?? episodeClip.episode.title;
+    }
     return 'untitled';
   }
 
@@ -420,10 +465,13 @@ class PostPodItem {
       return '@${directPost.senderUsername}';
     }
     if(type == PostType.PODCAST_EPISODE) {
-      return episode.author;
+      return podcast.title;
     }
     if(type == PostType.EPISODE_REPLY) {
       return episodeReply.posterUsername;
+    }
+    if(type == PostType.EPISODE_CLIP) {
+      return episodeClip.podcastTitle;
     }
     return '';
   }
@@ -458,6 +506,8 @@ class PostPodItem {
     return PostPodItem(
       id: post.id,
       type: PostType.DIRECT_POST,
+      episode: post.episode,
+      podcastUrl: post.podcastUrl,
       directPost: post,
       audioUrl: post.audioFileLocation,
       displayText: '@${post.senderUsername} | ${post.messageTitle != null ? post.messageTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'
@@ -487,6 +537,16 @@ class PostPodItem {
     );
   }
 
+  factory PostPodItem.fromEpisodeClip(EpisodeClip clip) {
+    return PostPodItem(
+      id: clip.id,
+      type: PostType.EPISODE_CLIP,
+      episodeClip: clip,
+      audioUrl: clip.episode.contentUrl,
+      displayText: '${clip.clipTitle ?? clip.episode.title} | ${clip.podcastTitle}'
+    );
+  }
+
   MediaItem toMediaItem(String currentUserId) {
     return MediaItem(
       id: this.audioUrl,
@@ -496,13 +556,66 @@ class PostPodItem {
       extras: {
         'type': this.type.toString(),
         'episode': this.episode != null ? this.episode.toJson() : null,
-        'podcast_url': this.podcast!= null ? this.podcast.url : null,
+        'podcast_url': this.podcast!= null ? this.podcast.url : this?.podcastUrl,
+        'podcast_title': this.podcast != null ? this.podcast.title : null,
+        'podcast_image': this.podcast != null ? this.podcast.image : null,
         'isDirect': this.type == PostType.DIRECT_POST ? true : false,
         'conversationId': this.directPost != null ? this.directPost.conversationId : null,
         'userId': this.type == PostType.DIRECT_POST ? currentUserId : null,
         'postId': this.directPost != null ? this.directPost.id : null,
         'post': this.post != null ? this.post.toJson() : null,
+        'clip': this.directPost != null && this.directPost.clip != null && this.directPost.clip ? this.directPost.clip : this.episodeClip != null ? true : null,
+        'clipId': this.episodeClip != null ? this.episodeClip.id : this.directPost != null && this.directPost.clip != null && this.directPost.clip ? this.directPost.id : null,
+        'startDuration': this.episodeClip != null ? this.episodeClip.startDuration.inMilliseconds : this.directPost?.startDuration?.inMilliseconds,
+        'endDuration': this.episodeClip != null ? this.episodeClip.endDuration.inMilliseconds : this.directPost?.endDuration?.inMilliseconds
       },
+    );
+  }
+}
+
+class EpisodeClip {
+  String id;
+  String creatorUsername;
+  String creatorUID;
+  String clipTitle;
+  DateTime createdDate;
+  Duration startDuration;
+  Duration endDuration;
+  bool public;
+  String podcastTitle;
+  String podcastUrl;
+  String podcastImage;
+  Episode episode;
+
+  EpisodeClip({
+    this.id,
+    this.creatorUsername,
+    this.creatorUID,
+    this.clipTitle,
+    this.createdDate,
+    this.startDuration,
+    this.endDuration,
+    this.public,
+    this.podcastTitle,
+    this.podcastUrl,
+    this.podcastImage,
+    this.episode
+  });
+
+  factory EpisodeClip.fromFirestore(DocumentSnapshot snap) {
+    return EpisodeClip(
+      id: snap.reference.id,
+      creatorUsername: snap.data()['creator_username'],
+      creatorUID: snap.data()['creator_uid'],
+      clipTitle: snap.data()['clip_title'],
+      createdDate: DateTime.fromMillisecondsSinceEpoch(snap.data()['created_date'].millisecondsSinceEpoch),
+      startDuration: Duration(milliseconds: snap.data()['start_ms']),
+      endDuration: Duration(milliseconds: snap.data()['end_ms']),
+      public: snap.data()['public'],
+      podcastTitle: snap.data()['podcast_title'],
+      podcastUrl: snap.data()['podcast_url'],
+      podcastImage: snap.data()['podcast_image'],
+      episode: Episode.fromJson(snap.data()['episode'])
     );
   }
 }

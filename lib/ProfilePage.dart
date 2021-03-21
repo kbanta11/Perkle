@@ -16,18 +16,24 @@ import 'UserList.dart';
 
 //--------------------------------------------------
 //New Version
-class ProfilePageMobile extends StatelessWidget {
+class ProfilePageMobile extends StatefulWidget {
   String userId;
 
-  ProfilePageMobile({this.userId});
+  ProfilePageMobile({Key key, @required this.userId}) : super(key: key);
+
+  _ProfilePageMobileState createState() => new _ProfilePageMobileState();
+}
+
+class _ProfilePageMobileState extends State<ProfilePageMobile> {
+  bool toggleClips = false;
 
   @override
   build(BuildContext context) {
     User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    return userId == null ? Center(child: CircularProgressIndicator(),) : MultiProvider(
+    return widget.userId == null ? Center(child: CircularProgressIndicator(),) : MultiProvider(
       providers: [
-        StreamProvider<PerklUser>(create: (_) => UserManagement().streamUserDoc(userId)),
+        StreamProvider<PerklUser>(create: (_) => UserManagement().streamUserDoc(widget.userId)),
       ],
       child: Consumer<PerklUser>(
           builder: (context, user, _) {
@@ -36,8 +42,47 @@ class ProfilePageMobile extends StatelessWidget {
                 body: Column(
                   children: <Widget>[
                     UserInfoSection(user: user),
+                    widget.userId == firebaseUser.uid ? Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        TextButton(
+                          child: Text('My Posts',
+                            style: TextStyle(color: !toggleClips ? Colors.white : Colors.deepPurple),
+                          ),
+                          style: TextButton.styleFrom(
+                              backgroundColor: !toggleClips ? Colors.deepPurple : Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15.0),
+                                side: BorderSide(color: Colors.deepPurple),
+                              )
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              toggleClips = false;
+                            });
+                          },
+                        ),
+                        TextButton(
+                          child: Text('My Clips',
+                            style: TextStyle(color: toggleClips ? Colors.white : Colors.deepPurple),
+                          ),
+                          style: TextButton.styleFrom(
+                              backgroundColor: toggleClips ? Colors.deepPurple : Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15.0),
+                                side: BorderSide(color: Colors.deepPurple),
+                              )
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              toggleClips = true;
+                            });
+                          },
+                        )
+                      ]
+                    ) : Container(),
                     Expanded(
-                      child: Timeline(userId: user.uid, type: TimelineType.USER)
+                      child: toggleClips ? Timeline(userId: user.uid, type: TimelineType.CLIPS) : Timeline(userId: user.uid, type: TimelineType.USER)
                     )
                   ],
                 ),
@@ -74,12 +119,14 @@ class _UserInfoSectionState extends State<UserInfoSection> {
         return ButtonTheme(
             height: 25,
             minWidth: 50,
-            child: FlatButton(
+            child: TextButton(
                 child: Text('Message'),
-                padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-                color: Colors.deepPurple,
-                textColor: Colors.white,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                  shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                  backgroundColor: Colors.deepPurple,
+                  primary: Colors.white,
+                ),
                 onPressed: () async {
                   String currentUsername;
                   String currentUserId;
@@ -97,14 +144,14 @@ class _UserInfoSectionState extends State<UserInfoSection> {
       return ButtonTheme(
           height: 25,
           minWidth: 50,
-          child: OutlineButton(
+          child: OutlinedButton(
               child: Text('Edit Profile'),
-              padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-              shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-              borderSide: BorderSide(
-                color: Colors.deepPurple,
+              style: OutlinedButton.styleFrom(
+                padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                primary: Colors.deepPurple,
+                side: BorderSide(color: Colors.deepPurple,),
               ),
-              textColor: Colors.deepPurple,
               onPressed: () {
                 showDialog(
                     context: context,
@@ -125,14 +172,14 @@ class _UserInfoSectionState extends State<UserInfoSection> {
         return ButtonTheme(
             height: 25,
             minWidth: 50,
-            child: OutlineButton(
+            child: OutlinedButton(
               child: Text('Unfollow'),
-              padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-              shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-              borderSide: BorderSide(
-                color: Colors.deepPurple,
+              style: OutlinedButton.styleFrom(
+                padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                primary: Colors.deepPurple,
+                side: BorderSide(color: Colors.deepPurple,),
               ),
-              textColor: Colors.deepPurple,
               onPressed: () async {
                 mp.activityManager.unfollowUser(widget.user.uid);
               },
@@ -142,12 +189,14 @@ class _UserInfoSectionState extends State<UserInfoSection> {
       return ButtonTheme(
         height: 25,
         minWidth: 50,
-        child: FlatButton(
+        child: TextButton(
           child: Text('Follow'),
-          padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-          shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
-          color: Colors.deepPurple,
-          textColor: Colors.white,
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+            shape: RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+            backgroundColor: Colors.deepPurple,
+            primary: Colors.white,
+          ),
           onPressed: () async {
             mp.activityManager.followUser(widget.user.uid);
           },

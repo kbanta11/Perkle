@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'main.dart';
 import 'services/models.dart';
 import 'StreamTagPage.dart';
+import 'EpisodePage.dart';
 
 class QueuePage extends StatelessWidget {
 
@@ -137,9 +138,59 @@ class QueuePage extends StatelessWidget {
         );
       }
       if(item.extras['type'] == 'PostType.DIRECT_POST') {
-        Navigator.push(context, MaterialPageRoute(
-            builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
-        ));
+        if(item.extras['clip'] != null ? item.extras['clip'] : false) {
+          await showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      child: Text('Go To Episode', style: TextStyle(color: Colors.white)),
+                      style: TextButton.styleFrom(backgroundColor: Colors.deepPurple),
+                      onPressed: () async {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return Center(child: CircularProgressIndicator());
+                          }
+                        );
+                        print('Episode: ${item.extras['episode']}');
+                        Episode ep = Episode.fromJson(item.extras['episode']);
+                        Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
+                        Navigator.of(context).pop();
+                        Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => EpisodePage(ep, podcast)
+                        ));
+                      }
+                    ),
+                    TextButton(
+                        child: Text('Go To Conversation', style: TextStyle(color: Colors.white)),
+                        style: TextButton.styleFrom(backgroundColor: Colors.deepPurple),
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(
+                              builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
+                          ));
+                        }
+                    ),
+                    OutlinedButton(
+                        child: Text('Cancel', style: TextStyle(color: Colors.deepPurple)),
+                        style: OutlinedButton.styleFrom(primary: Colors.deepPurple),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        }
+                    ),
+                  ]
+                )
+              );
+            }
+          );
+        } else {
+          Navigator.push(context, MaterialPageRoute(
+              builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
+          ));
+        }
       }
     }
 

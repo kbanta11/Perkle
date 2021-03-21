@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:Perkl/services/ActivityManagement.dart';
 import 'package:Perkl/services/UserManagement.dart';
 import 'package:Perkl/services/db_services.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:launch_review/launch_review.dart';
+import 'package:url_launcher/url_launcher.dart';
 //import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -160,11 +162,17 @@ class MainAppState extends State<MainApp> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: <Widget>[
-                                        FlatButton(
+                                        TextButton(
                                             child: Text('Update Now!', style: TextStyle(color: Colors.white),),
-                                            color: Colors.deepPurple,
-                                            onPressed: () {
-                                              LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
+                                            style: TextButton.styleFrom(
+                                              backgroundColor: Colors.deepPurple
+                                            ),
+                                            onPressed: () async {
+                                              if(Platform.isIOS) {
+                                                await canLaunch('https://testflight.apple.com/join/nLLTkbwC') ? await launch('https://testflight.apple.com/join/nLLTkbwC') : throw 'Could not launch https://testflight.apple.com/join/nLLTkbwC';
+                                              } else {
+                                                LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
+                                              }
                                             }
                                         )
                                       ],

@@ -126,6 +126,13 @@ class DBService {
     });
   }
 
+  Stream<List<PostPodItem>> streamEpisodeClips(String userId) {
+    return _db.collection('episode-clips').where('creator_uid', isEqualTo: userId).orderBy('created_date', descending: true).snapshots().map((qs) {
+      print('Episode Clips: ${qs.docs}');
+      return qs.docs.map((doc) => PostPodItem.fromEpisodeClip(EpisodeClip.fromFirestore(doc))).toList();
+    });
+  }
+
   updateTimeline({String timelineId, PerklUser user, DateTime minDate, bool reload, bool setLoading = true}) async {
     DocumentReference timelineRef = _db.collection('timelines').doc(timelineId);
     DateTime lastUpdateTime = await timelineRef.get().then((snap) => snap.data()['last_updated'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snap.data()['last_updated'].millisecondsSinceEpoch));
@@ -265,7 +272,7 @@ class DBService {
       if(!docSnap.exists) {
         return null;
       }
-      List<String> idList = List<String>();
+      List<String> idList = <String>[];
       idList.addAll(docSnap.data()['id_list'].cast<String>());
       return idList;
     });
@@ -274,7 +281,7 @@ class DBService {
   markDirectPostHeard({String conversationId, String userId, String postId}) async {
     print('marking direct post heard');
     DocumentReference docRef = _db.collection('conversations').doc(conversationId).collection('heard-posts').doc(userId);
-    List<String> idList = List<String>();
+    List<String> idList = <String>[];
     bool docExists = false;
     print('Heard Posts doc: $docRef');
     await docRef.get().then((docSnap) {
@@ -397,7 +404,7 @@ class DBService {
       podcast = await Podcast.loadFeed(url: podcast.url);
     }
     //Check if conversation with these members exists
-    List<String> _memberList = new List<String>();
+    List<String> _memberList = <String>[];
     if(memberMap != null) {
       _memberList.addAll(memberMap.keys);
     }
@@ -486,6 +493,124 @@ class DBService {
       print('Error committing batch: $error');
     }));
     print('batch committed');
+  }
+
+  Future<void> saveEpisodeClip({PerklUser creator, Duration startDuration, Duration endDuration, String clipTitle, bool public, String podcastTitle, String podcastUrl, String podcastImage, Episode episode}) async {
+    DocumentReference clipRef = _db.collection('episode-clips').doc();
+    await _db.runTransaction((transaction) async {
+      return transaction.set(clipRef, {
+        'created_date': DateTime.now(),
+        'creator_username': creator.username,
+        'creator_uid': creator.uid,
+        'clip_title': clipTitle,
+        'start_ms': startDuration.inMilliseconds,
+        'end_ms': endDuration.inMilliseconds,
+        'public': public,
+        'podcast_title': podcastTitle,
+        'podcast_url': podcastUrl,
+        'podcast_image': podcastImage,
+        'episode': episode.toJson(),
+      });
+    });
+  }
+
+  Future<void> sendEpisodeClipToConversation({PerklUser sender, Duration startDuration, Duration endDuration, String clipTitle, bool public, String podcastTitle, String podcastUrl, String podcastImage, Episode episode, String conversationId, Map<dynamic, dynamic> memberMap}) async {
+    DocumentReference conversationRef;
+    DocumentReference postRef = _db.collection('directposts').doc();
+    String convoId = conversationId;
+    WriteBatch batch = _db.batch();
+    //check if conversation exists with these users
+    List<String> _memberList = <String>[];
+    if(memberMap != null) {
+      _memberList.addAll(memberMap.keys);
+    }
+    _memberList.sort();
+    if(convoId == null){
+      await _db.collection('conversations').where('memberList', isEqualTo: _memberList).get().then((snapshot) {
+        if(snapshot.docs.isNotEmpty) {
+          DocumentSnapshot conversation = snapshot.docs.first;
+          if(conversation != null)
+            conversationRef = conversation.reference;
+          convoId = conversation.reference.id;
+        }
+      });
+    }
+
+    if(convoId != null) {
+      print('Conversation exists: $convoId');
+      conversationRef = _db.collection('conversations').doc(convoId);
+      //Get post map and conversationMembers
+      Map<String, dynamic> postMap;
+      Map<String, dynamic> conversationMembers;
+      await conversationRef.get().then((DocumentSnapshot snapshot) {
+        postMap = Map<String, dynamic>.from(snapshot.data()['postMap']);
+        conversationMembers = Map<String, dynamic>.from(snapshot.data()['conversationMembers']);
+      });
+
+      //-increment unread posts for all users other than posting user
+      print('Members: $conversationMembers');
+      Map<String, dynamic> newMemberMap = new Map<String, dynamic>();
+      conversationMembers.forEach((uid, details) {
+        Map<dynamic, dynamic> newDetails = details;
+        if(uid != sender.uid) {
+          int unheardCnt = details['unreadPosts'];
+          if(unheardCnt != null)
+            unheardCnt = unheardCnt + 1;
+          newDetails['unreadPosts'] = unheardCnt;
+        }
+        newMemberMap[uid] = newDetails;
+      });
+
+      postMap.addAll({postRef.id: sender.uid});
+      //update conversation document
+      batch.update(conversationRef, {'postMap': postMap, 'lastDate': DateTime.now(), 'lastPostUsername': sender.username, 'lastPostUserId': sender.uid, 'conversationMembers': newMemberMap});
+    } else {
+      //Create new conversation document and update data
+      conversationRef = _db.collection('/conversations').doc();
+      convoId = conversationRef.id;
+      //print('creating new conversation: $conversationId');
+      Map<String, dynamic> conversationMembers = new Map<String, dynamic>();
+      memberMap.forEach((uid, username) {
+        if(uid == sender.uid)
+          conversationMembers.addAll({uid: {'username': username, 'unreadPosts': 0}});
+        else
+          conversationMembers.addAll({uid: {'username': username, 'unreadPosts': 1}});
+      });
+      Map<String, dynamic> postMap = {postRef.id: sender.uid};
+      print('member list: $_memberList/Conversation Members: $conversationMembers');
+
+      batch.set(conversationRef, {'conversationMembers': conversationMembers, 'postMap': postMap, 'memberList': _memberList, 'lastDate': DateTime.now(), 'lastPostUsername': sender.username, 'lastPostUserId': sender.uid});
+    }
+
+    //Add data to new direct post document (message title, contentUrl, length (ms), date, sender, conversationId, shared, podcast and episode info)
+    Map<String, dynamic> newPostData = {
+      'senderUID': sender.uid,
+      'senderUsername': sender.username,
+      'author': podcastTitle,
+      'podcast-link': podcastUrl,
+      'podcast-url': podcastUrl,
+      'podcast-title': podcastTitle,
+      'podcast-image': podcastImage,
+      'episode': episode.toJson(),
+      'episode-guid': episode.guid,
+      'episode-description': episode.description,
+      'episode-link': episode.link,
+      'messageTitle': clipTitle ?? episode.title,
+      'ms-length': endDuration.inMilliseconds - startDuration.inMilliseconds,
+      'audioFileLocation': episode.contentUrl,
+      'conversationId': convoId,
+      'datePosted': DateTime.now(),
+      'shared': true,
+      'clip': true,
+      'start-ms': startDuration.inMilliseconds,
+      'end-ms': endDuration.inMilliseconds,
+    };
+
+    batch.set(postRef, newPostData);
+
+    await batch.commit().catchError(((error) {
+      print('Error committing batch: $error');
+    }));
   }
 
   Future<Conversation> createNewGroup(String groupName, List<String> memberIds) async {

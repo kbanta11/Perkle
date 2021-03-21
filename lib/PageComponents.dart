@@ -8,6 +8,7 @@ import 'package:Perkl/services/models.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 //import 'package:firebase_storage/firebase_storage.dart';
 //import 'package:intl/intl.dart';
 import 'package:audio_service/audio_service.dart';
@@ -21,6 +22,7 @@ import 'UserList.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'QueuePage.dart';
+import 'Clipping.dart';
 
 class RecordButton extends StatefulWidget {
 
@@ -317,6 +319,23 @@ class TopPanel extends StatelessWidget {
                     onPressed: () {
                       if(mediaQueue != null && mediaQueue.length > 0) {
                         mp.skipToNext();
+                      }
+                    }
+                ),
+                IconButton(
+                    icon: FaIcon(FontAwesomeIcons.cut, color: currentMediaItem != null && currentMediaItem.extras != null && currentMediaItem.extras['type'] == 'PostType.PODCAST_EPISODE' ? Colors.white : Colors.grey),
+                    onPressed: () {
+                      if(currentMediaItem.extras['type'] == 'PostType.PODCAST_EPISODE') {
+                        print('Clipping Media Item: ${currentMediaItem.extras}');
+                        if(playbackState.playing) {
+                          mp.pausePost();
+                        }
+                        showDialog(
+                            context: context,
+                            builder: (context) {
+                              return CreateClipDialog(mediaItem: currentMediaItem, playbackState: playbackState);
+                            }
+                        );
                       }
                     }
                 )

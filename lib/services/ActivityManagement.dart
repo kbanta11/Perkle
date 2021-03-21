@@ -730,6 +730,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
   @override
   dispose() {
     activityManager.recorder.release();
+    audioPlayer.dispose();
     super.dispose();
   }
 

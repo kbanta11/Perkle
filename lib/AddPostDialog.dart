@@ -138,9 +138,15 @@ class _AddPostDialogState extends State<AddPostDialog> {
   }
 
   @override
+  dispose() {
+    super.dispose();
+    player.dispose();
+  }
+
+  @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    User user = Provider.of<User>(context);
+    //User user = Provider.of<User>(context);
     PerklUser perklUser = Provider.of<PerklUser>(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),

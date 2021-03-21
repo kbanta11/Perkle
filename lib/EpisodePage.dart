@@ -135,19 +135,16 @@ class EpisodePage extends StatelessWidget {
                         child: Container(
                           height: 150,
                           width: MediaQuery.of(context).size.width - 160,
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text('${_episode.title}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                Text('${_podcast.title}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    child: Html(data: _episode.description,),
-                                  ),
-                                )
-                              ]
+                          child: SingleChildScrollView(
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Text('${_episode.title}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                    Text('${_podcast.title}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    Html(data: _episode.description,)
+                                  ]
+                              )
                           ),
-
                         )
                     )
                   ]

@@ -107,16 +107,18 @@ class ReplyToEpisodeDialog extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  FlatButton(
-                    child: Text('Cancel',),
+                  TextButton(
+                    child: Text('Cancel'),
                     onPressed: () {
+                      rep.dispose();
                       Navigator.of(context).pop();
                     },
                   ),
-                  FlatButton(
+                  TextButton(
                     child: Text('Reply', style: TextStyle(color: rep.filePath != null ? Colors.white : Colors.grey)),
-                    color: rep.filePath != null ? Colors.deepPurple : Colors.transparent,
+                    style: TextButton.styleFrom(backgroundColor: rep.filePath != null ? Colors.deepPurple : Colors.transparent),
                     onPressed: () async {
+                      rep.dispose();
                       await rep.sendReply(episode: _episode, podcast: _podcast, user: user);
                       Navigator.of(context).pop();
                     },
@@ -143,6 +145,12 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
   Duration recordingTime;
   String _messageTitle;
   bool isUploading = false;
+
+  @override
+  dispose() {
+    super.dispose();
+    audioPlayer.dispose();
+  }
 
   String setMessageTitle(String val) {
     _messageTitle = val;

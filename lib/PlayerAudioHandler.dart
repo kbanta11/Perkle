@@ -23,8 +23,16 @@ class PlayerAudioHandler extends BaseAudioHandler
 
     dynamic currentItem = await _localService.getData('current_item');
     if(currentItem != null) {
-      mediaItem.add(MediaItem.fromJson(currentItem));
-      player.setUrl(mediaItem.valueWrapper.value.id);
+      MediaItem currentMediaItem = MediaItem.fromJson(currentItem);
+      mediaItem.add(currentMediaItem);
+      //player.setUrl(mediaItem.valueWrapper.value.id);
+      await _playCurrentItem(item: currentMediaItem);
+      await pause();
+    }
+
+    dynamic speed = await _localService.getData('speed');
+    if(speed != null) {
+      playbackState.add(playbackState.valueWrapper.value.copyWith(speed: speed));
     }
 
     List<dynamic> localQueue = await _localService.getData('queue');
@@ -67,8 +75,9 @@ class PlayerAudioHandler extends BaseAudioHandler
     //player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
     Duration startDuration = new Duration(milliseconds: 0);
     Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
-    if(postsInProgress != null && postsInProgress[item.id] != null) {
-      int currentMs = postsInProgress[item.id];
+    String itemKey = item.extras['clipId'] != null ? '${item.id}_${item.extras['clipId']}' : item.id;
+    if(postsInProgress != null && postsInProgress[itemKey] != null) {
+      int currentMs = postsInProgress[itemKey];
       if(currentMs >= 15000) {
         startDuration = new Duration(milliseconds: currentMs - 10000);
       }
@@ -109,29 +118,20 @@ class PlayerAudioHandler extends BaseAudioHandler
     await _localService.setData('current_item', item.toJson());
     print('*** playing Item...: ${item.id}');
     await player.setUrl(item.id, initialPosition: startDuration);
+    if(item.extras['startDuration'] != null && item.extras['endDuration'] != null) {
+      await player.setClip(start: Duration(milliseconds: item.extras['startDuration']), end: Duration(milliseconds: item.extras['endDuration']));
+    }
     player.play();
-    /* ---Old AudioPlayers Version
-    await player.play(item.id, stayAwake: true, position: startDuration).catchError((e) {
-      print('error playing item: $e');
-    });
-     */
+
     await player.setSpeed(playbackState.valueWrapper.value.speed);
-    // ---Old AudioPlayers Version
-    //player.setPlaybackRate(playbackRate: playbackState.value.speed);
+
     //Set Duration once it's available
     player.durationStream.listen((Duration d) {
       print('Setting duration for: ${item.title}');
       MediaItem newItem = item.copyWith(duration: d);
       mediaItem.add(newItem);
     });
-    /*  --- Old AudioPlayers version
-    player.onDurationChanged.listen((Duration d) {
-      print('Setting duration for: ${item.title}');
-      MediaItem newItem = item.copyWith(duration: d);
-      mediaItem.add(newItem);
-      //AudioServiceBackground.setMediaItem(newItem);
-    });
-     */
+
     //Update time listened to
     player.positionStream.listen((Duration d) async {
       if(currentPosition.inMilliseconds == 0) {
@@ -140,7 +140,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       //print('old Position: ${currentPosition.inMilliseconds} (Seconds: ${currentPosition.inSeconds})\nNew position: ${d.inMilliseconds} (Seconds: ${d.inSeconds})');
       if(d.inSeconds > currentPosition.inSeconds) {
         print('audio position changed ###: ${d.inMilliseconds}');
-        updateTimeListened(d, item.id);
+        updateTimeListened(d, itemKey);
         playbackState.add(playbackState.valueWrapper.value.copyWith(
             controls: [MediaControl.rewind,
               MediaControl.pause,
@@ -154,29 +154,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       }
       currentPosition = d;
     });
-    /* --- Old AudioPlayers version
-    player.onAudioPositionChanged.listen((Duration d) async {
-      if(currentPosition.inMilliseconds == 0) {
-        currentPosition = d;
-      }
-      print('old Position: ${currentPosition.inMilliseconds} (Seconds: ${currentPosition.inSeconds})\nNew position: ${d.inMilliseconds} (Seconds: ${d.inSeconds})');
-      if(d.inSeconds > currentPosition.inSeconds) {
-        print('audio position changed ###: ${d.inMilliseconds}');
-        updateTimeListened(d, item.id);
-        playbackState.add(playbackState.value.copyWith(
-          controls: [MediaControl.rewind,
-            MediaControl.pause,
-            MediaControl.fastForward,
-            queue != null && !(await queue.isEmpty) ? MediaControl.skipToNext : null].where((element) => element != null).toList(),
-          playing: true,
-          systemActions: Set.from([MediaAction.playPause]),
-          updatePosition: d,
-          processingState: AudioProcessingState.ready
-        ));
-      }
-      currentPosition = d;
-    });
-     */
+
     //Stop on completion and play next
     player.processingStateStream.listen((ProcessingState processState) {
       if(processState == ProcessingState.completed) {
@@ -196,25 +174,7 @@ class PlayerAudioHandler extends BaseAudioHandler
         }
       }
     });
-    /*
-    player.onPlayerCompletion.listen((_) async {
-      //print('Stopping player after completion');
-      player.stop();
-      if(queue != null && queue.value != null && queue.value.length > 0) {
-        //Play next item in queue
-        print('skipping to next: ${queue.value}');
-        this.skipToNext();
-      } else {
-        //Stop player and update status
-        print('setting state after player completion');
-        playbackState.add(playbackState.value.copyWith(
-          controls: [MediaControl.stop],
-          processingState: AudioProcessingState.completed,
-          playing: false
-        ));
-      }
-    });
-     */
+
     print('playing item now under way');
   }
 
@@ -420,6 +380,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       await player.setSpeed(speed);
       //player.setPlaybackRate(playbackRate: speed);
     }
+    await _localService.setData('speed', speed);
     playbackState.add(playbackState.valueWrapper.value.copyWith(
       speed: speed,
     ));

@@ -26,6 +26,7 @@ enum TimelineType {
   MAINFEED,
   STATION,
   USER,
+  CLIPS,
 }
 
 class Timeline extends StatelessWidget {
@@ -50,65 +51,12 @@ class Timeline extends StatelessWidget {
     if(tagStream != null) {
       postStream = tagStream;
       //print('Grabbed stream for tag: $tagStream');
+    } else if (type == TimelineType.CLIPS)  {
+      postStream = DBService().streamEpisodeClips(userId);
     } else {
       postStream = DBService().streamTimelinePosts(currentUser, timelineId: timelineId, userId: userId, type: type,);
     }
 
-    /*
-    convertFile(Post post) async {
-      String fileLocation = post.audioFileLocation;
-      http.Response downloadedFile = await http.get(fileLocation);
-      var bytes = downloadedFile.bodyBytes;
-      String directory = (await getApplicationDocumentsDirectory()).path;
-      File tempFile = File('$directory/tempInputFile.aac');
-      await tempFile.writeAsBytes(bytes).then((file) {
-        print('File Size: ${file.lengthSync()}');
-      });
-      String inputFilePath = tempFile.path;
-      String outputFilePath = '$directory/outputFile.aac';
-      print('Temp Input FilePath: $inputFilePath');
-      //await FlutterFFmpegConfig().resetStatistics();
-
-      print('try deleting file if exists');
-      try {
-        print('getting output file');
-        File currentOutputFile = File(outputFilePath);
-        print('deleting file');
-        await currentOutputFile.delete();
-        print('file deleted');
-      } catch (e) {
-        print('error deleting file: $e');
-        //return 0;
-      }
-
-      print('getting file info:');
-      await FlutterFFprobe().getMediaInformation(inputFilePath).then((info) {
-        print(info);
-      }).catchError((error) {
-        print('error: $error');
-      });
-
-      FlutterFFmpeg _ffmpeg = new FlutterFFmpeg();
-      await _ffmpeg.execute('-i $inputFilePath $outputFilePath').then((rc) {
-        print('Result from conversion: $rc');
-      });
-
-      print('output file: $outputFilePath/Size: ${File(outputFilePath).lengthSync()}');
-
-      //Upload new file
-      String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(post.datePosted).toString();
-      File newFile = File(outputFilePath);
-      String filename = dateString.toString().replaceAll(new RegExp(r' '), '_');
-      final StorageReference storageRef = FirebaseStorage.instance.ref().child(post.userUID).child(filename);
-      final StorageUploadTask uploadTask = storageRef.putFile(newFile);
-      //Add new download url to post
-      String _fileUrl = await (await uploadTask.onComplete).ref.getDownloadURL();
-      DocumentReference postRef = Firestore.instance.collection('posts').document(post.id);
-      await Firestore.instance.runTransaction((transaction) async {
-        await transaction.update(postRef, {'audioFileLocation': _fileUrl});
-      });
-    }
-    */
     //User currentUser = Provider.of<User>(context);
     return StreamBuilder<bool>(
       stream: DBService().streamTimelineLoading(timelineId),
@@ -121,6 +69,7 @@ class Timeline extends StatelessWidget {
           stream: postStream,
           builder: (context, AsyncSnapshot<List<PostPodItem>> postListSnap) {
             List<PostPodItem> postList = postListSnap.data;
+            //print('Post List: $postList');
             String emptyText = 'Looks like there are\'nt any posts to show here!';
             if(type == TimelineType.MAINFEED)
               emptyText = 'Your Timeline is Empty! Try following some users!';
@@ -130,9 +79,11 @@ class Timeline extends StatelessWidget {
               emptyText = 'This user hasn\'t posted yet!';
             if(type == TimelineType.STREAMTAG)
               emptyText = 'There aren\'t any posts for this tag yet!';
+            if(type == TimelineType.CLIPS)
+              emptyText = 'You haven\'t created any clips yet';
 
             //Get Days in timeline and group daily posts together
-            List<DayPosts> days = List<DayPosts>();
+            List<DayPosts> days = <DayPosts>[];
             DateTime minDate;
             if(postList != null) {
               postList.forEach((post) {
@@ -142,7 +93,7 @@ class Timeline extends StatelessWidget {
                   if(days.where((d) => d.date.year == post.post.datePosted.year && d.date.month == post.post.datePosted.month && d.date.day == post.post.datePosted.day).length > 0) {
                     days.where((d) => d.date.year == post.post.datePosted.year && d.date.month == post.post.datePosted.month && d.date.day == post.post.datePosted.day).first.list.add(post.post);
                   } else {
-                    List list = List();
+                    List list = [];
                     list.add(post.post);
                     days.add(DayPosts(date: DateTime(post.post.datePosted.year, post.post.datePosted.month, post.post.datePosted.day), list: list));
                   }
@@ -152,9 +103,19 @@ class Timeline extends StatelessWidget {
                   if(days.where((d) => d.date.year == post.episode.publicationDate.year && d.date.month == post.episode.publicationDate.month && d.date.day == post.episode.publicationDate.day).length > 0) {
                     days.where((d) => d.date.year == post.episode.publicationDate.year && d.date.month == post.episode.publicationDate.month && d.date.day == post.episode.publicationDate.day).first.list.add(post.episode);
                   } else {
-                    List list = List();
+                    List list = [];
                     list.add(post.episode);
                     days.add(DayPosts(date: DateTime(post.episode.publicationDate.year, post.episode.publicationDate.month, post.episode.publicationDate.day), list: list));
+                  }
+                }
+                if(post.type == PostType.EPISODE_CLIP) {
+                  postDate = post.episodeClip.createdDate;
+                  if(days.where((d) => d.date.year == post.episodeClip.createdDate.year && d.date.month == post.episodeClip.createdDate.month && d.date.day == post.episodeClip.createdDate.day).length > 0) {
+                    days.where((d) => d.date.year == post.episodeClip.createdDate.year && d.date.month == post.episodeClip.createdDate.month && d.date.day == post.episodeClip.createdDate.day).first.list.add(post.episodeClip);
+                  } else {
+                    List list = [];
+                    list.add(post.episodeClip);
+                    days.add(DayPosts(date: DateTime(post.episodeClip.createdDate.year, post.episodeClip.createdDate.month, post.episodeClip.createdDate.day), list: list));
                   }
                 }
                 if(minDate == null) {
@@ -166,7 +127,7 @@ class Timeline extends StatelessWidget {
             }
             days.sort((a, b) => b.date.compareTo(a.date));
 
-            List<Widget> itemList = new List<Widget>();
+            List<Widget> itemList = <Widget>[];
             itemList.addAll(days.map((day) {
               return Container(
                 margin: EdgeInsets.only(left: 10, bottom: 10),
@@ -320,6 +281,158 @@ class Timeline extends StatelessWidget {
                                       },
                                     ),
                                   ],
+                                ),
+                              )
+                          );
+                        }
+                        if(post is EpisodeClip) {
+                          EpisodeClip _post = post;
+                          return Card(
+                              elevation: 5,
+                              color: Colors.pink[50],
+                              margin: EdgeInsets.all(5),
+                              child: ClipRRect(
+                                child: Slidable(
+                                  actionPane: SlidableDrawerActionPane(),
+                                  actionExtentRatio: 0.2,
+                                  child: Padding(
+                                      padding: EdgeInsets.all(5),
+                                      child: ListTile(
+                                        leading: Container(
+                                          height: 50.0,
+                                          width: 50.0,
+                                          decoration: BoxDecoration(
+                                              shape: BoxShape.rectangle,
+                                              color: Colors.deepPurple,
+                                              image: DecorationImage(
+                                                  fit: BoxFit.cover,
+                                                  image: NetworkImage(_post.podcastImage ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
+                                              )
+                                          ),
+                                          child: InkWell(
+                                            child: Container(),
+                                            onTap: () async {
+                                              showDialog(
+                                                  context: context,
+                                                  builder: (context) {
+                                                    return Center(child: CircularProgressIndicator());
+                                                  }
+                                              );
+                                              Podcast pod = await Podcast.loadFeed(url: _post.podcastUrl);
+                                              Navigator.of(context).pop();
+                                              Navigator.push(context, MaterialPageRoute(
+                                                builder: (context) =>
+                                                    PodcastPage(pod,),
+                                              ));
+                                            },
+                                          ),
+                                        ),
+                                        title: Text(_post.clipTitle ?? _post.episode.title),
+                                        subtitle: Text('${_post.podcastTitle}'),
+                                        trailing: Container(
+                                            width: 85,
+                                            child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                children: <Widget>[
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: <Widget>[
+                                                      InkWell(
+                                                          child: Container(
+                                                            height: 35,
+                                                            width: 35,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: currentMediaItem != null && currentMediaItem.id == _post.episode.contentUrl ? Colors.red : Colors.deepPurple,
+                                                            ),
+                                                            child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.episode.contentUrl && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                                          ),
+                                                          onTap: () {
+                                                            if(currentMediaItem != null && currentMediaItem.id == _post.episode.contentUrl && playbackState.playing) {
+                                                              mp.pausePost();
+                                                              return;
+                                                            }
+                                                            mp.playPost(PostPodItem.fromEpisodeClip(_post));
+                                                          }
+                                                      ),
+                                                      SizedBox(width: 5),
+                                                      InkWell(
+                                                          child: Container(
+                                                            height: 35,
+                                                            width: 35,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: mediaQueue != null && mediaQueue.where((item) => item.id == _post.episode.contentUrl).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                            ),
+                                                            child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                          ),
+                                                          onTap: () {
+                                                            if(mediaQueue == null || mediaQueue.where((item) => item.id == _post.episode.contentUrl).length == 0)
+                                                              mp.addPostToQueue(PostPodItem.fromEpisodeClip(_post));
+                                                          }
+                                                      )
+                                                    ],
+                                                  ),
+                                                  _post.startDuration == null || _post.endDuration == null ? Text('') : Text(ActivityManager().getDurationString(Duration(milliseconds: _post.endDuration.inMilliseconds - _post.startDuration.inMilliseconds))),
+                                                ]
+                                            )
+                                        ),
+                                        onTap: () async {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) {
+                                              return Center(child: CircularProgressIndicator());
+                                            }
+                                          );
+                                          Podcast podcast = await Podcast.loadFeed(url: _post.podcastUrl);
+                                          Navigator.of(context).pop();
+                                          showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return EpisodeDialog(ep: _post.episode, podcast: podcast);
+                                              }
+                                          );
+                                        },
+                                      )
+                                  ),
+                                  /*
+                                  secondaryActions: <Widget>[
+                                    new SlideAction(
+                                      color: Colors.red[300],
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: <Widget>[
+                                          FaIcon(FontAwesomeIcons.comments, color: Colors.white),
+                                          Text('Discuss', style: TextStyle(color: Colors.white))
+                                        ],
+                                      ),
+                                      onTap: () async {
+                                        showDialog(
+                                            context: context,
+                                            builder: (context) {
+                                              return Center(child: CircularProgressIndicator());
+                                            }
+                                        );
+                                        post.podcast = await Podcast.loadFeed(url: post.podcast.url);
+                                        Navigator.of(context).pop();
+                                        mp.replyToEpisode(post, post.podcast, context);
+                                      },
+                                    ),
+                                    new SlideAction(
+                                      color: Colors.deepPurple[300],
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: <Widget>[
+                                          FaIcon(FontAwesomeIcons.share, color: Colors.white),
+                                          Text('Share', style: TextStyle(color: Colors.white))
+                                        ],
+                                      ),
+                                      onTap: () {
+                                        mp.shareToConversation(context, episode: post, podcast: post.podcast, user: currentUser);
+                                      },
+                                    ),
+                                  ],
+                                   */
                                 ),
                               )
                           );
