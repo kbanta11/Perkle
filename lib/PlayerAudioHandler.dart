@@ -10,6 +10,7 @@ class PlayerAudioHandler extends BaseAudioHandler
   AudioPlayer player = new AudioPlayer(userAgent: 'Perkl/0.1 (Android 11) https://perklapp.com');
   Duration currentPosition = Duration();
   LocalService _localService = new LocalService();
+  LocalService _historyLocalService = new LocalService(filename: 'history.json');
   //LocalService _localProgress = new LocalService(filename: 'history.json');
   DBService _dbService = new DBService();
 
@@ -44,6 +45,11 @@ class PlayerAudioHandler extends BaseAudioHandler
 
 
   updateTimeListened(Duration time, String url) async {
+    /*
+    List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((List itemList) {
+      return itemList.map((item) => MediaItem.fromJson(item)).toList();
+    });
+     */
     Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
     if(time.inMilliseconds % 1000 == 0) {
       print('Updating Time Listened: ${time.inMilliseconds}');
@@ -139,7 +145,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       }
       //print('old Position: ${currentPosition.inMilliseconds} (Seconds: ${currentPosition.inSeconds})\nNew position: ${d.inMilliseconds} (Seconds: ${d.inSeconds})');
       if(d.inSeconds > currentPosition.inSeconds) {
-        print('audio position changed ###: ${d.inMilliseconds}');
+        print('### audio position changed ###: ${d.inMilliseconds}');
         updateTimeListened(d, itemKey);
         playbackState.add(playbackState.valueWrapper.value.copyWith(
             controls: [MediaControl.rewind,
@@ -174,8 +180,6 @@ class PlayerAudioHandler extends BaseAudioHandler
         }
       }
     });
-
-    print('playing item now under way');
   }
 
   @override

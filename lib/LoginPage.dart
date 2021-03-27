@@ -245,11 +245,16 @@ class _LoginPageState extends State<LoginPage> {
                         obscureText: true,
                       ),
                       SizedBox(height: 20.0),
-                      RaisedButton(
+                      ElevatedButton(
                         child: Text('Login'),
-                        color: Colors.deepPurple,
-                        textColor: Colors.white,
-                        elevation: 7.0,
+                        style: ElevatedButton.styleFrom(
+                          primary: Colors.deepPurple,
+                          textStyle: TextStyle(color: Colors.white),
+                          elevation: 7.0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: new BorderRadius.circular(25.0),
+                          )
+                        ),
                         onPressed: () {
                           if(_email == null || _email.length == 0 || _password == null || _password.length == 0) {
                             showDialog(
@@ -264,9 +269,11 @@ class _LoginPageState extends State<LoginPage> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
-                                        FlatButton(
+                                        TextButton(
                                           child: Text('OK', style: TextStyle(color: Colors.white)),
-                                          color: Colors.deepPurple,
+                                          style: TextButton.styleFrom(
+                                            backgroundColor: Colors.deepPurple
+                                          ),
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                           },
@@ -327,7 +334,7 @@ class _LoginPageState extends State<LoginPage> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: <Widget>[
-                                        FlatButton(
+                                        TextButton(
                                           child: Text('OK', style: TextStyle(color: Colors.deepPurple)),
                                           onPressed: () {
                                             Navigator.of(context).pop();
@@ -341,9 +348,6 @@ class _LoginPageState extends State<LoginPage> {
                             );
                           });
                         },
-                        shape: RoundedRectangleBorder(
-                          borderRadius: new BorderRadius.circular(25.0),
-                        ),
                       ),
                       _GoogleSignInSection(),
                       Platform.isIOS ? SignInWithAppleButton(
@@ -353,19 +357,21 @@ class _LoginPageState extends State<LoginPage> {
                       SizedBox(height: 100.0),
                       Text('Don\'t have an account?'),
                       SizedBox(height: 10.0),
-                      RaisedButton(
+                      ElevatedButton(
                         child: Text('Sign Up'),
-                        color: Colors.deepPurple,
-                        textColor: Colors.white,
-                        elevation: 7.0,
+                        style: ElevatedButton.styleFrom(
+                          primary: Colors.deepPurple,
+                          textStyle: TextStyle(color: Colors.white),
+                          elevation: 7.0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: new BorderRadius.circular(25.0),
+                          )
+                        ),
                         onPressed: (){
                           Navigator.pushReplacement(context, MaterialPageRoute(
                             builder: (context) => SignUpPage(),
                           ));
                         },
-                        shape: RoundedRectangleBorder(
-                          borderRadius: new BorderRadius.circular(25.0),
-                        ),
                       ),
                     ],
                   )
@@ -394,9 +400,14 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
         Container(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           alignment: Alignment.center,
-          child: RaisedButton(
-            color: Colors.white,
-            textColor: Colors.deepPurple,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              primary: Colors.white,
+              textStyle: TextStyle(color: Colors.deepPurple),
+              shape: RoundedRectangleBorder(
+                borderRadius: new BorderRadius.circular(25.0),
+              ),
+            ),
             onPressed: () async {
               setState(() {
                 _isLoading = true;
@@ -420,13 +431,10 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
                       Image.asset("assets/images/drawable-xxxhdpi/google-logo.png", height: 45.0, width: 45.0),
-                      Text('Sign in with Google'),
+                      Text('Sign in with Google', style: TextStyle(color: Colors.deepPurple)),
                     ]
                 ),
               ),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: new BorderRadius.circular(25.0),
             ),
           ),
         ),
@@ -502,13 +510,13 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
                 ),
               ),
               actions: [
-                FlatButton(
+                TextButton(
                   child: Text('Cancel'),
                   onPressed: () {
                     Navigator.of(context).pop();
                   }
                 ),
-                FlatButton(
+                TextButton(
                   child: Text('OK'),
                   onPressed: () async {
                     await UserManagement().storeNewUser(currentUser);

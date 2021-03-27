@@ -13,7 +13,7 @@ import 'package:image_cropper/image_cropper.dart';
 class UserManagement {
   FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Future<void> storeNewUser(User user, {String username}) async {
+  Future<void> storeNewUser(User user, {String username, bool tosAccepted}) async {
     //print('Storing new user data');
     WriteBatch batch = _db.batch();
     DocumentReference timelineRef = _db.collection('/timelines').doc();
@@ -27,7 +27,8 @@ class UserManagement {
       'username': username != null ? username : null,
       'usernameCaseInsensitive': username != null ? username.toLowerCase() : null,
       'mainFeedTimelineId': timelineId,
-      'tos_accepted': true,
+      'tos_accepted': tosAccepted ?? true,
+      'dateCreated': DateTime.now(),
     });
     await batch.commit();
   }

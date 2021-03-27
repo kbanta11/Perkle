@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:podcast_search/podcast_search.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'local_services.dart';
+import 'UserManagement.dart';
 import 'dart:io';
 import 'models.dart';
 import 'Helper.dart';
@@ -21,6 +22,15 @@ class DBService {
       print('error: $e');
     });
     return buildNumber;
+  }
+
+  Future<void> checkOrCreateUserDoc(User firebaseUser) async {
+    //get user doc if exists
+    bool userDocExists = await _db.collection('users').doc(firebaseUser.uid).get().then((snap) => snap.exists);
+    if(!userDocExists) {
+      print('User not yet created, creating user doc');
+      await UserManagement().storeNewUser(firebaseUser, tosAccepted: false);
+    }
   }
 
   Future<List<DiscoverTag>> getDiscoverTags() async {

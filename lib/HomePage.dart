@@ -88,19 +88,12 @@ class HomePageMobileState extends State<HomePageMobile> {
     }
   }
 
-  Future<void> showTutorial() async {
+  Future<List> showTutorial() async {
     LocalService localService = new LocalService();
     List<dynamic> tutorialCompleted = await localService.getData('tutorial_index_complete');
+    print('Tutorials Completed: $tutorialCompleted');
     if(tutorialCompleted == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) {
-              return TutorialDialog(currentTutorials: currentTutorials,);
-            }
-        );
-      });
+      return currentTutorials;
     } else {
       //List<int> tutorialsToComplete = CURRENT_TUTORIAL_INDICES.removeWhere((element) => tutorialCompleted.contains(element));
       //Get current tutorials whose index is not the index of a completed tutorial
@@ -110,20 +103,11 @@ class HomePageMobileState extends State<HomePageMobile> {
           List<dynamic> completedIndices = tutorialCompleted.map((completed) => completed['index']).toList();
          return !(completedIndices.contains(element['index']));
         })}');
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          await showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) {
-                return TutorialDialog(currentTutorials: currentTutorials.where((element) => !tutorialCompleted.map((completed) => completed['index']).toList().contains(element['index'])).toList());
-              }
-          );
-        });
+        return currentTutorials.where((element) => !tutorialCompleted.map((completed) => completed['index']).toList().contains(element['index'])).toList();
       }
     }
-
     //Change to show tutorial screens for production
-    return; //return tutorialCompleted?
+    return null; //return tutorialCompleted?
   }
 
   Future<void> promptShare(BuildContext context) async {
@@ -142,15 +126,17 @@ class HomePageMobileState extends State<HomePageMobile> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      FlatButton(
+                      TextButton(
                         child: Text('Not now.'),
                         onPressed: () {
                           Navigator.of(context).pop();
                         },
                       ),
-                      FlatButton(
+                      TextButton(
                         child: Text('Share!', style: TextStyle(color: Colors.white)),
-                        color: Colors.deepPurple,
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                        ),
                         onPressed: () {
                           Share.share('Hey! I wanna hear your voice! Join me on Perkl @ https://www.perklapp.com', subject: 'Hey! Join me on Perkl!');
                         },
@@ -242,9 +228,17 @@ class HomePageMobileState extends State<HomePageMobile> {
       );
     }
 
-    return MainPageTemplate(
-        bottomNavIndex: 0,
-        body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
+    return FutureBuilder(
+      future: showTutorial(),
+      builder: (context, AsyncSnapshot<List> showSnap) {
+        if(showSnap.hasData) {
+          return TutorialPage(currentTutorials: showSnap.data,);
+        }
+        return MainPageTemplate(
+            bottomNavIndex: 0,
+            body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
+        );
+      }
     );
   }
 }

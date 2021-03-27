@@ -168,7 +168,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
       if(currentUser.uid == pageUser.uid) {
         return Container();
       }
-      if(pageUser.followers.contains(currentUser.uid)) {
+      if(pageUser.followers != null && pageUser.followers.contains(currentUser.uid)) {
         return ButtonTheme(
             height: 25,
             minWidth: 50,

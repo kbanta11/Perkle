@@ -35,32 +35,36 @@ class PerklUser {
   });
 
   factory PerklUser.fromFirestore(DocumentSnapshot snapshot) {
+    Map data = snapshot.data();
+    if(data == null) {
+      return null;
+    }
     PerklUser newUser = new PerklUser(
       uid: snapshot.reference.id,
-      email: snapshot.data()['email'],
-      bio: snapshot.data()['bio'],
-      username: snapshot.data()['username'],
-      followers: snapshot.data()['followers'] == null ? null : snapshot.data()['followers'].entries.map<String>((entry) {
+      email: data['email'],
+      bio: data['bio'],
+      username: data['username'],
+      followers: data['followers'] == null ? null : data['followers'].entries.map<String>((entry) {
         String userId = entry.key;
         return userId;
       }).toList(),
-      following: snapshot.data()['following'] == null ? null : snapshot.data()['following'].entries.map<String>((entry) {
+      following: data['following'] == null ? null : data['following'].entries.map<String>((entry) {
         String userId = entry.key;
         return userId;
       }).toList(),
-      profilePicUrl: snapshot.data()['profilePicUrl'],
-      mainFeedTimelineId: snapshot.data()['mainFeedTimelineId'],
-      followedPodcasts: snapshot.data()['followedPodcasts'] == null ? null : snapshot.data()['followedPodcasts'].map<String>((entry) {
+      profilePicUrl: data['profilePicUrl'],
+      mainFeedTimelineId: data['mainFeedTimelineId'],
+      followedPodcasts: data['followedPodcasts'] == null ? null : data['followedPodcasts'].map<String>((entry) {
         String podcastUrl = entry;
         return podcastUrl.replaceFirst('http:', 'https:');
       }).toList(),
-      timelinesIncluded: snapshot.data()['timelinesIncluded'] == null ? null : snapshot.data()['timelinesIncluded'].entries.map<String>((entry) {
+      timelinesIncluded: data['timelinesIncluded'] == null ? null : snapshot.data()['timelinesIncluded'].entries.map<String>((entry) {
         //print('timelines');
         String timelineId = entry.key;
         return timelineId;
       }).toList(),
-      directConversationMap: snapshot.data()['directConversationMap'] == null ? null : Map.from(snapshot.data()['directConversationMap']),
-      posts: snapshot.data()['posts'] == null ? null : snapshot.data()['posts'].entries.map<String>((entry) {
+      directConversationMap: data['directConversationMap'] == null ? null : Map.from(data['directConversationMap']),
+      posts: data['posts'] == null ? null : data['posts'].entries.map<String>((entry) {
         String postId = entry.key;
         return postId;
       }).toList(),

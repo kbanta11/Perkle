@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'services/local_services.dart';
+import 'HomePage.dart';
 
-class TutorialDialog extends StatefulWidget {
+class TutorialPage extends StatefulWidget {
   List<Map<String, dynamic>> currentTutorials;
 
-  TutorialDialog({Key key, this.currentTutorials}) : super(key: key);
+  TutorialPage({Key key, this.currentTutorials}) : super(key: key);
 
   @override
-  _TutorialDialogState createState() => _TutorialDialogState();
+  _TutorialPageState createState() => _TutorialPageState();
 }
 
-class _TutorialDialogState extends State<TutorialDialog> {
+class _TutorialPageState extends State<TutorialPage> {
   VideoPlayerController _vidController;
   int index = 0;
   LocalService _localService = LocalService();
@@ -86,21 +87,21 @@ class _TutorialDialogState extends State<TutorialDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  FlatButton(
+                  TextButton(
                     child: Text('SKIP', style: TextStyle(color: Colors.white, fontSize: 24)),
                     onPressed: () async {
                       //Mark all tutorials in the index as watched
                       List<dynamic>tutorialsCompleted = await _localService.getData('tutorial_index_complete');
                       if(tutorialsCompleted == null) {
-                        tutorialsCompleted = List<Map>();
+                        tutorialsCompleted = <Map>[];
                       }
                       tutorialsCompleted.addAll(widget.currentTutorials);
                       await _localService.setData('tutorial_index_complete', tutorialsCompleted);
-                      //Close dialog
-                      Navigator.of(context).pop();
+                      //Go to homepage
+                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePageMobile()));
                     },
                   ),
-                  FlatButton(
+                  TextButton(
                       child: Text(index == widget.currentTutorials.length - 1 ? 'CLOSE' : 'NEXT', style: TextStyle(color: Colors.white, fontSize: 24)),
                       onPressed: () async {
                         if(_vidController.value.isPlaying) {
@@ -109,7 +110,7 @@ class _TutorialDialogState extends State<TutorialDialog> {
                         //Mark current item as watched and move to next item
                         List<dynamic> tutorialsCompleted = await _localService.getData('tutorial_index_complete');
                         if(tutorialsCompleted == null) {
-                          tutorialsCompleted = List<Map>();
+                          tutorialsCompleted = <Map>[];
                         }
                         tutorialsCompleted.add(widget.currentTutorials[index]);
                         await _localService.setData('tutorial_index_complete', tutorialsCompleted);
@@ -117,7 +118,8 @@ class _TutorialDialogState extends State<TutorialDialog> {
 
                         //Close if no more items
                         if(index == widget.currentTutorials.length - 1) {
-                          Navigator.of(context).pop();
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePageMobile()));
+                          //Navigator.of(context).pop();
                           return;
                         }
 

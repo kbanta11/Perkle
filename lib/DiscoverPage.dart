@@ -49,27 +49,31 @@ class DiscoverPageMobile extends StatelessWidget {
                   Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: <Widget>[
-                        FlatButton(
+                        TextButton(
                           child: Text('Pods',
                             style: TextStyle(color: pageProvider.selectedCat == 'Pods' ? Colors.white : Colors.deepPurple),
                           ),
-                          color: pageProvider.selectedCat == 'Pods' ? Colors.deepPurple : Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                            side: BorderSide(color: Colors.deepPurple),
+                          style: TextButton.styleFrom(
+                            backgroundColor: pageProvider.selectedCat == 'Pods' ? Colors.deepPurple : Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                              side: BorderSide(color: Colors.deepPurple),
+                            ),
                           ),
                           onPressed: () {
                             pageProvider.selectCategory('Pods');
                           },
                         ),
-                        FlatButton(
+                        TextButton(
                           child: Text('People',
                             style: TextStyle(color: pageProvider.selectedCat == 'People' ? Colors.white : Colors.deepPurple),
                           ),
-                          color: pageProvider.selectedCat == 'People' ? Colors.deepPurple : Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                            side: BorderSide(color: Colors.deepPurple),
+                          style: TextButton.styleFrom(
+                            backgroundColor: pageProvider.selectedCat == 'People' ? Colors.deepPurple : Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                              side: BorderSide(color: Colors.deepPurple),
+                            ),
                           ),
                           onPressed: () {
                             pageProvider.selectCategory('People');
@@ -112,59 +116,61 @@ class DiscoverPageMobile extends StatelessWidget {
                         builder: (context, userList, _) {
                           if(userList == null)
                             return Center(child: CircularProgressIndicator());
-                          return ListView(
-                            children: userList.map((userId) => StreamProvider<PerklUser>(
-                              create: (context) => UserManagement().streamUserDoc(userId),
-                              child: Consumer<PerklUser>(
-                                builder: (context, user, _) {
-                                  return user == null ? Container()
-                                      : Card(
-                                    elevation: 5,
-                                    margin: EdgeInsets.all(5),
-                                    child: ListTile(
-                                      contentPadding: EdgeInsets.fromLTRB(5, 5, 5, 5),
-                                      //Leading of list tile for pods
-                                      leading: user.profilePicUrl != null ? Container(
-                                          height: 50.0,
-                                          width: 50.0,
-                                          decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: Colors.deepPurple,
-                                              image: DecorationImage(
-                                                  fit: BoxFit.cover,
-                                                  image: NetworkImage(user.profilePicUrl)
-                                              )
-                                          )
-                                      ) : Container(
-                                          height: 50.0,
-                                          width: 50.0,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.deepPurple,
-                                          )
-                                      ),
-                                      title: Text('${user.username}', style: TextStyle(fontSize: 18)),
-                                      trailing: Container(
-                                        width: 50,
-                                        child: Row(
-                                          children: <Widget>[
-                                            FaIcon(FontAwesomeIcons.users, color: Colors.black, size: 16,),
-                                            SizedBox(width: 5),
-                                            Text('${user.followers != null ? user.followers.length.toString() : '0'}', style: TextStyle(fontSize: 16))
-                                          ],
-                                        ),
-                                      ),
-                                      onTap: () {
-                                        Navigator.push(context, MaterialPageRoute(
-                                          builder: (context) =>
-                                              ProfilePageMobile(userId: user.uid,),
-                                        ));
-                                      },
-                                    ),
-                                  );
-                                }
-                              )
-                            )).toList(),
+                          return SingleChildScrollView(
+                            child: Column(
+                              children: userList.map((userId) => StreamProvider<PerklUser>(
+                                  create: (context) => UserManagement().streamUserDoc(userId),
+                                  child: Consumer<PerklUser>(
+                                      builder: (context, user, _) {
+                                        return user == null ? Container()
+                                            : Card(
+                                          elevation: 5,
+                                          margin: EdgeInsets.all(5),
+                                          child: ListTile(
+                                            contentPadding: EdgeInsets.fromLTRB(5, 5, 5, 5),
+                                            //Leading of list tile for pods
+                                            leading: user.profilePicUrl != null ? Container(
+                                                height: 50.0,
+                                                width: 50.0,
+                                                decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.deepPurple,
+                                                    image: DecorationImage(
+                                                        fit: BoxFit.cover,
+                                                        image: NetworkImage(user.profilePicUrl)
+                                                    )
+                                                )
+                                            ) : Container(
+                                                height: 50.0,
+                                                width: 50.0,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.deepPurple,
+                                                )
+                                            ),
+                                            title: Text('${user.username}', style: TextStyle(fontSize: 18)),
+                                            trailing: Container(
+                                              width: 50,
+                                              child: Row(
+                                                children: <Widget>[
+                                                  FaIcon(FontAwesomeIcons.users, color: Colors.black, size: 16,),
+                                                  SizedBox(width: 5),
+                                                  Text('${user.followers != null ? user.followers.length.toString() : '0'}', style: TextStyle(fontSize: 16))
+                                                ],
+                                              ),
+                                            ),
+                                            onTap: () {
+                                              Navigator.push(context, MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ProfilePageMobile(userId: user.uid,),
+                                              ));
+                                            },
+                                          ),
+                                        );
+                                      }
+                                  )
+                              )).toList(),
+                            )
                           );
                         }
                       )

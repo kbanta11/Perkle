@@ -112,7 +112,8 @@ class MainAppState extends State<MainApp> {
       ],
       child: Consumer<User>(
         builder: (context, firebaseUser, _) {
-
+          //check if user has userdoc, if not create one
+          DBService().checkOrCreateUserDoc(firebaseUser);
           bool promptUpdate = Provider.of<bool>(context);
           print('Prompt Update: $promptUpdate');
           if(firebaseUser == null) {
