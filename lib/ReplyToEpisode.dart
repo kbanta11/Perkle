@@ -118,8 +118,8 @@ class ReplyToEpisodeDialog extends StatelessWidget {
                     child: Text('Reply', style: TextStyle(color: rep.filePath != null ? Colors.white : Colors.grey)),
                     style: TextButton.styleFrom(backgroundColor: rep.filePath != null ? Colors.deepPurple : Colors.transparent),
                     onPressed: () async {
-                      rep.dispose();
                       await rep.sendReply(episode: _episode, podcast: _podcast, user: user);
+                      rep.dispose();
                       Navigator.of(context).pop();
                     },
                   )
