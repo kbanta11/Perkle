@@ -11,7 +11,6 @@ class PlayerAudioHandler extends BaseAudioHandler
   Duration currentPosition = Duration();
   LocalService _localService = new LocalService();
   LocalService _historyLocalService = new LocalService(filename: 'history.json');
-  //LocalService _localProgress = new LocalService(filename: 'history.json');
   DBService _dbService = new DBService();
 
   PlayerAudioHandler() {
@@ -44,12 +43,60 @@ class PlayerAudioHandler extends BaseAudioHandler
   }
 
 
-  updateTimeListened(Duration time, String url) async {
-    /*
-    List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((List itemList) {
-      return itemList.map((item) => MediaItem.fromJson(item)).toList();
+  Future<void> updateTimeListened(Duration time, MediaItem item) async {
+    //MediaItem item = mediaItem.valueWrapper.value;
+    if(item == null) {
+      return;
+    }
+    print('-------------------------------------------------------\nPlaying Item: ${item.title}');
+    MediaItem updateItem;
+    List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
+      if(itemList == null) {
+        return null;
+      }
+      List<MediaItem> mediaItemList = (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
+      return mediaItemList;
     });
-     */
+
+    if(listeningHistory == null) {
+      listeningHistory = <MediaItem>[];
+    }
+
+    if(item.extras['clipId'] != null) {
+      //get item by clipId
+      updateItem = listeningHistory.firstWhere((_) => _.extras['clipId'] == item.extras['clipId'], orElse: () => null);
+      if(updateItem != null) {
+        updateItem.extras['position'] = time.inMilliseconds;
+        listeningHistory.removeWhere((element) => element.extras['clipId'] == item.extras['clipId']);
+        listeningHistory.add(updateItem);
+
+      } else {
+        updateItem = item;
+        updateItem.extras['position'] = time.inMilliseconds;
+        listeningHistory.add(updateItem);
+      }
+    } else {
+      //get item by id
+      updateItem = listeningHistory.firstWhere((_) => _.id == item.id, orElse: () => null);
+      print('updateItem: $updateItem');
+      if(updateItem != null) {
+        updateItem.extras['position'] = time.inMilliseconds;
+        print('History before remove: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+        listeningHistory.removeWhere((element) => element.id == item.id);
+        print('History after remove/before add: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+        listeningHistory.add(updateItem);
+        print('History after add: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+      } else {
+        updateItem = item;
+        updateItem.extras['position'] = time.inMilliseconds;
+        listeningHistory.add(updateItem);
+      }
+    }
+
+    print('### Update Listening History: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+    //save to local storage
+    await _historyLocalService.setData('items', listeningHistory.map((e) => e.toJson()).toList());
+    /*
     Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
     if(time.inMilliseconds % 1000 == 0) {
       print('Updating Time Listened: ${time.inMilliseconds}');
@@ -61,6 +108,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       }
       await _localService.setData('posts_in_progress', postsInProgress);
     }
+    */
   }
 
   updateLocalQueue(List<MediaItem> queue) async {
@@ -73,21 +121,50 @@ class PlayerAudioHandler extends BaseAudioHandler
   }
 
   _playCurrentItem({MediaItem item}) async {
+    print('Player is currently playing: ${player.playing}');
     if(player.playing) {
       print('player currently playing, stopping...');
       await player.stop();
     }
+    player.dispose();
+    player = AudioPlayer(userAgent: 'Perkl/0.1 (Android 11) https://perklapp.com');
+    mediaItem.add(null);
     //player.dispose();
     //player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
     Duration startDuration = new Duration(milliseconds: 0);
-    Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
-    String itemKey = item.extras['clipId'] != null ? '${item.id}_${item.extras['clipId']}' : item.id;
-    if(postsInProgress != null && postsInProgress[itemKey] != null) {
-      int currentMs = postsInProgress[itemKey];
+    //Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
+    List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
+      if(itemList == null) {
+        return null;
+      }
+      return (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
+    });
+    //String itemKey = item.extras['clipId'] != null ? '${item.id}_${item.extras['clipId']}' : item.id;
+    if(listeningHistory != null) {
+      print('### --- Listening History: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+      MediaItem thisItem = listeningHistory.firstWhere((element) {
+        if(item.extras['clipId'] != null) {
+          return element.extras['clipId'] == item.extras['clipId'];
+        } else {
+          return element.id == item.id;
+        }
+      }, orElse: () => null);
+      if(thisItem != null) {
+        int currentMs = thisItem.extras['position'];
+        if(currentMs != null && currentMs >= 15000) {
+          startDuration = Duration(milliseconds: currentMs - 10000);
+        }
+      }
+    }
+    /*
+    if(listeningHistory != null &&  != null) {
+      //int currentMs = postsInProgress[itemKey];
+      int currentMs =
       if(currentMs >= 15000) {
         startDuration = new Duration(milliseconds: currentMs - 10000);
       }
     }
+     */
     Map<String, dynamic> extraData = item.extras;
     if(extraData != null && extraData['isDirect'] != null && extraData['isDirect']) {
       //Mark down whether direct post has been listened
@@ -146,7 +223,9 @@ class PlayerAudioHandler extends BaseAudioHandler
       //print('old Position: ${currentPosition.inMilliseconds} (Seconds: ${currentPosition.inSeconds})\nNew position: ${d.inMilliseconds} (Seconds: ${d.inSeconds})');
       if(d.inSeconds > currentPosition.inSeconds) {
         print('### audio position changed ###: ${d.inMilliseconds}');
-        updateTimeListened(d, itemKey);
+
+        updateTimeListened(d, item);
+
         playbackState.add(playbackState.valueWrapper.value.copyWith(
             controls: [MediaControl.rewind,
               MediaControl.pause,
@@ -162,9 +241,42 @@ class PlayerAudioHandler extends BaseAudioHandler
     });
 
     //Stop on completion and play next
-    player.processingStateStream.listen((ProcessingState processState) {
+    player.processingStateStream.listen((ProcessingState processState) async {
       if(processState == ProcessingState.completed) {
         player.stop();
+        //Mark item as completed
+        List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
+          if(itemList == null) {
+            return null;
+          }
+          return (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
+        });
+        if(listeningHistory == null) {
+          listeningHistory = <MediaItem>[];
+        }
+        MediaItem thisItem = listeningHistory.firstWhere((element) {
+          if(item.extras['clipId'] != null) {
+            return element.extras['clipId'] == item.extras['clipId'];
+          } else {
+            return element.id == item.id;
+          }
+        }, orElse: () => null);
+        if(thisItem != null) {
+          thisItem.extras['completed'] = true;
+          listeningHistory.removeWhere((element) {
+            if(item.extras['clipId'] != null) {
+              return element.extras['clipId'] == item.extras['clipId'];
+            } else {
+              return element.id == item.id;
+            }
+          });
+          listeningHistory.add(thisItem);
+        } else {
+          thisItem = item;
+          thisItem.extras['completed'] = true;
+          listeningHistory.add(thisItem);
+        }
+
         if(queue != null && queue.valueWrapper.value != null && queue.valueWrapper.value.length > 0) {
           //Play next item in queue
           print('skipping to next: ${queue.valueWrapper.value}');
@@ -175,7 +287,8 @@ class PlayerAudioHandler extends BaseAudioHandler
           playbackState.add(playbackState.valueWrapper.value.copyWith(
               controls: [MediaControl.stop],
               processingState: AudioProcessingState.completed,
-              playing: false
+              playing: false,
+            updatePosition: item.duration,
           ));
         }
       }

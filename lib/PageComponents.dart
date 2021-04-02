@@ -230,24 +230,6 @@ class TopPanel extends StatelessWidget {
                     SizedBox(width: 5),
                     Text('${playbackState == null || playbackState.position == null || playbackState.position.inMilliseconds == 0 ? '' : '${getDurationString(playbackState.position)}/'}${currentMediaItem == null || currentMediaItem.duration == null ? '' : getDurationString(currentMediaItem.duration)}',
                         style: TextStyle(color: Colors.white, fontSize: 16)),
-                    /*
-                    StreamBuilder(
-                      stream: mp.player.onDurationChanged,
-                      builder: (context, AsyncSnapshot<Duration> durationSnap) {
-                        Duration duration = durationSnap.data;
-                        return StreamBuilder(
-                          stream: mp.player.onAudioPositionChanged,
-                          builder: (context, AsyncSnapshot<Duration> positionSnap) {
-                            Duration position = positionSnap.data;
-                            //print('Duration: $duration/Position: $position');
-                            if (duration == null || position == null)
-                              return Container();
-                            return Text('${getDurationString(position)}/${getDurationString(duration)}',
-                                style: TextStyle(color: Colors.white, fontSize: 16));
-                          });
-                      },
-                    ),
-                    */
                     //mp.position == null || mp.postLength == null ? Container() : Text('${mp.position.getPostPosition()}/${mp.postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ],
                 ),

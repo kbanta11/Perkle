@@ -36,19 +36,19 @@ class LocalService {
       await this.initialize();
     }
     try {
-      print('Data json ###: ${jsonEncode(data)}');
-      print('Data String ###: ${await file.readAsString()}');
+      //print('Data json ###: ${jsonEncode(data)}');
+      //print('Data String ###: ${await file.readAsString()}');
       data = jsonDecode(await file.readAsString());
     } catch (e) {
       await file.writeAsString(jsonEncode(data), flush: true, mode: FileMode.write,);
       try {
-        print('Data json ***: ${jsonEncode(data)}');
-        print('Data String ***: ${await file.readAsString()}');
+        //print('Data json ***: ${jsonEncode(data)}');
+        //print('Data String ***: ${await file.readAsString()}');
         data = jsonDecode(await file.readAsString());
       } on Exception catch (e) {
-        print('Still an error after rewrite: $e');
+        //print('Still an error after rewrite: $e');
       }
-      print('Rewrote data: $e');
+      //print('Rewrote data: $e');
     }
   }
 

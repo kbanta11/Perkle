@@ -36,7 +36,8 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
             values: RangeValues(startDuration.inSeconds.toDouble(), endDuration.inSeconds.toDouble()),
             min: 0,
             max: widget.mediaItem.duration.inSeconds.toDouble(),
-            onChanged: (RangeValues vals) {
+            onChanged: (RangeValues vals) async {
+              //await clipPlayer.setClip(start: startDuration, end: endDuration);
               setState(() {
                 startDuration = Duration(seconds: vals.start.toInt());
                 endDuration = Duration(seconds: vals.end.toInt());
@@ -300,6 +301,12 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
   }
 
   @override
+  dispose() {
+    super.dispose();
+    clipPlayer.dispose();
+  }
+
+  @override
   build(BuildContext context) {
     PerklUser perklUser = Provider.of<PerklUser>(context);
     return AlertDialog(
@@ -315,26 +322,54 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                  height: 60,
-                  width: 60,
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.deepPurple
-                  ),
-                  child: InkWell(
-                    child: Icon(clipPlayer.playing ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 45),
-                    onTap: () async {
-                      if(clipPlayer.playing) {
-                        clipPlayer.pause();
-                      } else {
-                        await clipPlayer.setClip(start: startDuration, end: endDuration);
-                        clipPlayer.play();
-                      }
-                      setState(() {});
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.replay_30),
+                    color: Colors.deepPurple,
+                    onPressed: () async {
+                      print('Current Position: ${clipPlayer.position.inMilliseconds} - 30000 = ${clipPlayer.position.inMilliseconds - 30000}/End: ${startDuration.inMilliseconds}/Duration: ${clipPlayer.duration.inMilliseconds}');
+                      await clipPlayer.seek(Duration(milliseconds: clipPlayer.position.inMilliseconds - 30000));
                     },
-                  )
+                  ),
+                  Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.deepPurple
+                      ),
+                      child: InkWell(
+                        child: Icon(clipPlayer.playing ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 45),
+                        onTap: () async {
+                          if(clipPlayer.playing) {
+                            clipPlayer.pause();
+                          } else {
+                            await clipPlayer.setClip(start: startDuration, end: endDuration);
+                            clipPlayer.play();
+                            clipPlayer.positionStream.listen((d) {
+                              setState(() {});
+                            });
+                            clipPlayer.durationStream.listen((d) {
+                              setState(() {});
+                            });
+                          }
+                          setState(() {});
+                        },
+                      )
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.forward_30),
+                    color: Colors.deepPurple,
+                    onPressed: () async {
+                      print('Current Position: ${clipPlayer.position.inMilliseconds} + 30000 = ${clipPlayer.position.inMilliseconds + 30000}/End: ${endDuration.inMilliseconds}/Duration: ${clipPlayer.duration.inMilliseconds}');
+                      await clipPlayer.seek(Duration(milliseconds: clipPlayer.position.inMilliseconds + 30000));
+                    }
+                  ),
+                ]
               ),
+              Text('${ActivityManager().getDurationString(clipPlayer.position)}/${ActivityManager().getDurationString(Duration(milliseconds: endDuration.inMilliseconds - startDuration.inMilliseconds))}'),
               Text('${widget.mediaItem.title != null && widget.mediaItem.title.length > 60 ? '${widget.mediaItem.title.substring(0, 60)}...' : widget.mediaItem.title}', textAlign: TextAlign.center, style: TextStyle(fontSize: 18)),
               Text('${widget.mediaItem.artist != null && widget.mediaItem.artist.length > 60 ? '${widget.mediaItem.artist.substring(0, 60)}' : widget.mediaItem.artist}', textAlign: TextAlign.center),
               SizedBox(height: 10),

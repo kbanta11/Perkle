@@ -232,6 +232,7 @@ class HomePageMobileState extends State<HomePageMobile> {
       future: showTutorial(),
       builder: (context, AsyncSnapshot<List> showSnap) {
         if(showSnap.hasData) {
+          print('### Snap Data: ${showSnap.data}');
           return TutorialPage(currentTutorials: showSnap.data,);
         }
         return MainPageTemplate(

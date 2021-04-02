@@ -569,14 +569,19 @@ class ActivityManager {
   }
 
   String getDurationString(Duration duration) {
+    bool isNegative = false;
     int hours = duration.inHours;
     int minutes = duration.inMinutes.remainder(60);
     int seconds = duration.inSeconds.remainder(60);
-    String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
-    String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
+    if(hours < 0 || minutes < 0 || seconds < 0) {
+      isNegative = true;
+    }
+    String minutesString = minutes.abs() >= 10 ? '${minutes.abs()}' : '0${minutes.abs()}';
+    String secondsString = seconds.abs() >= 10 ? '${seconds.abs()}' : '0${seconds.abs()}';
+    print('Hours: $hours/Minutes: $minutes/Seconds: $seconds');
     if(hours > 0)
-      return '$hours:$minutesString:$secondsString';
-    return '$minutesString:$secondsString';
+      return '${isNegative ? '-' : ''}${hours.abs()}:$minutesString:$secondsString';
+    return '${isNegative ? '-' : ''}$minutesString:$secondsString';
   }
 }
 
