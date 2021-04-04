@@ -20,7 +20,7 @@ class QueuePage extends StatelessWidget {
     PlaybackState playbackState = Provider.of<PlaybackState>(context);
     MediaItem currentMediaItem = Provider.of<MediaItem>(context);
     List<MediaItem> queueItems = Provider.of<List<MediaItem>>(context);
-    List<Widget> queueWidgets = new List<Widget>();
+    List<Widget> queueWidgets = <Widget>[];
 
     tapItemTile(MediaItem item) async {
       print('item tapped: $item');
@@ -124,7 +124,7 @@ class QueuePage extends StatelessWidget {
                   ) : Container(),
                   Row(
                     children: <Widget>[
-                      FlatButton(
+                      TextButton(
                         child: Text('Cancel'),
                         onPressed: () {
                           Navigator.of(context).pop();
@@ -194,21 +194,22 @@ class QueuePage extends StatelessWidget {
       }
     }
 
-    if(currentMediaItem != null)
+    if(currentMediaItem != null) {
       queueWidgets.add(Card(
-        color: Colors.greenAccent[100],
-        margin: EdgeInsets.all(5),
-        child: Padding(
-          padding: EdgeInsets.all(5),
-          child: ListTile(
-            title: Text(currentMediaItem.title),
-            subtitle: Text(currentMediaItem.artist),
-            onTap: () {
-              tapItemTile(currentMediaItem);
-            },
-          ),
-        )
+          color: Colors.greenAccent[100],
+          margin: EdgeInsets.all(5),
+          child: Padding(
+            padding: EdgeInsets.all(5),
+            child: ListTile(
+              title: Text(currentMediaItem.title),
+              subtitle: Text(currentMediaItem.artist),
+              onTap: () {
+                tapItemTile(currentMediaItem);
+              },
+            ),
+          )
       ));
+    }
     queueWidgets.addAll(queueItems.map((MediaItem item) {
       return Card(
           color: Colors.deepPurple[50],

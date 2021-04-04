@@ -578,7 +578,7 @@ class ActivityManager {
     }
     String minutesString = minutes.abs() >= 10 ? '${minutes.abs()}' : '0${minutes.abs()}';
     String secondsString = seconds.abs() >= 10 ? '${seconds.abs()}' : '0${seconds.abs()}';
-    print('Hours: $hours/Minutes: $minutes/Seconds: $seconds');
+    //print('Hours: $hours/Minutes: $minutes/Seconds: $seconds');
     if(hours > 0)
       return '${isNegative ? '-' : ''}${hours.abs()}:$minutesString:$secondsString';
     return '${isNegative ? '-' : ''}$minutesString:$secondsString';

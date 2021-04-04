@@ -9,14 +9,15 @@ class AccountSettings extends StatelessWidget {
   @override
   build(BuildContext context) {
     User firebaseUser = Provider.of<User>(context);
+
     return MultiProvider(
       providers: [
         StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser),),
-        ChangeNotifierProvider<AccountSettingsProvider>(create: (_) => AccountSettingsProvider(),)
+        //ChangeNotifierProvider<AccountSettingsProvider>(create: (_) => AccountSettingsProvider(),)
       ],
-      child: Consumer<AccountSettingsProvider>(
-        builder: (context, asp, _) {
-          PerklUser currentUser = Provider.of<PerklUser>(context);
+      child: Consumer<PerklUser>(
+        builder: (context, currentUser, _) {
+          //PerklUser currentUser = Provider.of<PerklUser>(context);
           print('Firebase User Info: ${firebaseUser.uid}/${firebaseUser.emailVerified}');
           return SimpleDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
@@ -29,16 +30,48 @@ class AccountSettings extends StatelessWidget {
               Text('Email:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Text('${currentUser == null || currentUser.email == null ? '' : currentUser.email}'),
               SizedBox(height: 10),
-              FlatButton(
+              TextButton(
                 child: Text('Change Password'),
                 onPressed: () {
 
                 },
               ),
-              FlatButton(
+              TextButton(
                 child: Text('Deactivate Account'),
                 onPressed: () {
-
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SimpleDialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
+                        title: Center(child: Text('Are You Sure?')),
+                        children: [
+                          Text('Are you sure that you want to deactivate your account? You will not longer to be able to access your account or post or view context.'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                child: Text('Cancel'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  backgroundColor: Colors.deepPurple,
+                                ),
+                                child: Text('Deactivate', style: TextStyle(color: Colors.white)),
+                                onPressed: () async {
+                                  //await DBService().deactivateUser(currentUser);
+                                  //Navigator.of(context).pop();
+                                }
+                              )
+                            ],
+                          )
+                        ],
+                      );
+                    }
+                  );
                 },
               )
             ],
@@ -49,6 +82,3 @@ class AccountSettings extends StatelessWidget {
   }
 }
 
-class AccountSettingsProvider extends ChangeNotifier {
-
-}

@@ -36,13 +36,13 @@ class ConversationListPageMobile extends StatelessWidget {
       child: Consumer<List<Conversation>>(
         builder: (context, conversations, _) {
           PerklUser user = Provider.of<PerklUser>(context);
-          List<DayPosts> days = List<DayPosts>();
+          List<DayPosts> days = <DayPosts>[];
           if(conversations != null) {
             conversations.forEach((convo) {
               if(days.where((d) => d.date.year == convo.lastDate.year && d.date.month == convo.lastDate.month && d.date.day == convo.lastDate.day).length > 0) {
                 days.where((d) => d.date.year == convo.lastDate.year && d.date.month == convo.lastDate.month && d.date.day == convo.lastDate.day).first.list.add(convo);
               } else {
-                List list = List();
+                List list = [];
                 list.add(convo);
                 days.add(DayPosts(date: DateTime(convo.lastDate.year, convo.lastDate.month, convo.lastDate.day), list: list));
               }
@@ -69,9 +69,14 @@ class ConversationListPageMobile extends StatelessWidget {
                           Text(day.date.year == DateTime.now().year && day.date.month == DateTime.now().month && day.date.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]),),
                           user == null ? Center(child: CircularProgressIndicator()) : Column(
                             children: day.list.map((conversation) {
-                              print('conversation: ${conversation.id}');
-                              String firstOtherUid = conversation.memberList.where((item) => item != user.uid).first;
-                              int unreadPosts = 0;
+                              Conversation convo = conversation;
+                              String firstOtherUid = convo.memberList.where((item) => item != user.uid).first;
+                              int unreadPosts = convo.conversationMembers[firebaseUser.uid]['unreadPosts'];
+                              print('conversation: ${convo.id}/Unheard Posts: ${unreadPosts}');
+                              if(unreadPosts == null) {
+                                unreadPosts = 0;
+                              }
+
 
                               return Card(
                                   elevation: 5,
@@ -171,9 +176,11 @@ class ConversationListPageMobile extends StatelessWidget {
                 ),
                 Align(
                   alignment: Alignment.bottomCenter,
-                  child: FlatButton(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                    color: Colors.deepPurple,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      backgroundColor: Colors.deepPurple,
+                    ),
                     child: Text('New Conversation', style: TextStyle(color: Colors.white)),
                     onPressed: () async {
                       //Record new post and show list to send to users

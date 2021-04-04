@@ -284,6 +284,7 @@ class Post {
   String audioFileLocation;
   int listenCount;
   int secondsLength;
+  int msLength;
   List<String> streamList;
   List<String> timelines;
 
@@ -391,6 +392,7 @@ enum PostType {
 
 class PostPodItem {
   String id;
+  Duration duration;
   PostType type;
   Post post;
   DirectPost directPost;
@@ -402,7 +404,7 @@ class PostPodItem {
   String audioUrl;
   String displayText;
 
-  PostPodItem({this.id, this.type, this.post, this.directPost, this.episode, this.podcastUrl, this.audioUrl, this.displayText, this.episodeReply, this.episodeClip, this.podcast});
+  PostPodItem({this.id, this.type, this.duration, this.post, this.directPost, this.episode, this.podcastUrl, this.audioUrl, this.displayText, this.episodeReply, this.episodeClip, this.podcast});
 
   Widget titleText() {
     if(type == PostType.POST) {
@@ -501,6 +503,7 @@ class PostPodItem {
       id: post.id,
       type: PostType.POST,
       post: post,
+      duration: post.msLength != null ? Duration(milliseconds: post.msLength) : Duration(seconds: post.secondsLength),
       audioUrl: post.audioFileLocation,
       displayText: '@${post.username} | ${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'
     );
@@ -513,6 +516,7 @@ class PostPodItem {
       episode: post.episode,
       podcastUrl: post.podcastUrl,
       directPost: post,
+      duration: post.msLength != null ? Duration(milliseconds: post.msLength) : Duration(seconds: post.secondsLength),
       audioUrl: post.audioFileLocation,
       displayText: '@${post.senderUsername} | ${post.messageTitle != null ? post.messageTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'
     );
@@ -524,6 +528,7 @@ class PostPodItem {
       type: PostType.PODCAST_EPISODE,
       episode: episode,
       audioUrl: episode.contentUrl,
+      duration: episode.duration,
       displayText: '${episode.author} | ${episode.title}',
       podcast: podcast,
     );
@@ -536,6 +541,7 @@ class PostPodItem {
       episodeReply: reply,
       episode: ep,
       podcast: podcast,
+      duration: reply.replyDuration,
       audioUrl: reply.audioFileLocation,
       displayText: '${reply.posterUsername} | ${reply.replyTitle != null ? reply.replyTitle : DateFormat("MMMM dd, yyyy @HH:mm").format(reply.replyDate).toString()}'
     );
@@ -546,6 +552,7 @@ class PostPodItem {
       id: clip.id,
       type: PostType.EPISODE_CLIP,
       episodeClip: clip,
+      duration: Duration(milliseconds: clip.endDuration.inMilliseconds - clip.startDuration.inMilliseconds),
       audioUrl: clip.episode.contentUrl,
       displayText: '${clip.clipTitle ?? clip.episode.title} | ${clip.podcastTitle}'
     );
@@ -557,6 +564,7 @@ class PostPodItem {
       title: this.titleTextString(),
       artist: this.subtitleTextString(),
       album: '',
+      duration: this.duration,
       extras: {
         'type': this.type.toString(),
         'episode': this.episode != null ? this.episode.toJson() : null,

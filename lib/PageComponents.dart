@@ -23,6 +23,7 @@ import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'QueuePage.dart';
 import 'Clipping.dart';
+import 'ListeningHistory.dart';
 
 class RecordButton extends StatefulWidget {
 
@@ -400,7 +401,11 @@ class MainPopMenu extends StatelessWidget {
           PopupMenuItem(
             child: Text('Account Settings'),
             value: 3,
-          )
+          ),
+          PopupMenuItem(
+            child: Text('Listening History'),
+            value: 4,
+          ),
         ],
         child: Navigator.canPop(context) ? IconButton(
           icon: Icon(Icons.arrow_back),
@@ -465,6 +470,11 @@ class MainPopMenu extends StatelessWidget {
                   return AccountSettings();
                 }
             );
+          }
+          if(value == 4){
+            Navigator.push(context, MaterialPageRoute(
+              builder: (context) => ListeningHistoryPage(),
+            ));
           }
         }
     );

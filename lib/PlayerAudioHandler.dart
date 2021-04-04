@@ -80,6 +80,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       updateItem = listeningHistory.firstWhere((_) => _.id == item.id, orElse: () => null);
       print('updateItem: $updateItem');
       if(updateItem != null) {
+        //updateItem = item;
         updateItem.extras['position'] = time.inMilliseconds;
         print('History before remove: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
         listeningHistory.removeWhere((element) => element.id == item.id);
