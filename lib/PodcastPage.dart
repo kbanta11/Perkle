@@ -17,11 +17,30 @@ import 'services/ActivityManagement.dart';
 import 'MainPageTemplate.dart';
 import 'EpisodePage.dart';
 import 'services/models.dart';
+import 'services/local_services.dart';
 
 class PodcastPage extends StatelessWidget {
   Podcast podcast;
+  LocalService _historyService = LocalService(filename: 'history.json');
 
   PodcastPage(this.podcast);
+
+  Future<List<MediaItem>> getHistory() async {
+    List<MediaItem> listeningHistory = await _historyService.getData('items').then((dynamic itemList) {
+      if(itemList == null) {
+        return null;
+      }
+      List<MediaItem> mediaItemList = (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
+      if(mediaItemList != null) {
+        mediaItemList.sort((MediaItem a, MediaItem b) {
+          //print('${a.extras['listenDate'] ?? 0} >>> ${b.extras['listenDate'] ?? 0}');
+          return Comparable.compare(b.extras['listenDate'] ?? 0, a.extras['listenDate'] ?? 0);
+        });
+      }
+      return mediaItemList.reversed.toList();
+    });
+    return listeningHistory;
+  }
 
   @override
   build(BuildContext context) {
@@ -115,111 +134,137 @@ class PodcastPage extends StatelessWidget {
                 )
             ),
             Expanded(
-                child: ListView(
-                  children: podcast.episodes.map((Episode ep) {
-                    if(ep.author == null)
-                      ep.author = podcast.title;
-                    return Card(
-                        elevation: 5,
-                        color: Colors.deepPurple[50],
-                        margin: EdgeInsets.all(5),
-                        child: Slidable(
-                          actionPane: SlidableDrawerActionPane(),
-                          actionExtentRatio: 0.2,
-                          child: Padding(
-                              padding: EdgeInsets.all(5),
-                              child: ListTile(
-                                title: Text(ep.title),
-                                subtitle: Text('${ep.publicationDate != null ? DateFormat().format(ep.publicationDate) : ''}'),
-                                trailing: Container(
-                                    width: 85,
-                                    child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: <Widget>[
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: <Widget>[
-                                              InkWell(
-                                                  child: Container(
-                                                    height: 35,
-                                                    width: 35,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: currentMediaItem != null && currentMediaItem.id == ep.contentUrl ? Colors.red : Colors.deepPurple,
-                                                    ),
-                                                    child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == ep.contentUrl && playbackState != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                child: FutureBuilder(
+                  future: getHistory(),
+                  builder: (context, AsyncSnapshot<List<MediaItem>> historySnap) {
+                    List<MediaItem> history = historySnap.data ?? <MediaItem>[];
+                    return ListView(
+                      children: podcast.episodes.map((Episode ep) {
+                        MediaItem thisItem = history.firstWhere((element) => element.id == ep.contentUrl, orElse: () => null);
+                        int pctComplete = 0;
+                        if(thisItem != null) {
+                          int position = thisItem.extras['position'] ?? 0;
+                          int duration = thisItem.duration.inMilliseconds;
+                          pctComplete = ((position/duration) * 100).round();
+                        }
+                        if(ep.author == null)
+                          ep.author = podcast.title;
+                        return Card(
+                            elevation: 5,
+                            color: Colors.deepPurple[50],
+                            margin: EdgeInsets.all(5),
+                            child: Slidable(
+                              actionPane: SlidableDrawerActionPane(),
+                              actionExtentRatio: 0.2,
+                              child: Padding(
+                                  padding: EdgeInsets.all(5),
+
+                                  child: InkWell(
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(ep.title),
+                                              Text('${ep.publicationDate != null ? DateFormat().format(ep.publicationDate) : ''}', style: TextStyle(color: Colors.black54)),
+                                            ]
+                                          )
+                                        ),
+                                        SizedBox(width: 5),
+                                        Container(
+                                            width: 85,
+                                            child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                children: <Widget>[
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: <Widget>[
+                                                      InkWell(
+                                                          child: Container(
+                                                            height: 35,
+                                                            width: 35,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: currentMediaItem != null && currentMediaItem.id == ep.contentUrl ? Colors.red : Colors.deepPurple,
+                                                            ),
+                                                            child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == ep.contentUrl && playbackState != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                                          ),
+                                                          onTap: () {
+                                                            if(currentMediaItem != null && currentMediaItem.id == ep.contentUrl && playbackState != null && playbackState.playing) {
+                                                              mp.pausePost();
+                                                              return;
+                                                            }
+                                                            mp.playPost(PostPodItem.fromEpisode(ep, podcast));
+                                                          }
+                                                      ),
+                                                      SizedBox(width: 5),
+                                                      InkWell(
+                                                          child: Container(
+                                                            height: 35,
+                                                            width: 35,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: mediaQueue != null && mediaQueue.where((item) => item.id == ep.contentUrl).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                            ),
+                                                            child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                          ),
+                                                          onTap: () {
+                                                            if(mediaQueue == null || mediaQueue.where((item) => item.id == ep.contentUrl).length == 0)
+                                                              mp.addPostToQueue(PostPodItem.fromEpisode(ep, podcast));
+                                                          }
+                                                      )
+                                                    ],
                                                   ),
-                                                  onTap: () {
-                                                    if(currentMediaItem != null && currentMediaItem.id == ep.contentUrl && playbackState != null && playbackState.playing) {
-                                                      mp.pausePost();
-                                                      return;
-                                                    }
-                                                    mp.playPost(PostPodItem.fromEpisode(ep, podcast));
-                                                  }
-                                              ),
-                                              SizedBox(width: 5),
-                                              InkWell(
-                                                  child: Container(
-                                                    height: 35,
-                                                    width: 35,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: mediaQueue != null && mediaQueue.where((item) => item.id == ep.contentUrl).length > 0  ? Colors.grey : Colors.deepPurple,
-                                                    ),
-                                                    child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
-                                                  ),
-                                                  onTap: () {
-                                                    if(mediaQueue == null || mediaQueue.where((item) => item.id == ep.contentUrl).length == 0)
-                                                      mp.addPostToQueue(PostPodItem.fromEpisode(ep, podcast));
-                                                  }
-                                              )
-                                            ],
-                                          ),
-                                          ep.duration == null ? Text('') : Text(ActivityManager().getDurationString(ep.duration)),
-                                        ]
-                                    )
+                                                  ep.duration == null ? Text('') : Text(ActivityManager().getDurationString(ep.duration)),
+                                                  pctComplete > 0 ? Text('${pctComplete}%', style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)) : Container()
+                                                ]
+                                            )
+                                        ),
+                                      ],
+                                    ),
+                                    onTap: () {
+                                      showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return EpisodeDialog(ep: ep, podcast: podcast);
+                                          }
+                                      );
+                                    },
+                                  )),
+                              secondaryActions: <Widget>[
+                                new SlideAction(
+                                  color: Colors.red[300],
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: <Widget>[
+                                      FaIcon(FontAwesomeIcons.comments, color: Colors.white),
+                                      Text('Discuss', style: TextStyle(color: Colors.white))
+                                    ],
+                                  ),
+                                  onTap: () {
+                                    mp.replyToEpisode(ep, podcast, context);
+                                  },
                                 ),
-                                onTap: () {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        return EpisodeDialog(ep: ep, podcast: podcast);
-                                      }
-                                  );
-                                },
-                              )
-                          ),
-                          secondaryActions: <Widget>[
-                            new SlideAction(
-                              color: Colors.red[300],
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  FaIcon(FontAwesomeIcons.comments, color: Colors.white),
-                                  Text('Discuss', style: TextStyle(color: Colors.white))
-                                ],
-                              ),
-                              onTap: () {
-                                mp.replyToEpisode(ep, podcast, context);
-                              },
-                            ),
-                            new SlideAction(
-                              color: Colors.deepPurple[300],
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  FaIcon(FontAwesomeIcons.share, color: Colors.white),
-                                  Text('Share', style: TextStyle(color: Colors.white))
-                                ],
-                              ),
-                              onTap: () {
-                                mp.shareToConversation(context, episode: ep, podcast: podcast, user: user);
-                              },
-                            ),
-                          ],
-                        )
+                                new SlideAction(
+                                  color: Colors.deepPurple[300],
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: <Widget>[
+                                      FaIcon(FontAwesomeIcons.share, color: Colors.white),
+                                      Text('Share', style: TextStyle(color: Colors.white))
+                                    ],
+                                  ),
+                                  onTap: () {
+                                    mp.shareToConversation(context, episode: ep, podcast: podcast, user: user);
+                                  },
+                                ),
+                              ],
+                            )
+                        );
+                      }).toList(),
                     );
-                  }).toList(),
+                  }
                 )
             )
           ]
@@ -258,15 +303,17 @@ class EpisodeDialog extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            FlatButton(
+            TextButton(
                 child: Text('Cancel'),
                 onPressed: () {
                   Navigator.of(context).pop();
                 }
             ),
-            FlatButton(
+            TextButton(
               child: Text('Go to episode', style: TextStyle(color: Colors.white)),
-              color: Colors.deepPurple,
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+              ),
               onPressed: () async {
                 showDialog(
                   context: context,

@@ -41,13 +41,13 @@ class ConversationPageMobile extends StatelessWidget {
       child: Consumer<List<DirectPost>>(
         builder: (context, postList, _) {
           PerklUser user = Provider.of<PerklUser>(context);
-          List<DayPosts> days = List<DayPosts>();
+          List<DayPosts> days = <DayPosts>[];
           if(postList != null) {
             postList.forEach((post) {
               if(days.where((day) => day.date.year == post.datePosted.year && day.date.month == post.datePosted.month && day.date.day == post.datePosted.day).length > 0) {
                 days.where((day) => day.date.year == post.datePosted.year && day.date.month == post.datePosted.month && day.date.day == post.datePosted.day).first.list.add(post);
               } else {
-                List posts = List();
+                List posts = [];
                 posts.add(post);
                 days.add(DayPosts(date: DateTime(post.datePosted.year, post.datePosted.month, post.datePosted.day), list: posts));
               }
@@ -159,6 +159,9 @@ class ConversationPageMobile extends StatelessWidget {
                                                     title: Text(directPost.messageTitle ?? '@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left),
                                                     subTitle: directPost.podcastTitle != null ? Column(crossAxisAlignment: user.uid == sender.uid ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: <Widget>[Text('${directPost.podcastTitle}'), Text('shared by @${sender.username}', style: TextStyle(color: Colors.grey),)],) : directPost.messageTitle != null ? Text('@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left,) : null,
                                                     onTap: () async {
+                                                      if(playbackState.playing) {
+                                                        mp.stopPost();
+                                                      }
                                                       await ActivityManager().sendDirectPostDialog(context, conversationId: conversationId);
                                                     },
                                                   );
@@ -180,19 +183,26 @@ class ConversationPageMobile extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: <Widget>[
-                      FlatButton(
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                          backgroundColor: Colors.deepPurple,
+                        ),
                         child: Text('Play Unheard', style: TextStyle(color: Colors.white)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                        color: Colors.deepPurple,
                         onPressed: () async {
                           await mp.addUnheardToQueue(conversationId: conversationId, userId: firebaseUser.uid);
                         },
                       ),
-                      FlatButton(
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                          backgroundColor: Colors.deepPurple,
+                        ),
                         child: Text('Reply', style: TextStyle(color: Colors.white)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                        color: Colors.deepPurple,
                         onPressed: () async {
+                          if(playbackState.playing) {
+                            mp.stopPost();
+                          }
                           await mp.activityManager.sendDirectPostDialog(context, conversationId: conversationId);
                         },
                       )

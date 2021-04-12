@@ -120,7 +120,11 @@ class DBService {
     }
     if(userId != null) {
       return _db.collection('posts').where('userUID', isEqualTo: userId).orderBy("datePosted", descending: true).snapshots().map((qs) {
-        return qs.docs.map((doc) => PostPodItem.fromPost(Post.fromFirestore(doc))).toList();
+        print('Timeline QuerySnap: ${qs.docs}');
+        return qs.docs.map((doc) {
+          print('PostPodItem: ${PostPodItem.fromPost(Post.fromFirestore(doc))}');
+          return PostPodItem.fromPost(Post.fromFirestore(doc));
+        }).toList();
       });
     }
     return _db.collection('posts').where('userUID', isEqualTo: currentUser.uid).orderBy("datePosted", descending: true).snapshots().map((qs) {
@@ -183,6 +187,10 @@ class DBService {
   }
 
   Stream<bool> streamTimelineLoading(String timelineId) {
+    print('timeline id: $timelineId');
+    if(timelineId == null) {
+      return Stream.value(false).asBroadcastStream();
+    }
     return _db.collection('timelines').doc(timelineId).snapshots().map((snap) {
       return snap.data()['is_loading'] ?? false;
     });

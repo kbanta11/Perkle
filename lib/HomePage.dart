@@ -88,8 +88,18 @@ class HomePageMobileState extends State<HomePageMobile> {
     }
   }
 
-  Future<List> showTutorial() async {
+  Future<bool> showTutorial() async {
     LocalService localService = new LocalService();
+    int tutorialComplete = await localService.getData('tutorial_version');
+    if(tutorialComplete == null) {
+      return true;
+    }
+    //change tutorial version
+    if(tutorialComplete >= 1) {
+      return false;
+    }
+    return true;
+    /*
     List<dynamic> tutorialCompleted = await localService.getData('tutorial_index_complete');
     print('Tutorials Completed: $tutorialCompleted');
     if(tutorialCompleted == null) {
@@ -108,6 +118,7 @@ class HomePageMobileState extends State<HomePageMobile> {
     }
     //Change to show tutorial screens for production
     return null; //return tutorialCompleted?
+     */
   }
 
   Future<void> promptShare(BuildContext context) async {
@@ -230,10 +241,10 @@ class HomePageMobileState extends State<HomePageMobile> {
 
     return FutureBuilder(
       future: showTutorial(),
-      builder: (context, AsyncSnapshot<List> showSnap) {
-        if(showSnap.hasData) {
+      builder: (context, AsyncSnapshot<bool> showSnap) {
+        if(showSnap.hasData && showSnap.data) {
           print('### Snap Data: ${showSnap.data}');
-          return TutorialPage(currentTutorials: showSnap.data,);
+          return TutorialPage();
         }
         return MainPageTemplate(
             bottomNavIndex: 0,

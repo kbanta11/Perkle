@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:audio_service/audio_service.dart';
 
 import 'AddPostDialog.dart';
 import 'ConversationPage.dart';
@@ -28,6 +29,7 @@ class ConversationListPageMobile extends StatelessWidget {
     User firebaseUser = Provider.of<User>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     PerklUser currentUser = Provider.of<PerklUser>(context);
+    PlaybackState playbackState = Provider.of<PlaybackState>(context);
     return MultiProvider(
       providers: [
         StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
@@ -149,6 +151,9 @@ class ConversationListPageMobile extends StatelessWidget {
                                                   child: InkWell(
                                                     child: Center(child: Icon(Icons.mic, color: Colors.white)),
                                                     onTap: () async {
+                                                      if(playbackState.playing) {
+                                                        mp.stopPost();
+                                                      }
                                                       await ActivityManager().sendDirectPostDialog(context, conversationId: conversation.id);
                                                     },
                                                   ),
@@ -183,6 +188,9 @@ class ConversationListPageMobile extends StatelessWidget {
                     ),
                     child: Text('New Conversation', style: TextStyle(color: Colors.white)),
                     onPressed: () async {
+                      if(playbackState.playing) {
+                        mp.stopPost();
+                      }
                       //Record new post and show list to send to users
                       await showDialog(
                         context: context,

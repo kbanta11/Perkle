@@ -67,12 +67,14 @@ class PlayerAudioHandler extends BaseAudioHandler
       updateItem = listeningHistory.firstWhere((_) => _.extras['clipId'] == item.extras['clipId'], orElse: () => null);
       if(updateItem != null) {
         updateItem.extras['position'] = time.inMilliseconds;
+        updateItem.extras['listenDate'] = DateTime.now().millisecondsSinceEpoch;
         listeningHistory.removeWhere((element) => element.extras['clipId'] == item.extras['clipId']);
         listeningHistory.add(updateItem);
 
       } else {
         updateItem = item;
         updateItem.extras['position'] = time.inMilliseconds;
+        updateItem.extras['listenDate'] = DateTime.now().millisecondsSinceEpoch;
         listeningHistory.add(updateItem);
       }
     } else {
@@ -82,14 +84,16 @@ class PlayerAudioHandler extends BaseAudioHandler
       if(updateItem != null) {
         //updateItem = item;
         updateItem.extras['position'] = time.inMilliseconds;
-        print('History before remove: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+        updateItem.extras['listenDate'] = DateTime.now().millisecondsSinceEpoch;
+        //print('History before remove: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
         listeningHistory.removeWhere((element) => element.id == item.id);
-        print('History after remove/before add: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+        //print('History after remove/before add: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
         listeningHistory.add(updateItem);
-        print('History after add: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
+        //print('History after add: ${listeningHistory.map((e) => {'id': e.id, 'title': e.title, 'position': e.extras['position']})}');
       } else {
         updateItem = item;
         updateItem.extras['position'] = time.inMilliseconds;
+        updateItem.extras['listenDate'] = DateTime.now().millisecondsSinceEpoch;
         listeningHistory.add(updateItem);
       }
     }

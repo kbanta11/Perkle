@@ -26,7 +26,13 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
         return null;
       }
       List<MediaItem> mediaItemList = (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
-      return mediaItemList;
+      if(mediaItemList != null) {
+        mediaItemList.sort((MediaItem a, MediaItem b) {
+          //print('${a.extras['listenDate'] ?? 0} >>> ${b.extras['listenDate'] ?? 0}');
+          return Comparable.compare(a.extras['listenDate'] ?? 0, b.extras['listenDate'] ?? 0);
+        });
+      }
+      return mediaItemList.reversed.toList();
     });
     return listeningHistory;
   }

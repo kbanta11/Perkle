@@ -33,20 +33,23 @@ class AccountSettings extends StatelessWidget {
               TextButton(
                 child: Text('Change Password'),
                 onPressed: () {
+                  //only show if firebaseUser.providerData contains with providerId == password
 
                 },
               ),
               TextButton(
                 child: Text('Deactivate Account'),
                 onPressed: () {
+                  print('User ${currentUser.email}, Provider: ${firebaseUser.providerData.first}');
                   showDialog(
                     context: context,
                     builder: (context) {
                       return SimpleDialog(
+                        contentPadding: EdgeInsets.all(10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
                         title: Center(child: Text('Are You Sure?')),
                         children: [
-                          Text('Are you sure that you want to deactivate your account? You will not longer to be able to access your account or post or view context.'),
+                          Text('Are you sure that you want to deactivate your account? You will not longer to be able to access your account or post or view context.', textAlign: TextAlign.center,),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [

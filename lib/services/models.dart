@@ -499,11 +499,12 @@ class PostPodItem {
   }
 
   factory PostPodItem.fromPost(Post post) {
+    print('MS: ${post.msLength}/Seconds: ${post.secondsLength}');
     return PostPodItem(
       id: post.id,
       type: PostType.POST,
       post: post,
-      duration: post.msLength != null ? Duration(milliseconds: post.msLength) : Duration(seconds: post.secondsLength),
+      duration: post.msLength != null ? Duration(milliseconds: post.msLength) : Duration(seconds: post.secondsLength ?? 0),
       audioUrl: post.audioFileLocation,
       displayText: '@${post.username} | ${post.postTitle != null ? post.postTitle : DateFormat('MMMM dd, yyyy hh:mm').format(post.datePosted)}'
     );
