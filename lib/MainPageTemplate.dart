@@ -8,49 +8,52 @@ import 'package:Perkl/services/models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sliding_up_panel/sliding_up_panel.dart';
+//import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'HomePage.dart';
 import 'PageComponents.dart';
+import 'SlidingPanel.dart';
+import 'Playlist.dart';
 
 
 class MainPageTemplate extends StatelessWidget {
-  Widget body;
+  Widget? body;
   //ActivityManager _activityManager = new ActivityManager();
-  int bottomNavIndex;
-  bool noBottomNavSelected;
+  int? bottomNavIndex;
+  bool? noBottomNavSelected;
   bool showSearchBar = false;
-  String searchRequestId;
-  String pageTitle;
+  String? searchRequestId;
+  String? pageTitle;
   bool isConversation = false;
-  String conversationId;
+  String? conversationId;
 
-  MainPageTemplate({this.body, this.bottomNavIndex, this.noBottomNavSelected, this.showSearchBar, this.searchRequestId, this.pageTitle, this.isConversation, this.conversationId});
+  MainPageTemplate({this.body, this.bottomNavIndex, this.noBottomNavSelected, this.showSearchBar = false, this.searchRequestId, this.pageTitle, this.isConversation= false, this.conversationId});
 
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
+    User? firebaseUser = Provider.of<User?>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<MainTemplateProvider>(create: (_) => MainTemplateProvider()),
-        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        StreamProvider<PerklUser?>(create: (_) => UserManagement().streamCurrentUser(firebaseUser), initialData: null),
       ],
       child: Consumer<MainTemplateProvider>(
           builder: (context, tempProvider, _) {
-            PerklUser currentUser = Provider.of<PerklUser>(context);
+            PerklUser? currentUser = Provider.of<PerklUser?>(context);
             //print('Padding: ${MediaQuery.of(context).viewPadding}');
             return Scaffold(
               backgroundColor: Colors.white,
-              body: SlidingUpPanel(
+              body: SlidingPanel(
                 borderRadius: BorderRadius.all(Radius.circular(25)),
                 panel: TopPanel(showPostButtons: true, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar,),
                 collapsed: TopPanel(showPostButtons: false, pageTitle: pageTitle, searchRequestId: searchRequestId, showSearchBar: showSearchBar,),
                 maxHeight: 265 + MediaQuery.of(context).viewPadding.top,
                 minHeight: 185 + MediaQuery.of(context).viewPadding.top,
-                defaultPanelState: mp.panelOpen ? PanelState.OPEN : PanelState.CLOSED,
-                slideDirection: SlideDirection.DOWN,
+                defaultPanelState: (mp.panelOpen ?? false) ? PanelState.OPEN : PanelState.CLOSED,
+                boxShadow: [BoxShadow(offset: Offset(0, 10))],
                 panelSnapping: true,
                 renderPanelSheet: false,
+                parallaxEnabled: true,
                 onPanelOpened: () {
                   tempProvider.changeOffsetHeight(1);
                   mp.updatePanelState();
@@ -68,9 +71,9 @@ class MainPageTemplate extends StatelessWidget {
                   color: Colors.transparent,
                   child: Column(
                     children: <Widget>[
-                      Container(height: (tempProvider.offsetHeight != null ? tempProvider.offsetHeight : mp.panelOpen ? 265 : 185) + MediaQuery.of(context).viewPadding.top),
+                      Container(height: (tempProvider.offsetHeight != null ? tempProvider.offsetHeight ?? 0 : (mp.panelOpen ?? false) ? 265 : 185) + MediaQuery.of(context).viewPadding.top),
                       Expanded(
-                          child: body
+                          child: body ?? Container(),
                       ),
                       bottomNavBarMobile((int i) {
                         if(i == 0) {
@@ -85,15 +88,20 @@ class MainPageTemplate extends StatelessWidget {
                         }
                         if(i == 2) {
                           Navigator.push(context, MaterialPageRoute(
-                            builder: (context) => ConversationListPageMobile(),
+                            builder: (context) => PlaylistListPage(),
                           ));
                         }
                         if(i == 3) {
                           Navigator.push(context, MaterialPageRoute(
-                            builder: (context) => ProfilePageMobile(userId: currentUser.uid),
+                            builder: (context) => ConversationListPageMobile(),
                           ));
                         }
-                      }, bottomNavIndex, noSelection: noBottomNavSelected)
+                        if(i == 4) {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => ProfilePageMobile(userId: currentUser?.uid),
+                          ));
+                        }
+                      }, bottomNavIndex ?? 0, noSelection: noBottomNavSelected)
                     ],
                   )
                 ),
@@ -106,18 +114,18 @@ class MainPageTemplate extends StatelessWidget {
 }
 
 class MainTemplateProvider extends ChangeNotifier {
-  double offsetHeight;
-  String searchTerm;
+  double? offsetHeight;
+  String? searchTerm;
 
-  void changeOffsetHeight(double slidePct) {
+  void changeOffsetHeight(double? slidePct) {
     double base = 185;
     double max = 265;
     double diff = max - base;
-    offsetHeight = base + (diff * slidePct);
+    offsetHeight = base + (diff * (slidePct ?? 0));
     notifyListeners();
   }
 
-  void setSearchTerm(String value) {
+  void setSearchTerm(String? value) {
     searchTerm = value;
     notifyListeners();
   }

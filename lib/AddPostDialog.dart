@@ -11,45 +11,45 @@ import 'services/ActivityManagement.dart';
 import 'services/models.dart';
 
 class AddPostDialog extends StatefulWidget {
-  DateTime date;
-  String recordingLocation;
-  int secondsLength;
+  DateTime? date;
+  String? recordingLocation;
+  int? secondsLength;
 
-  AddPostDialog({Key key, this.date, this.recordingLocation, this.secondsLength}) : super(key: key);
+  AddPostDialog({Key? key, this.date, this.recordingLocation, this.secondsLength}) : super(key: key);
 
   @override
   _AddPostDialogState createState() => new _AddPostDialogState();
 }
 
 class _AddPostDialogState extends State<AddPostDialog> {
-  String _postTitle;
-  String _postTags;
+  String? _postTitle;
+  String? _postTags;
   bool _isLoading = false;
   bool showTitleTags = false;
   bool _addToTimeline = false;
   bool _sendAsGroup = false;
   bool _isPlayingRecorder = false;
   bool _isRecording = false;
-  String _recordingLocation;
-  DateTime _startDate;
-  int _secondsLength;
+  String? _recordingLocation;
+  DateTime? _startDate;
+  int? _secondsLength;
   AudioPlayer player = new AudioPlayer();
   Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
   Map<String, dynamic> _addToConversations = new Map<String, dynamic>();
 
-  Widget getSelectList(PerklUser user) {
-    List<String> selectableFollowers = user.followers.where((followerID) => user.following.contains(followerID)).toList();
+  Widget getSelectList(PerklUser? user) {
+    List<String>? selectableFollowers = user?.followers?.where((followerID) => user.following?.contains(followerID) ?? false).toList();
     return Expanded(
       child: StreamBuilder(
-        stream: DBService().streamConversations(user.uid),
+        stream: DBService().streamConversations(user?.uid),
         builder: (context, AsyncSnapshot<List<Conversation>> convoSnap) {
           print('Convo Snap: ${convoSnap.data}');
           if(convoSnap.hasData) {
-            List<Conversation> convoList = convoSnap.data;
-            List<Widget> tileList = List<Widget>();
+            List<Conversation> convoList = convoSnap.data ?? [];
+            List<Widget> tileList = <Widget>[];
             for(Conversation convo in convoList) {
               if(!_addToConversations.containsKey(convo.id))
-                _addToConversations.addAll({convo.id: false});
+                _addToConversations.addAll({(convo.id ?? ''): false});
               bool _val = _addToConversations[convo.id];
               tileList.add(CheckboxListTile(
                   title: Text(convo.getTitle(user), style: TextStyle(fontSize: 14)),
@@ -57,7 +57,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                   onChanged: (value) {
                     print(_addToConversations);
                     setState(() {
-                      _addToConversations[convo.id] = value;
+                      _addToConversations[convo.id ?? ''] = value;
                     });
                   }
               ));
@@ -77,7 +77,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                       //select newly created convo
                       Conversation newConvo = val;
                       setState(() {
-                        _addToConversations.addAll({newConvo.id: true});
+                        _addToConversations.addAll({newConvo.id ?? '': true});
                       });
                     } else {
                       print('Group Creation Cancelled...');
@@ -93,7 +93,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
               ));
               tileList.add(Divider(height: 5));
             }
-            for(String follower in selectableFollowers) {
+            for(String follower in (selectableFollowers ?? [])) {
               if(!_sendToUsers.containsKey(follower)) {
                 _sendToUsers.addAll({follower: false});
               }
@@ -104,7 +104,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                       builder: (context, AsyncSnapshot<PerklUser> thisUserSnap) {
                         if(!thisUserSnap.hasData)
                           return Container();
-                        return Text(thisUserSnap.data.username, style: TextStyle(fontSize: 14),);
+                        return Text(thisUserSnap.data?.username ?? '', style: TextStyle(fontSize: 14),);
                       }
                   ),
                   value: _val,
@@ -147,7 +147,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     //User user = Provider.of<User>(context);
-    PerklUser perklUser = Provider.of<PerklUser>(context);
+    PerklUser? perklUser = Provider.of<PerklUser?>(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
       contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
@@ -188,9 +188,9 @@ class _AddPostDialogState extends State<AddPostDialog> {
                             onTap: () async {
                               if(_isRecording) {
                                 print('recording location when stopping: ${_recordingLocation}');
-                                List<dynamic> stopRecordVals = await mp.activityManager.stopRecordNewPost(_recordingLocation, _startDate);
-                                String recordingLocation = stopRecordVals[0];
-                                int secondsLength = stopRecordVals[1];
+                                List<dynamic>? stopRecordVals = await mp.activityManager.stopRecordNewPost(_recordingLocation, _startDate);
+                                String recordingLocation = stopRecordVals?[0];
+                                int secondsLength = stopRecordVals?[1];
 
                                 print('$recordingLocation -/- Length: $secondsLength');
                                 setState(() {
@@ -202,9 +202,9 @@ class _AddPostDialogState extends State<AddPostDialog> {
                                 //print('date before dialog: $date');
                                 //await addPostDialog(context, date, recordingLocation, secondsLength);
                               } else {
-                                List<dynamic> startRecordVals = await mp.activityManager.startRecordNewPost(mp);
-                                String postPath = startRecordVals[0];
-                                DateTime startDate = startRecordVals[1];
+                                List<dynamic>? startRecordVals = await mp.activityManager.startRecordNewPost(mp);
+                                String postPath = startRecordVals?[0];
+                                DateTime startDate = startRecordVals?[1];
                                 print('Post Path of new recording: $postPath');
                                 setState(() {
                                   _isRecording = !_isRecording;
@@ -243,9 +243,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                             player.dispose();
                             player = new AudioPlayer();
                             print('Setting file path');
-                            await player.setFilePath(_recordingLocation).then((Duration d) {
-                              print('Duration of recorded file: ${d.inMilliseconds}');
-                            });
+                            await player.setFilePath(_recordingLocation ?? '');
                             //await Future.delayed(Duration(milliseconds: 500));
                             print('Starting to play local file');
                             player.play();
@@ -449,14 +447,15 @@ class _AddPostDialogState extends State<AddPostDialog> {
                       onPressed: () {
 
                       },
-                    ) : FlatButton(
-                        color: Colors.deepPurple,
+                    ) : TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          textStyle: TextStyle(color: Colors.white),
+                        ),
                         child: Text('Add Post'),
-
-                        textColor: Colors.white,
                         onPressed: () async {
                           if(_recordingLocation != null) {
-                            List<String> tagList = processTagString(_postTags);
+                            List<String>? tagList = processTagString(_postTags ?? '');
                             print({"postTitle": _postTitle,
                               "localRecordingLocation": _recordingLocation,
                               "date": _startDate,

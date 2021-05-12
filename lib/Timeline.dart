@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:collection/collection.dart';
 import 'package:Perkl/services/ActivityManagement.dart';
 import 'package:Perkl/services/UserManagement.dart';
 import 'package:audio_service/audio_service.dart';
@@ -15,11 +16,14 @@ import 'package:path_provider/path_provider.dart';
 import 'PodcastPage.dart';
 import 'ProfilePage.dart';
 import 'StreamTagPage.dart';
+import 'Playlist.dart';
 import 'services/models.dart';
 import 'services/db_services.dart';
 import 'main.dart';
 //import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'services/local_services.dart';
+import 'services/Helper.dart';
+import 'ExpandableRow.dart';
 
 enum TimelineType {
   STREAMTAG,
@@ -30,23 +34,23 @@ enum TimelineType {
 }
 
 class Timeline extends StatelessWidget {
-  String timelineId;
-  Stream tagStream;
-  String userId;
-  TimelineType type;
+  String? timelineId;
+  Stream? tagStream;
+  String? userId;
+  TimelineType? type;
   LocalService _historyService = LocalService(filename: 'history.json');
   Timeline({this.timelineId, this.tagStream, this.userId, this.type});
 
   Future<List<MediaItem>> getHistory() async {
     List<MediaItem> listeningHistory = await _historyService.getData('items').then((dynamic itemList) {
       if(itemList == null) {
-        return null;
+        return Future.value();
       }
-      List<MediaItem> mediaItemList = (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
+      List<MediaItem> mediaItemList = (itemList as List).map((item) => Helper().getMediaItemFromJson(item)).toList();
       if(mediaItemList != null) {
         mediaItemList.sort((MediaItem a, MediaItem b) {
           //print('${a.extras['listenDate'] ?? 0} >>> ${b.extras['listenDate'] ?? 0}');
-          return Comparable.compare(b.extras['listenDate'] ?? 0, a.extras['listenDate'] ?? 0);
+          return Comparable.compare(b.extras?['listenDate'] ?? 0, a.extras?['listenDate'] ?? 0);
         });
       }
       return mediaItemList.reversed.toList();
@@ -56,15 +60,15 @@ class Timeline extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
+    User? firebaseUser = Provider.of<User?>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
-    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
-    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
-    PerklUser currentUser = Provider.of<PerklUser>(context);
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
+    MediaItem? currentMediaItem = Provider.of<MediaItem?>(context);
+    List<MediaItem>? mediaQueue = Provider.of<List<MediaItem>?>(context);
+    PerklUser? currentUser = Provider.of<PerklUser?>(context);
     //print('TimelineId: $timelineId/StreamTag: $tagStream/UserId: $userId');
     //print('Current Media Item: $currentMediaItem/Playback State: $playbackState');
-    Stream postStream;
+    Stream<dynamic>? postStream;
     if(tagStream != null) {
       postStream = tagStream;
       //print('Grabbed stream for tag: $tagStream');
@@ -80,22 +84,22 @@ class Timeline extends StatelessWidget {
       builder: (context, snap) {
         bool isLoading = false;
         print('Stream Timeline Loading: $snap');
-        if(snap != null && snap.data != null && snap.data) {
+        if(snap != null && snap.data != null && (snap.data ?? false)) {
           isLoading = true;
         }
         return FutureBuilder(
           future: getHistory(),
           builder: (context, AsyncSnapshot<List<MediaItem>> snap) {
-            List<MediaItem> listeningHistory = [];
+            List<MediaItem>? listeningHistory = [];
             if(snap.hasData) {
               listeningHistory = snap.data;
             }
-            return StreamBuilder<List<PostPodItem>>(
+            return StreamBuilder<dynamic>(
               stream: postStream,
-              builder: (context, AsyncSnapshot<List<PostPodItem>> postListSnap) {
+              builder: (context, AsyncSnapshot<dynamic> postListSnap) {
                 print('Post snap: $postListSnap');
                 print('Post Stream: ${postStream.toString()}/Post List: ${postListSnap.data}');
-                List<PostPodItem> postList = postListSnap.data;
+                List<PostPodItem?>? postList = postListSnap.data;
                 //print('Post List: $postList');
                 String emptyText = 'Looks like there are\'nt any posts to show here!';
                 if(type == TimelineType.MAINFEED)
@@ -111,48 +115,46 @@ class Timeline extends StatelessWidget {
 
                 //Get Days in timeline and group daily posts together
                 List<DayPosts> days = <DayPosts>[];
-                DateTime minDate;
+                DateTime? minDate;
                 if(postList != null) {
                   postList.forEach((post) {
-                    DateTime postDate;
-                    if(post.type == PostType.POST) {
-                      postDate = post.post.datePosted;
-                      if(days.where((d) => d.date.year == post.post.datePosted.year && d.date.month == post.post.datePosted.month && d.date.day == post.post.datePosted.day).length > 0) {
-                        days.where((d) => d.date.year == post.post.datePosted.year && d.date.month == post.post.datePosted.month && d.date.day == post.post.datePosted.day).first.list.add(post.post);
+                    DateTime? postDate;
+                    if(post?.type == PostType.POST) {
+                      postDate = post?.post?.datePosted ?? DateTime(1900, 1, 1);
+                      if(days.where((d) => d.date?.year == post?.post?.datePosted?.year && d.date?.month == post?.post?.datePosted?.month && d.date?.day == post?.post?.datePosted?.day).length > 0) {
+                        days.where((d) => d.date?.year == post?.post?.datePosted?.year && d.date?.month == post?.post?.datePosted?.month && d.date?.day == post?.post?.datePosted?.day).first.list?.add(post?.post);
                       } else {
                         List list = [];
-                        list.add(post.post);
-                        days.add(DayPosts(date: DateTime(post.post.datePosted.year, post.post.datePosted.month, post.post.datePosted.day), list: list));
+                        list.add(post?.post);
+                        days.add(DayPosts(date: DateTime(post?.post?.datePosted?.year ?? 1900, post?.post?.datePosted?.month ?? 1, post?.post?.datePosted?.day ?? 1), list: list));
                       }
                     }
-                    if(post.type == PostType.PODCAST_EPISODE) {
-                      postDate = post.episode.publicationDate;
-                      if(days.where((d) => d.date.year == post.episode.publicationDate.year && d.date.month == post.episode.publicationDate.month && d.date.day == post.episode.publicationDate.day).length > 0) {
-                        days.where((d) => d.date.year == post.episode.publicationDate.year && d.date.month == post.episode.publicationDate.month && d.date.day == post.episode.publicationDate.day).first.list.add(post.episode);
+                    if(post?.type == PostType.PODCAST_EPISODE) {
+                      postDate = post?.episode?.publicationDate ?? DateTime(1900, 1, 1);
+                      if(days.where((d) => d.date?.year == post?.episode?.publicationDate?.year && d.date?.month == post?.episode?.publicationDate?.month && d.date?.day == post?.episode?.publicationDate?.day).length > 0) {
+                        days.where((d) => d.date?.year == post?.episode?.publicationDate?.year && d.date?.month == post?.episode?.publicationDate?.month && d.date?.day == post?.episode?.publicationDate?.day).first.list?.add(post?.episode);
                       } else {
                         List list = [];
-                        list.add(post.episode);
-                        days.add(DayPosts(date: DateTime(post.episode.publicationDate.year, post.episode.publicationDate.month, post.episode.publicationDate.day), list: list));
+                        list.add(post?.episode);
+                        days.add(DayPosts(date: DateTime(post?.episode?.publicationDate?.year ?? 1900, post?.episode?.publicationDate?.month ?? 1, post?.episode?.publicationDate?.day ?? 1), list: list));
                       }
                     }
-                    if(post.type == PostType.EPISODE_CLIP) {
-                      postDate = post.episodeClip.createdDate;
-                      if(days.where((d) => d.date.year == post.episodeClip.createdDate.year && d.date.month == post.episodeClip.createdDate.month && d.date.day == post.episodeClip.createdDate.day).length > 0) {
-                        days.where((d) => d.date.year == post.episodeClip.createdDate.year && d.date.month == post.episodeClip.createdDate.month && d.date.day == post.episodeClip.createdDate.day).first.list.add(post.episodeClip);
+                    if(post?.type == PostType.EPISODE_CLIP) {
+                      postDate = post?.episodeClip?.createdDate ?? DateTime(1900, 1, 1);
+                      if(days.where((d) => d.date?.year == post?.episodeClip?.createdDate?.year && d.date?.month == post?.episodeClip?.createdDate?.month && d.date?.day == post?.episodeClip?.createdDate?.day).length > 0) {
+                        days.where((d) => d.date?.year == post?.episodeClip?.createdDate?.year && d.date?.month == post?.episodeClip?.createdDate?.month && d.date?.day == post?.episodeClip?.createdDate?.day).first.list?.add(post?.episodeClip);
                       } else {
                         List list = [];
-                        list.add(post.episodeClip);
-                        days.add(DayPosts(date: DateTime(post.episodeClip.createdDate.year, post.episodeClip.createdDate.month, post.episodeClip.createdDate.day), list: list));
+                        list.add(post?.episodeClip);
+                        days.add(DayPosts(date: DateTime(post?.episodeClip?.createdDate?.year ?? 1900, post?.episodeClip?.createdDate?.month ?? 1, post?.episodeClip?.createdDate?.day ?? 1), list: list));
                       }
                     }
-                    if(minDate == null) {
-                      minDate = postDate;
-                    } else if (postDate.isBefore(minDate)) {
+                    if(postDate?.isBefore(minDate ?? postDate) ?? false) {
                       minDate = postDate;
                     }
                   });
                 }
-                days.sort((a, b) => b.date.compareTo(a.date));
+                days.sort((a, b) => b.date?.compareTo(a.date ?? DateTime(1900, 1, 1)) ?? 0);
 
                 List<Widget> itemList = <Widget>[];
                 itemList.addAll(days.map((day) {
@@ -161,23 +163,24 @@ class Timeline extends StatelessWidget {
                     padding: EdgeInsets.only(left: 10),
                     decoration: BoxDecoration(
                         border: Border(
-                            left: BorderSide(color: Colors.deepPurple[500], width: 2)
+                            left: BorderSide(color: Colors.deepPurple[500] ?? Colors.deepPurple, width: 2)
                         )
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(day.date.year == DateTime.now().year && day.date.month == DateTime.now().month && day.date.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]),),
+                        Text(day.date?.year == DateTime.now().year && day.date?.month == DateTime.now().month && day.date?.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date ?? DateTime(1900, 1, 1)), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]),),
                         Column(
-                          children: day.list.map((post) {
+                          children: day.list?.map((post) {
                             if(post is Episode) {
                               Episode _post = post;
-                              MediaItem thisItem = listeningHistory.firstWhere((element) => element.id == post.contentUrl, orElse: () => null);
+                              MediaItem? thisItem = listeningHistory?.firstWhereOrNull((element) => element.id == post.contentUrl);
                               int pctComplete = 0;
                               if(thisItem != null) {
-                               int position = thisItem.extras['position'] ?? 0;
-                               int duration = thisItem.duration.inMilliseconds;
-                               pctComplete = ((position/duration) * 100).round();
+                                //print('This Item Duration: ${thisItem.duration}');
+                               int position = thisItem.extras?['position'] ?? 0;
+                               int duration = thisItem.duration?.inMilliseconds ?? 1;
+                               pctComplete = duration > 0 ? ((position/duration) * 100).round() : 0;
                               }
                               return Card(
                                   elevation: 5,
@@ -200,7 +203,7 @@ class Timeline extends StatelessWidget {
                                                       color: Colors.deepPurple,
                                                       image: DecorationImage(
                                                           fit: BoxFit.cover,
-                                                          image: NetworkImage(_post.podcast.image ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
+                                                          image: NetworkImage(_post.podcast?.image ?? 'gs://flutter-fire-test-be63e.appspot.com/FCMImages/logo.png')
                                                       )
                                                   ),
                                                   child: InkWell(
@@ -212,7 +215,7 @@ class Timeline extends StatelessWidget {
                                                             return Center(child: CircularProgressIndicator());
                                                           }
                                                       );
-                                                      Podcast pod = await Podcast.loadFeed(url: _post.podcast.url);
+                                                      Podcast pod = await Podcast.loadFeed(url: _post.podcast?.url);
                                                       Navigator.of(context).pop();
                                                       Navigator.push(context, MaterialPageRoute(
                                                         builder: (context) =>
@@ -226,8 +229,8 @@ class Timeline extends StatelessWidget {
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      Text(_post.title, textAlign: TextAlign.start,),
-                                                      Text('${_post.podcast.title}', textAlign: TextAlign.start, style: TextStyle(fontSize: 12, color: Colors.black45),),
+                                                      Text('${_post.title}', textAlign: TextAlign.start,),
+                                                      Text('${_post.podcast?.title}', textAlign: TextAlign.start, style: TextStyle(fontSize: 12, color: Colors.black45),),
                                                     ],
                                                   )
                                                 ),
@@ -249,10 +252,10 @@ class Timeline extends StatelessWidget {
                                                                       shape: BoxShape.circle,
                                                                       color: currentMediaItem != null && currentMediaItem.id == _post.contentUrl ? Colors.red : Colors.deepPurple,
                                                                     ),
-                                                                    child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.contentUrl && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                                                    child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.contentUrl && (playbackState?.playing ?? false) ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
                                                                   ),
                                                                   onTap: () {
-                                                                    if(currentMediaItem != null && currentMediaItem.id == _post.contentUrl && playbackState.playing) {
+                                                                    if(currentMediaItem != null && currentMediaItem.id == _post.contentUrl && (playbackState?.playing ?? false)) {
                                                                       mp.pausePost();
                                                                       return;
                                                                     }
@@ -260,6 +263,44 @@ class Timeline extends StatelessWidget {
                                                                   }
                                                               ),
                                                               SizedBox(width: 5),
+                                                              PopupMenuButton(
+                                                                child: Container(
+                                                                  height: 35,
+                                                                  width: 35,
+                                                                  decoration: BoxDecoration(
+                                                                    shape: BoxShape.circle,
+                                                                    color: mediaQueue != null && mediaQueue.where((item) => item.id == _post.contentUrl).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                                  ),
+                                                                  child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                                ),
+                                                                itemBuilder: (context) => [
+                                                                  PopupMenuItem(
+                                                                      child: Text('Add to Queue'),
+                                                                    value: 'queue',
+                                                                  ),
+                                                                  PopupMenuItem(
+                                                                    child: Text('Add to Playlist'),
+                                                                    value: 'playlist',
+                                                                  )
+                                                                ],
+                                                                onSelected: (value) async {
+                                                                  if(value == 'queue') {
+                                                                    if(mediaQueue == null || mediaQueue.where((item) => item.id == _post.contentUrl).length == 0) {
+                                                                      mp.addPostToQueue(PostPodItem.fromEpisode(post, post.podcast));
+                                                                    }
+                                                                  }
+
+                                                                  if(value == 'playlist') {
+                                                                    await showDialog(
+                                                                        context: context,
+                                                                        builder: (context) {
+                                                                      return AddToPlaylistDialog(item: PostPodItem.fromEpisode(post, post.podcast).toMediaItem(),);
+                                                                    }
+                                                                  );
+                                                                  }
+                                                                },
+                                                              ),
+                                                              /*
                                                               InkWell(
                                                                   child: Container(
                                                                     height: 35,
@@ -271,10 +312,12 @@ class Timeline extends StatelessWidget {
                                                                     child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
                                                                   ),
                                                                   onTap: () {
-                                                                    if(mediaQueue == null || mediaQueue.where((item) => item.id == _post.contentUrl).length == 0)
+                                                                    if(mediaQueue == null || mediaQueue.where((item) => item.id == _post.contentUrl).length == 0) {
                                                                       mp.addPostToQueue(PostPodItem.fromEpisode(post, post.podcast));
+                                                                    }
                                                                   }
                                                               )
+                                                               */
                                                             ],
                                                           ),
                                                           SizedBox(height: 3),
@@ -312,7 +355,7 @@ class Timeline extends StatelessWidget {
                                                   return Center(child: CircularProgressIndicator());
                                                 }
                                             );
-                                            post.podcast = await Podcast.loadFeed(url: post.podcast.url);
+                                            post.podcast = await Podcast.loadFeed(url: post.podcast?.url);
                                             Navigator.of(context).pop();
                                             mp.replyToEpisode(post, post.podcast, context);
                                           },
@@ -337,6 +380,13 @@ class Timeline extends StatelessWidget {
                             }
                             if(post is EpisodeClip) {
                               EpisodeClip _post = post;
+                              MediaItem? thisItem = listeningHistory?.firstWhereOrNull((element) => element.extras?['clipId'] == _post.id);
+                              int pctComplete = 0;
+                              if(thisItem != null) {
+                                int position = thisItem.extras?['position'] ?? 0;
+                                int duration = thisItem.duration?.inMilliseconds ?? 1;
+                                pctComplete = duration > 0 ? ((position/duration) * 100).round() : 0;
+                              }
                               return Card(
                                   elevation: 5,
                                   color: Colors.pink[50],
@@ -377,7 +427,7 @@ class Timeline extends StatelessWidget {
                                                 },
                                               ),
                                             ),
-                                            title: Text(_post.clipTitle ?? _post.episode.title),
+                                            title: Text(_post.clipTitle ?? _post.episode?.title ?? ''),
                                             subtitle: Text('${_post.podcastTitle}'),
                                             trailing: Container(
                                                 width: 85,
@@ -393,12 +443,12 @@ class Timeline extends StatelessWidget {
                                                                 width: 35,
                                                                 decoration: BoxDecoration(
                                                                   shape: BoxShape.circle,
-                                                                  color: currentMediaItem != null && currentMediaItem.id == _post.episode.contentUrl ? Colors.red : Colors.deepPurple,
+                                                                  color: currentMediaItem != null && currentMediaItem.id == _post.episode?.contentUrl ? Colors.red : Colors.deepPurple,
                                                                 ),
-                                                                child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.episode.contentUrl && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
+                                                                child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.episode?.contentUrl && (playbackState?.playing ?? false) ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16,)),
                                                               ),
                                                               onTap: () {
-                                                                if(currentMediaItem != null && currentMediaItem.id == _post.episode.contentUrl && playbackState.playing) {
+                                                                if(currentMediaItem != null && currentMediaItem.id == _post.episode?.contentUrl && (playbackState?.playing ?? false)) {
                                                                   mp.pausePost();
                                                                   return;
                                                                 }
@@ -406,6 +456,44 @@ class Timeline extends StatelessWidget {
                                                               }
                                                           ),
                                                           SizedBox(width: 5),
+                                                          PopupMenuButton(
+                                                            child: Container(
+                                                              height: 35,
+                                                              width: 35,
+                                                              decoration: BoxDecoration(
+                                                                shape: BoxShape.circle,
+                                                                color: mediaQueue != null && mediaQueue.where((item) => item.extras?['clipId'] == _post.id).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                              ),
+                                                              child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                            ),
+                                                            itemBuilder: (context) => [
+                                                              PopupMenuItem(
+                                                                child: Text('Add to Queue'),
+                                                                value: 'queue',
+                                                              ),
+                                                              PopupMenuItem(
+                                                                child: Text('Add to Playlist'),
+                                                                value: 'playlist',
+                                                              )
+                                                            ],
+                                                            onSelected: (value) async {
+                                                              if(value == 'queue') {
+                                                                if(mediaQueue == null || mediaQueue.where((item) => item.extras?['clipId'] == _post.id).length == 0) {
+                                                                  mp.addPostToQueue(PostPodItem.fromEpisodeClip(_post));
+                                                                }
+                                                              }
+
+                                                              if(value == 'playlist') {
+                                                                await showDialog(
+                                                                    context: context,
+                                                                    builder: (context) {
+                                                                  return AddToPlaylistDialog(item: PostPodItem.fromEpisodeClip(_post).toMediaItem());
+                                                                }
+                                                              );
+                                                              }
+                                                            },
+                                                          ),
+                                                          /*
                                                           InkWell(
                                                               child: Container(
                                                                 height: 35,
@@ -417,13 +505,15 @@ class Timeline extends StatelessWidget {
                                                                 child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
                                                               ),
                                                               onTap: () {
-                                                                if(mediaQueue == null || mediaQueue.where((item) => item.id == _post.episode.contentUrl).length == 0)
+                                                                if(mediaQueue == null || mediaQueue.where((item) => item.extras['clipId'] == _post.id).length == 0)
                                                                   mp.addPostToQueue(PostPodItem.fromEpisodeClip(_post));
                                                               }
                                                           )
+                                                           */
                                                         ],
                                                       ),
-                                                      _post.startDuration == null || _post.endDuration == null ? Text('') : Text(ActivityManager().getDurationString(Duration(milliseconds: _post.endDuration.inMilliseconds - _post.startDuration.inMilliseconds))),
+                                                      _post.startDuration == null || _post.endDuration == null ? Text('') : Text(ActivityManager().getDurationString(Duration(milliseconds: (_post.endDuration?.inMilliseconds ?? 1000) - (_post.startDuration?.inMilliseconds ?? 0)))),
+                                                      pctComplete > 0 ? Text('${min(pctComplete, 100)}%', style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)) : Container(),
                                                     ]
                                                 )
                                             ),
@@ -489,9 +579,17 @@ class Timeline extends StatelessWidget {
                             }
 
                             Post _post = post;
-                            return StreamProvider<PerklUser>(
+                            MediaItem? thisItem = listeningHistory?.firstWhereOrNull((element) => element.id == _post.audioFileLocation);
+                            int pctComplete = 0;
+                            if(thisItem != null) {
+                              int position = thisItem.extras?['position'] ?? 0;
+                              int duration = thisItem.duration?.inMilliseconds ?? 1000;
+                              pctComplete = duration > 0 ? ((position/duration) * 100).round() : 0;
+                            }
+                            return StreamProvider<PerklUser?>(
                               create: (context) => UserManagement().streamUserDoc(_post.userUID),
-                              child: Consumer<PerklUser>(
+                              initialData: null,
+                              child: Consumer<PerklUser?>(
                                 builder: (context, poster, _) {
                                   return Card(
                                     elevation: 5,
@@ -503,75 +601,120 @@ class Timeline extends StatelessWidget {
                                         actionExtentRatio: 0.2,
                                         child: Padding(
                                           padding: EdgeInsets.all(5),
-                                          child: ExpansionTile(
-                                            leading: poster == null || poster.profilePicUrl == null ? Container(
-                                              height: 60.0,
-                                              width: 60.0,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.deepPurple,
-                                              ),
-                                              child: InkWell(
-                                                child: Container(),
-                                                onTap: () {
-                                                  Navigator.push(context, MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        ProfilePageMobile(userId: post.userUID,),
-                                                  ));
-                                                },
-                                              ),
-                                            ) : Container(
-                                                height: 60.0,
-                                                width: 60.0,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Colors.deepPurple,
-                                                  image: DecorationImage(
-                                                    fit: BoxFit.cover,
-                                                    image: NetworkImage(poster.profilePicUrl),
-                                                  ),
-                                                ),
-                                                child: InkWell(
-                                                  child: Container(),
-                                                  onTap: () {
-                                                    Navigator.push(context, MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          ProfilePageMobile(userId: post.userUID,),
-                                                    ));
-                                                  },
-                                                )
-                                            ),
-                                            title: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: <Widget>[
-                                                Text('@${_post.username}'),
-                                                Text('${_post.postTitle != null ? _post.postTitle : DateFormat('MMMM dd, yyyy h:mm a').format(_post.datePosted)}', style: TextStyle(fontSize: 14)),
-                                                _post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy h:mm a').format(_post.datePosted), style: TextStyle(fontSize: 14, color: Colors.black45))  : Container(),
-                                              ],
-                                            ),
-                                            trailing: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: <Widget>[
-                                                Container(
-                                                  width: 80,
-                                                  child: Row(
-                                                    children: <Widget>[
-                                                      InkWell(
-                                                        child: Container(
-                                                          height: 35,
-                                                          width: 35,
-                                                          decoration: BoxDecoration(
-                                                              shape: BoxShape.circle,
-                                                              color: currentMediaItem != null && currentMediaItem.id == _post.audioFileLocation ? Colors.red : Colors.deepPurple
-                                                          ),
-                                                          child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                          child:
+                                          ListTileTheme(
+                                            contentPadding: EdgeInsets.zero,
+                                            child: ExpandableRow(
+                                              child: Row(
+                                                children: [
+                                                  poster == null || poster.profilePicUrl == null ? Container(
+                                                    height: 60.0,
+                                                    width: 60.0,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: Colors.deepPurple,
+                                                    ),
+                                                    child: InkWell(
+                                                      child: Container(),
+                                                      onTap: () {
+                                                        Navigator.push(context, MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              ProfilePageMobile(userId: post.userUID,),
+                                                        ));
+                                                      },
+                                                    ),
+                                                  ) : Container(
+                                                      height: 60.0,
+                                                      width: 60.0,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: Colors.deepPurple,
+                                                        image: DecorationImage(
+                                                          fit: BoxFit.cover,
+                                                          image: NetworkImage(poster.profilePicUrl ?? ''),
                                                         ),
-                                                        onTap: () {
-                                                          playbackState != null && playbackState.playing != null && playbackState.playing && currentMediaItem.id == _post.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
-                                                        },
                                                       ),
-                                                      SizedBox(width: 5,),
+                                                      child: InkWell(
+                                                        child: Container(),
+                                                        onTap: () {
+                                                          Navigator.push(context, MaterialPageRoute(
+                                                            builder: (context) =>
+                                                                ProfilePageMobile(userId: post.userUID,),
+                                                          ));
+                                                        },
+                                                      )
+                                                  ),
+                                                  Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: <Widget>[
+                                                          Text('@${_post.username}'),
+                                                          Text('${_post.postTitle != null ? _post.postTitle : DateFormat('MMMM dd, yyyy h:mm a').format(_post.datePosted ?? DateTime(1900, 1, 1))}', style: TextStyle(fontSize: 14)),
+                                                          _post.postTitle != null ? Text(DateFormat('MMMM dd, yyyy h:mm a').format(_post.datePosted ?? DateTime(1900, 1, 1)), style: TextStyle(fontSize: 14, color: Colors.black45))  : Container(),
+                                                        ],
+                                                      )
+                                                  ),
+                                                  Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: <Widget>[
+                                                      Container(
+                                                        width: 80,
+                                                        child: Row(
+                                                          children: <Widget>[
+                                                            InkWell(
+                                                              child: Container(
+                                                                height: 35,
+                                                                width: 35,
+                                                                decoration: BoxDecoration(
+                                                                    shape: BoxShape.circle,
+                                                                    color: currentMediaItem != null && currentMediaItem.id == _post.audioFileLocation ? Colors.red : Colors.deepPurple
+                                                                ),
+                                                                child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == _post.audioFileLocation && (playbackState?.playing ?? false) ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                                              ),
+                                                              onTap: () {
+                                                                playbackState != null && playbackState.playing != null && playbackState.playing && currentMediaItem?.id == _post.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromPost(post));
+                                                              },
+                                                            ),
+                                                            SizedBox(width: 5,),
+                                                            PopupMenuButton(
+                                                              child: Container(
+                                                                height: 35,
+                                                                width: 35,
+                                                                decoration: BoxDecoration(
+                                                                  shape: BoxShape.circle,
+                                                                  color: mediaQueue != null && mediaQueue.where((item) => item.id == _post.audioFileLocation).length > 0  ? Colors.grey : Colors.deepPurple,
+                                                                ),
+                                                                child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                              ),
+                                                              itemBuilder: (context) => [
+                                                                PopupMenuItem(
+                                                                  child: Text('Add to Queue'),
+                                                                  value: 'queue',
+                                                                ),
+                                                                PopupMenuItem(
+                                                                  child: Text('Add to Playlist'),
+                                                                  value: 'playlist',
+                                                                )
+                                                              ],
+                                                              onSelected: (value) async  {
+                                                                if(value == 'queue') {
+                                                                  if(mediaQueue == null || mediaQueue.where((item) => item.id == _post.audioFileLocation).length == 0) {
+                                                                    mp.addPostToQueue(PostPodItem.fromPost(_post));
+                                                                  }
+                                                                }
+
+                                                                if(value == 'playlist') {
+                                                                  await showDialog(
+                                                                      context: context,
+                                                                      builder: (context) {
+                                                                        return AddToPlaylistDialog(item: PostPodItem.fromPost(_post).toMediaItem());
+                                                                      }
+                                                                  );
+                                                                }
+                                                              },
+                                                            ),
+                                                            /*
                                                       InkWell(
                                                         child: Container(
                                                           height: 35,
@@ -587,37 +730,42 @@ class Timeline extends StatelessWidget {
                                                             mp.addPostToQueue(PostPodItem.fromPost(post));
                                                         },
                                                       )
+                                                       */
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      Text(post.getLengthString()),
+                                                      pctComplete > 0 ? Text('${min(pctComplete, 100)}%', style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)) : Container(),
                                                     ],
-                                                  ),
-                                                ),
-                                                Text(post.getLengthString())
+                                                  )
+                                                ]
+                                              ),
+                                              children: [
+                                                Row(
+                                                  children: <Widget>[
+                                                    SizedBox(width: 70),
+                                                    Expanded(
+                                                      child: post.streamList != null && post.streamList.length > 0 ? Wrap(
+                                                        spacing: 8,
+                                                        children: post.streamList.map<Widget>((String tag) {
+                                                          return InkWell(
+                                                              child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
+                                                              onTap: () {
+                                                                Navigator.push(context, MaterialPageRoute(
+                                                                    builder: (context) => StreamTagPageMobile(tag: tag,)
+                                                                ));
+                                                              }
+                                                          );
+                                                        }).toList(),
+                                                      ) : Container(),
+                                                    ),
+                                                  ],
+                                                )
                                               ],
                                             ),
-                                            children: <Widget>[
-                                              Row(
-                                                children: <Widget>[
-                                                  SizedBox(width: 90),
-                                                  Expanded(
-                                                    child: post.streamList != null && post.streamList.length > 0 ? Wrap(
-                                                      spacing: 8,
-                                                      children: post.streamList.map<Widget>((String tag) {
-                                                        return InkWell(
-                                                            child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
-                                                            onTap: () {
-                                                              Navigator.push(context, MaterialPageRoute(
-                                                                  builder: (context) => StreamTagPageMobile(tag: tag,)
-                                                              ));
-                                                            }
-                                                        );
-                                                      }).toList(),
-                                                    ) : Container(),
-                                                  ),
-                                                ],
-                                              )
-                                            ],
                                           ),
                                         ),
-                                        secondaryActions: <Widget>[
+                                        secondaryActions: [
                                           SlideAction(
                                             color: Colors.deepPurple[300],
                                             child: Column(
@@ -665,14 +813,14 @@ class Timeline extends StatelessWidget {
                                               );
                                             },
                                           ) : null
-                                        ].where((element) => element != null).toList(),
+                                        ].whereNotNull().toList(),
                                       ),
                                     ),
                                   );
                                 },
                               ),
                             );
-                          }).toList(),
+                          }).toList() ?? [Container()],
                         )
                       ],
                     ),

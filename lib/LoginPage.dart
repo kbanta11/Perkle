@@ -76,22 +76,14 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  String _email;
-  String _password;
-  String _errorMessage;
+  String? _email;
+  String? _password;
+  String? _errorMessage;
   //final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   bool _redirectOnNotification = true;
 
-  StreamSubscription iosSubscription;
-
-  _checkLoggedIn() async {
-    User currentUser = FirebaseAuth.instance.currentUser;
-    if(currentUser != null)
-      Navigator.pushReplacement(context, MaterialPageRoute(
-        builder: (context) => HomePageMobile(redirectOnNotification: true,),
-      ));
-  }
+  StreamSubscription? iosSubscription;
 
   @override
   void initState() {
@@ -105,7 +97,7 @@ class _LoginPageState extends State<LoginPage> {
       print('Initial Message: $initialMessage');
       if(initialMessage?.data != null && initialMessage?.data['conversationId'] != null) {
         Navigator.pushReplacement(context, MaterialPageRoute(
-          builder: (context) => ConversationPageMobile(conversationId: initialMessage.data['conversationId']),
+          builder: (context) => ConversationPageMobile(conversationId: initialMessage?.data?['conversationId']),
         )).then((_) {
           _redirectOnNotification = false;
         });
@@ -116,14 +108,14 @@ class _LoginPageState extends State<LoginPage> {
       print('Remote Message: ${message.notification}');
       Flushbar(
         backgroundColor: Colors.deepPurple,
-        title:  message.notification.title,
-        message:  message.notification.body,
+        title:  message.notification?.title,
+        message:  message.notification?.body,
         duration:  Duration(seconds: 3),
         margin: EdgeInsets.all(8),
         borderRadius: BorderRadius.circular(8),
         flushbarPosition: FlushbarPosition.TOP,
         onTap: (flushbar) {
-          String conversationId = message?.data['conversationId'];
+          String conversationId = message.data['conversationId'];
           if(conversationId != null){
             Navigator.pushReplacement(context, MaterialPageRoute(
               builder: (context) => ConversationPageMobile(conversationId: conversationId),
@@ -135,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print("onResume: $message");
-      String conversationId = message?.data['conversationId'];
+      String conversationId = message.data['conversationId'];
       if(conversationId != null && _redirectOnNotification){
         Navigator.pushReplacement(context, MaterialPageRoute(
           builder: (context) => ConversationPageMobile(conversationId: conversationId),
@@ -256,7 +248,7 @@ class _LoginPageState extends State<LoginPage> {
                           )
                         ),
                         onPressed: () {
-                          if(_email == null || _email.length == 0 || _password == null || _password.length == 0) {
+                          if(_email == null || _email?.length == 0 || _password == null || _password?.length == 0) {
                             showDialog(
                               context: context,
                               builder: (context) {
@@ -295,8 +287,8 @@ class _LoginPageState extends State<LoginPage> {
                             }
                           );
                           FirebaseAuth.instance.signInWithEmailAndPassword(
-                              email: _email,
-                              password: _password
+                              email: _email ?? '',
+                              password: _password ?? ''
                           ).then((UserCredential authResult) {
                             Navigator.of(context).pop();
                             print('Auth Result: $authResult');
@@ -330,7 +322,7 @@ class _LoginPageState extends State<LoginPage> {
                                   contentPadding: EdgeInsets.all(10),
                                   title: Center(child: Text('Sorry!')),
                                   children: [
-                                    Center(child: Text(_errorMessage, textAlign: TextAlign.center,)),
+                                    Center(child: Text(_errorMessage ?? '', textAlign: TextAlign.center,)),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: <Widget>[
@@ -390,8 +382,8 @@ class _GoogleSignInSection extends StatefulWidget {
 }
 
 class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
-  bool _success;
-  String _userID;
+  bool? _success;
+  String? _userID;
   bool _isLoading = false;
   @override
   Widget build(BuildContext context) {
@@ -447,7 +439,7 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
     bool userDocCreated;
 
     print('Starting Google sign in');
-    final GoogleSignInAccount googleUser = await _googleSignIn.signIn().catchError((e) {
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn().catchError((e) {
       print('Error ${e.toString()}');
     });
     print('Google User: $googleUser');
@@ -460,14 +452,13 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
       idToken: googleAuth.idToken,
     );
     final UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-    final User user = userCred.user;
-    assert(user.email != null);
-    assert(user.displayName != null);
-    assert(!user.isAnonymous);
-    assert(await user.getIdToken() != null);
+    final User? user = userCred.user;
+    assert(user?.email != null);
+    assert(user?.displayName != null);
+    assert(await user?.getIdToken() != null);
 
-    final User currentUser = FirebaseAuth.instance.currentUser;
-    assert(user.uid == currentUser.uid);
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    assert(user?.uid == currentUser?.uid);
 
     userDocCreated = await UserManagement().userAlreadyCreated();
     print('User exists: $userDocCreated------------------');
@@ -530,6 +521,6 @@ class _GoogleSignInSectionState extends State<_GoogleSignInSection> {
     } else {
       _success = false;
     }
-    return _success;
+    return _success ?? false;
   }
 }

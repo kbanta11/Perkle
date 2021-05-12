@@ -8,7 +8,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share/share.dart';
-import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'dart:io';
 import 'dart:async';
 import 'MainPageTemplate.dart';
@@ -32,38 +31,11 @@ List<Map<String, dynamic>> currentTutorials = [{'index': 0, 'file': 'https://fir
   {'index': 2, 'file': 'https://firebasestorage.googleapis.com/v0/b/flutter-fire-test-be63e.appspot.com/o/AppFiles%2FPerkl_Tutorial-Conversation.mp4?alt=media&token=85f46bad-23dc-4461-b410-ed3aff12f4a9', 'text': 'Conversation on Perkl'}
   ];
 
-// Show Username dialog
-Future<void> _showUsernameDialog(BuildContext context) async {
-  String username = await UserManagement().getUserData().then((DocumentReference doc) {
-    return doc.get().then((DocumentSnapshot snapshot) {
-      return snapshot.data()['username'].toString();
-    });
-  });
-  print('username (in dialog): $username-------------');
-  if (username == null || username == '' || username == 'null'){
-    print('showing username dialog-----------');
-    showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return new WillPopScope(
-            onWillPop: () async => false,
-            child: UsernameDialog(),
-          );
-        }
-    );
-  } else {
-    print('show dialog if evaluating false');
-  }
-  print('show dialog if state skipped?');
-  return null;
-}
-
 //HomePage Provider Rebuild
 class HomePageMobile extends StatefulWidget {
-  bool redirectOnNotification;
+  bool? redirectOnNotification;
 
-  HomePageMobile({Key key, this.redirectOnNotification}) : super(key: key);
+  HomePageMobile({Key? key, this.redirectOnNotification}) : super(key: key);
 
   @override
   HomePageMobileState createState() => HomePageMobileState();
@@ -72,15 +44,15 @@ class HomePageMobile extends StatefulWidget {
 class HomePageMobileState extends State<HomePageMobile> {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
-  StreamSubscription iosSubscription;
+  StreamSubscription? iosSubscription;
 
   _saveDeviceToken() async {
     // Get the current user
-    String uid = FirebaseAuth.instance.currentUser.uid;
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
     // FirebaseUser user = await _auth.currentUser();
 
     // Get the token for this device
-    String userToken = await _firebaseMessaging.getToken();
+    String? userToken = await _firebaseMessaging.getToken();
 
     // Save it to Firestore
     if (userToken != null && uid != null) {
@@ -122,9 +94,9 @@ class HomePageMobileState extends State<HomePageMobile> {
   }
 
   Future<void> promptShare(BuildContext context) async {
-    int lastPromptedMilliseconds = await LocalService().getData('lastPromptedMilliseconds');
+    int? lastPromptedMilliseconds = await LocalService().getData('lastPromptedMilliseconds');
     if(lastPromptedMilliseconds == null) {
-      WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+      WidgetsBinding.instance?.addPostFrameCallback((timeStamp) async {
         await showDialog(
           context: context,
           builder: (context) {
@@ -163,7 +135,7 @@ class HomePageMobileState extends State<HomePageMobile> {
       });
     } else {
       if(DateTime.now().millisecondsSinceEpoch - lastPromptedMilliseconds > 604800000) {
-        WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+        WidgetsBinding.instance?.addPostFrameCallback((timeStamp) async {
           await showDialog(
               context: context,
               builder: (context) {
@@ -216,13 +188,13 @@ class HomePageMobileState extends State<HomePageMobile> {
 
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
+    User? firebaseUser = Provider.of<User?>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    PerklUser user = Provider.of<PerklUser>(context);
-    DBService().updateTimeline(timelineId: user.mainFeedTimelineId, user: user, reload: false);
+    PerklUser? user = Provider.of<PerklUser?>(context);
+    DBService().updateTimeline(timelineId: user?.mainFeedTimelineId, user: user, reload: false);
     if(user == null)
       return Center(child: CircularProgressIndicator());
-    if(user.username == null || user.username.length == 0) {
+    if(user.username == null || user.username?.length == 0) {
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -242,7 +214,7 @@ class HomePageMobileState extends State<HomePageMobile> {
     return FutureBuilder(
       future: showTutorial(),
       builder: (context, AsyncSnapshot<bool> showSnap) {
-        if(showSnap.hasData && showSnap.data) {
+        if(showSnap.hasData && (showSnap.data ?? false)) {
           print('### Snap Data: ${showSnap.data}');
           return TutorialPage();
         }

@@ -8,15 +8,15 @@ import 'package:Perkl/services/models.dart';
 class FeedbackForm extends StatelessWidget {
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
+    User? firebaseUser = Provider.of<User?>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser),),
+        StreamProvider<PerklUser?>(create: (_) => UserManagement().streamCurrentUser(firebaseUser), initialData: null),
         ChangeNotifierProvider<FeedbackProvider>(create: (_) => FeedbackProvider(),),
       ],
       child: Consumer<FeedbackProvider>(
         builder: (context, fbp, _) {
-          PerklUser currentUser = Provider.of<PerklUser>(context);
+          PerklUser? currentUser = Provider.of<PerklUser?>(context);
           return SimpleDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text('Feedback')),
@@ -26,7 +26,7 @@ class FeedbackForm extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List<int>.generate(5, (i) => i + 1).map((i) => IconButton(
-                    icon: Icon(fbp.rating != null && i <= fbp.rating ? Icons.star : Icons.star_border),
+                    icon: Icon(fbp.rating != null && i <= (fbp.rating ?? 5) ? Icons.star : Icons.star_border, color: Colors.deepPurple,),
                   onPressed: () {
                       fbp.changeRating(i);
                   },
@@ -66,9 +66,9 @@ class FeedbackForm extends StatelessWidget {
 }
 
 class FeedbackProvider extends ChangeNotifier {
-  int rating;
-  String positive;
-  String negative;
+  int? rating;
+  String? positive;
+  String? negative;
 
   void changeRating(int val) {
     rating = val;
@@ -85,7 +85,7 @@ class FeedbackProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sendFeedback(PerklUser user) async {
+  Future<void> sendFeedback(PerklUser? user) async {
     await DBService().sendFeedback(rating, positive, negative, user);
     return;
   }

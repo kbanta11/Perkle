@@ -63,13 +63,13 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  String _email;
-  String _password;
-  String _username;
-  bool _usernameTaken;
-  String _validateUsernameError;
-  String _emailError;
-  String _passwordError;
+  String? _email;
+  String? _password;
+  String? _username;
+  bool? _usernameTaken;
+  String? _validateUsernameError;
+  String? _emailError;
+  String? _passwordError;
   bool _termsAccepted = false;
 
   @override
@@ -208,19 +208,19 @@ class _SignUpPageState extends State<SignUpPage> {
                               return;
                             }
                             _usernameTaken = await UserManagement().usernameExists(_username);
-                            if (_usernameTaken) {
+                            if (_usernameTaken ?? false) {
                               usernameInUse(context);
                             } else if (_validateUsernameError != null) {
                               usernameError(context);
                             } else {
-                              if(_email == null || _email.length == 0) {
+                              if(_email == null || _email?.length == 0) {
                                 setState(() {
                                   _emailError = "Don't forget to enter your email!";
                                   _passwordError = null;
                                 });
                                 return;
                               }
-                              if(_password == null || _password.length == 0) {
+                              if(_password == null || _password?.length == 0) {
                                 setState(() {
                                   _passwordError = "Don't forget to enter your password!";
                                   _emailError = null;
@@ -228,10 +228,10 @@ class _SignUpPageState extends State<SignUpPage> {
                                 return;
                               }
                               FirebaseAuth.instance.createUserWithEmailAndPassword(
-                                  email: _email,
-                                  password: _password
+                                  email: _email ?? '',
+                                  password: _password ?? ''
                               ).then((signedInUser) {
-                                User newUser = signedInUser.user;
+                                User? newUser = signedInUser.user;
                                 UserManagement().storeNewUser(newUser, username: _username);
                               }).catchError((e) {
                                 print('Error: ${e.code}');
@@ -294,7 +294,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
 
 class _GoogleSignUpSection extends StatefulWidget {
-  bool termsAccepted = false;
+  bool? termsAccepted = false;
 
   _GoogleSignUpSection({this.termsAccepted});
 
@@ -303,7 +303,7 @@ class _GoogleSignUpSection extends StatefulWidget {
 }
 
 class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
-  String _username;
+  String? _username;
   final TextEditingController usernameController = TextEditingController();
 
   @override
@@ -319,18 +319,23 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
         Container(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           alignment: Alignment.center,
-          child: RaisedButton(
-            color: Colors.white,
-            textColor: Colors.deepPurple,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              primary: Colors.white,
+              textStyle: TextStyle(color: Colors.deepPurple,),
+              shape: RoundedRectangleBorder(
+                borderRadius: new BorderRadius.circular(25.0),
+              ),
+            ),
             onPressed: () async {
-              if(!widget.termsAccepted) {
+              if(!(widget.termsAccepted ?? false)) {
                 await showDialog(
                     context: context,
                     builder: (context) {
                       return AlertDialog(
                         title: Text('Accept our Terms of Use'),
                         actions: <Widget>[
-                          FlatButton(
+                          TextButton(
                             child: Text('OK'),
                             onPressed: () {
                               Navigator.of(context).pop();
@@ -353,13 +358,10 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
                       Image.asset("assets/images/drawable-xxxhdpi/google-logo.png", height: 45.0, width: 45.0),
-                      Text('Sign in with Google'),
+                      Text('Sign in with Google', style: TextStyle(color: Colors.deepPurple)),
                     ]
                 ),
               ),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: new BorderRadius.circular(25.0),
             ),
           ),
         ),
@@ -370,7 +372,7 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
   void _signUpWithGoogle() async {
     bool userDocCreated;
 
-    final GoogleSignInAccount googleUser = await _googleSignUp.signIn();
+    final GoogleSignInAccount? googleUser = await _googleSignUp.signIn();
     if(googleUser == null) {
       return;
     }
@@ -382,14 +384,14 @@ class _GoogleSignUpSectionState extends State<_GoogleSignUpSection> {
     );
     final UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(
         credential);
-    final User user = userCred.user;
-    assert(user.email != null);
-    assert(user.displayName != null);
-    assert(!user.isAnonymous);
-    assert(await user.getIdToken() != null);
+    final User? user = userCred.user;
+    assert(user?.email != null);
+    assert(user?.displayName != null);
+    assert(!(user?.isAnonymous ?? false));
+    assert(await user?.getIdToken() != null);
 
-    final User currentUser = FirebaseAuth.instance.currentUser;
-    assert(user.uid == currentUser.uid);
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    assert(user?.uid == currentUser?.uid);
 
     userDocCreated = await UserManagement().userAlreadyCreated();
     print('User exists: $userDocCreated------------------');

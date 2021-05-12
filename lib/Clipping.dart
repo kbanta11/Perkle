@@ -10,10 +10,10 @@ import 'services/models.dart';
 import 'services/db_services.dart';
 
 class CreateClipDialog extends StatefulWidget {
-  MediaItem mediaItem;
-  PlaybackState playbackState;
+  MediaItem? mediaItem;
+  PlaybackState? playbackState;
 
-  CreateClipDialog({Key key, @required this.mediaItem, @required this.playbackState}) : super(key: key);
+  CreateClipDialog({Key? key, @required this.mediaItem, @required this.playbackState}) : super(key: key);
 
   @override
   _CreateClipDialogState createState() => new _CreateClipDialogState();
@@ -35,7 +35,7 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
           RangeSlider(
             values: RangeValues(startDuration.inSeconds.toDouble(), endDuration.inSeconds.toDouble()),
             min: 0,
-            max: widget.mediaItem.duration.inSeconds.toDouble(),
+            max: widget.mediaItem?.duration?.inSeconds.toDouble() ?? 1,
             onChanged: (RangeValues vals) async {
               //await clipPlayer.setClip(start: startDuration, end: endDuration);
               setState(() {
@@ -157,8 +157,8 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                     icon: Icon(Icons.forward_5, color: Colors.deepPurple),
                     onPressed: () {
                       Duration newDuration;
-                      if(endDuration.inMilliseconds + 5000 > widget.mediaItem.duration.inMilliseconds) {
-                        newDuration = Duration(milliseconds: widget.mediaItem.duration.inMilliseconds);
+                      if(endDuration.inMilliseconds + 5000 > (widget.mediaItem?.duration?.inMilliseconds ?? 10000)) {
+                        newDuration = Duration(milliseconds: widget.mediaItem?.duration?.inMilliseconds ?? 10000);
                       } else {
                         newDuration = Duration(milliseconds: endDuration.inMilliseconds + 5000);
                       }
@@ -172,8 +172,8 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                     icon: Icon(Icons.forward_30, color: Colors.deepPurple),
                     onPressed: () {
                       Duration newDuration;
-                      if(endDuration.inMilliseconds + 30000 > widget.mediaItem.duration.inMilliseconds) {
-                        newDuration = Duration(milliseconds: widget.mediaItem.duration.inMilliseconds);
+                      if(endDuration.inMilliseconds + 30000 > (widget.mediaItem?.duration?.inMilliseconds ?? 10000)) {
+                        newDuration = Duration(milliseconds: (widget.mediaItem?.duration?.inMilliseconds ?? 10000));
                       } else {
                         newDuration = Duration(milliseconds: endDuration.inMilliseconds + 30000);
                       }
@@ -188,19 +188,19 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
     );
   }
 
-  Widget sendToColumn(PerklUser user) {
-    List<String> selectableFollowers = user.followers.where((followerID) => user.following.contains(followerID)).toList();
+  Widget sendToColumn(PerklUser? user) {
+    List<String>? selectableFollowers = user?.followers?.where((followerID) => user.following?.contains(followerID) ?? false).toList();
     return Expanded(
         child: StreamBuilder(
-            stream: DBService().streamConversations(user.uid),
+            stream: DBService().streamConversations(user?.uid),
             builder: (context, AsyncSnapshot<List<Conversation>> convoSnap) {
               //print('Convo Snap: ${convoSnap.data}');
               if(convoSnap.hasData) {
-                List<Conversation> convoList = convoSnap.data;
-                List<Widget> tileList = <Widget>[];
-                for(Conversation convo in convoList) {
+                List<Conversation>? convoList = convoSnap.data;
+                List<Widget>? tileList = <Widget>[];
+                for(Conversation convo in (convoList ?? [])) {
                   if(!_addToConversations.containsKey(convo.id))
-                    _addToConversations.addAll({convo.id: false});
+                    _addToConversations.addAll({convo.id ?? '': false});
                   bool _val = _addToConversations[convo.id];
                   tileList.add(CheckboxListTile(
                       title: Text(convo.getTitle(user), style: TextStyle(fontSize: 14)),
@@ -208,17 +208,17 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                       onChanged: (value) {
                         print(_addToConversations);
                         setState(() {
-                          _addToConversations[convo.id] = value;
+                          _addToConversations[convo.id ?? ''] = value;
                         });
                       }
                   ));
                 }
                 tileList.insert(0, CheckboxListTile(
-                  title: Text('My Private Clips'),
+                  title: Text('Save to My Clips'),
                   value: _savePrivate,
                   onChanged: (value) {
                     setState(() {
-                      _savePrivate = value;
+                      _savePrivate = value ?? false;
                     });
                   }
                 ));
@@ -237,7 +237,7 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                           //select newly created convo
                           Conversation newConvo = val;
                           setState(() {
-                            _addToConversations.addAll({newConvo.id: true});
+                            _addToConversations.addAll({newConvo.id ?? '': true});
                           });
                         } else {
                           print('Group Creation Cancelled...');
@@ -253,7 +253,7 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                   ));
                   tileList.add(Divider(height: 5));
                 }
-                for(String follower in selectableFollowers) {
+                for(String follower in (selectableFollowers ?? [])) {
                   if(!_sendToUsers.containsKey(follower)) {
                     _sendToUsers.addAll({follower: false});
                   }
@@ -264,7 +264,7 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                           builder: (context, AsyncSnapshot<PerklUser> thisUserSnap) {
                             if(!thisUserSnap.hasData)
                               return Container();
-                            return Text(thisUserSnap.data.username, style: TextStyle(fontSize: 14),);
+                            return Text(thisUserSnap.data?.username ?? '', style: TextStyle(fontSize: 14),);
                           }
                       ),
                       value: _val,
@@ -290,14 +290,14 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
   initState() {
     super.initState();
     setState(() {
-      if(widget.playbackState != null && widget.playbackState.position != null && widget.playbackState.position.inMilliseconds - 60000 > 0) {
-        startDuration = Duration(milliseconds: widget.playbackState.position.inMilliseconds - 60000);
+      if(widget.playbackState != null && widget.playbackState?.position != null && (widget.playbackState?.position.inMilliseconds ?? 10000)- 60000 > 0) {
+        startDuration = Duration(milliseconds: (widget.playbackState?.position?.inMilliseconds ?? 60000) - 60000);
       }
-      if(widget.playbackState != null && widget.playbackState.position != null) {
-        endDuration = widget.playbackState.position;
+      if(widget.playbackState != null && widget.playbackState?.position != null) {
+        endDuration = widget.playbackState?.position ?? Duration(milliseconds: 60000);
       }
     });
-    clipPlayer.setUrl(widget.mediaItem.id);
+    clipPlayer.setUrl(widget.mediaItem?.id ?? '');
   }
 
   @override
@@ -308,7 +308,7 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
 
   @override
   build(BuildContext context) {
-    PerklUser perklUser = Provider.of<PerklUser>(context);
+    PerklUser? perklUser = Provider.of<PerklUser?>(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       title: Center(child: Text('Create a Clip')),
@@ -329,7 +329,7 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                     icon: Icon(Icons.replay_30),
                     color: Colors.deepPurple,
                     onPressed: () async {
-                      print('Current Position: ${clipPlayer.position.inMilliseconds} - 30000 = ${clipPlayer.position.inMilliseconds - 30000}/End: ${startDuration.inMilliseconds}/Duration: ${clipPlayer.duration.inMilliseconds}');
+                      //print('Current Position: ${clipPlayer.position.inMilliseconds} - 30000 = ${clipPlayer.position.inMilliseconds - 30000}/End: ${startDuration.inMilliseconds}/Duration: ${clipPlayer?.duration?.inMilliseconds}');
                       await clipPlayer.seek(Duration(milliseconds: clipPlayer.position.inMilliseconds - 30000));
                     },
                   ),
@@ -363,15 +363,15 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                     icon: Icon(Icons.forward_30),
                     color: Colors.deepPurple,
                     onPressed: () async {
-                      print('Current Position: ${clipPlayer.position.inMilliseconds} + 30000 = ${clipPlayer.position.inMilliseconds + 30000}/End: ${endDuration.inMilliseconds}/Duration: ${clipPlayer.duration.inMilliseconds}');
+                      //print('Current Position: ${clipPlayer.position.inMilliseconds} + 30000 = ${clipPlayer.position.inMilliseconds + 30000}/End: ${endDuration.inMilliseconds}/Duration: ${clipPlayer?.duration?.inMilliseconds}');
                       await clipPlayer.seek(Duration(milliseconds: clipPlayer.position.inMilliseconds + 30000));
                     }
                   ),
                 ]
               ),
               Text('${ActivityManager().getDurationString(clipPlayer.position)}/${ActivityManager().getDurationString(Duration(milliseconds: endDuration.inMilliseconds - startDuration.inMilliseconds))}'),
-              Text('${widget.mediaItem.title != null && widget.mediaItem.title.length > 60 ? '${widget.mediaItem.title.substring(0, 60)}...' : widget.mediaItem.title}', textAlign: TextAlign.center, style: TextStyle(fontSize: 18)),
-              Text('${widget.mediaItem.artist != null && widget.mediaItem.artist.length > 60 ? '${widget.mediaItem.artist.substring(0, 60)}' : widget.mediaItem.artist}', textAlign: TextAlign.center),
+              Text('${widget.mediaItem?.title != null && (widget.mediaItem?.title?.length ?? 0) > 60 ? '${widget.mediaItem?.title.substring(0, 60)}...' : widget.mediaItem?.title}', textAlign: TextAlign.center, style: TextStyle(fontSize: 18)),
+              Text('${widget.mediaItem?.artist != null && (widget.mediaItem?.artist?.length ?? 0) > 60 ? '${widget.mediaItem?.artist?.substring(0, 60)}' : widget.mediaItem?.artist}', textAlign: TextAlign.center),
               SizedBox(height: 10),
               Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -419,18 +419,18 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                           });
                           return;
                         } else {
-                          print('creating clip: ${widget.mediaItem.extras['episode']}');
+                          //print('creating clip: ${widget.mediaItem?.extras['episode']}');
                           //save clip as private if selected
                           if(_savePrivate) {
                             await DBService().saveEpisodeClip(creator: perklUser,
                                 startDuration: startDuration,
                                 endDuration: endDuration,
-                                clipTitle: _clipTitleController?.value?.text,
+                                clipTitle: _clipTitleController.value.text,
                                 public: false,
-                                podcastTitle: widget?.mediaItem?.extras['podcast_title'],
-                                podcastImage: widget?.mediaItem?.extras['podcast_image'],
-                                podcastUrl: widget?.mediaItem?.extras['podcast_url'],
-                                episode: widget.mediaItem != null && widget.mediaItem.extras != null && widget.mediaItem.extras['episode'] != null ? Episode.fromJson(widget.mediaItem.extras['episode']) : null,);
+                                podcastTitle: widget.mediaItem?.extras?['podcast_title'],
+                                podcastImage: widget.mediaItem?.extras?['podcast_image'],
+                                podcastUrl: widget.mediaItem?.extras?['podcast_url'],
+                                episode: widget.mediaItem != null && widget.mediaItem?.extras != null && widget.mediaItem?.extras?['episode'] != null ? Episode.fromJson(widget.mediaItem?.extras?['episode']) : null,);
                           }
                           _sendToUsers.removeWhere((key, value) => value == false);
                           _addToConversations.removeWhere((key, value) => value == false);
@@ -440,19 +440,19 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                             // memberMap of currentUser and send to user
                             _sendToUsers.forEach((key, value) async {
                               Map<String, dynamic> _memberMap = new Map<String, dynamic>();
-                              _memberMap.addAll({perklUser.uid: perklUser.username});
-                              String _thisUsername = await DBService().getPerklUser(key).then((PerklUser user) => user.username);
+                              _memberMap.addAll({perklUser?.uid ?? '': perklUser?.username});
+                              String? _thisUsername = await DBService().getPerklUser(key).then((PerklUser user) => user.username);
                               _memberMap.addAll({key: _thisUsername});
                               //send direct post to this user
                               await DBService().sendEpisodeClipToConversation(sender: perklUser,
                                   startDuration: startDuration,
                                   endDuration: endDuration,
-                                  clipTitle: _clipTitleController?.value?.text,
+                                  clipTitle: _clipTitleController.value.text,
                                   public: false,
-                                  podcastTitle: widget?.mediaItem?.extras['podcast_title'],
-                                  podcastImage: widget?.mediaItem?.extras['podcast_image'],
-                                  podcastUrl: widget?.mediaItem?.extras['podcast_url'],
-                                  episode: widget.mediaItem != null && widget.mediaItem.extras != null && widget.mediaItem.extras['episode'] != null ? Episode.fromJson(widget.mediaItem.extras['episode']) : null,
+                                  podcastTitle: widget.mediaItem?.extras?['podcast_title'],
+                                  podcastImage: widget.mediaItem?.extras?['podcast_image'],
+                                  podcastUrl: widget.mediaItem?.extras?['podcast_url'],
+                                  episode: widget.mediaItem != null && widget.mediaItem?.extras != null && widget.mediaItem?.extras?['episode'] != null ? Episode.fromJson(widget.mediaItem?.extras?['episode']) : null,
                                   memberMap: _memberMap);
                             });
                           }
@@ -463,12 +463,12 @@ class _CreateClipDialogState extends State<CreateClipDialog> {
                               await DBService().sendEpisodeClipToConversation(sender: perklUser,
                                   startDuration: startDuration,
                                   endDuration: endDuration,
-                                  clipTitle: _clipTitleController?.value?.text,
+                                  clipTitle: _clipTitleController.value.text,
                                   public: false,
-                                  podcastTitle: widget?.mediaItem?.extras['podcast_title'],
-                                  podcastImage: widget?.mediaItem?.extras['podcast_image'],
-                                  podcastUrl: widget?.mediaItem?.extras['podcast_url'],
-                                  episode: widget.mediaItem != null && widget.mediaItem.extras != null && widget.mediaItem.extras['episode'] != null ? Episode.fromJson(widget.mediaItem.extras['episode']) : null,
+                                  podcastTitle: widget.mediaItem?.extras?['podcast_title'],
+                                  podcastImage: widget.mediaItem?.extras?['podcast_image'],
+                                  podcastUrl: widget.mediaItem?.extras?['podcast_url'],
+                                  episode: widget.mediaItem != null && widget.mediaItem?.extras != null && widget.mediaItem?.extras?['episode'] != null ? Episode.fromJson(widget.mediaItem?.extras?['episode']) : null,
                                   conversationId: key);
                             });
                           }

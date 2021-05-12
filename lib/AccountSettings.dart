@@ -8,17 +8,17 @@ import 'package:provider/provider.dart';
 class AccountSettings extends StatelessWidget {
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
+    User? firebaseUser = Provider.of<User?>(context);
 
     return MultiProvider(
       providers: [
-        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser),),
+        StreamProvider<PerklUser?>(create: (_) => UserManagement().streamCurrentUser(firebaseUser), initialData: null,),
         //ChangeNotifierProvider<AccountSettingsProvider>(create: (_) => AccountSettingsProvider(),)
       ],
-      child: Consumer<PerklUser>(
+      child: Consumer<PerklUser?>(
         builder: (context, currentUser, _) {
           //PerklUser currentUser = Provider.of<PerklUser>(context);
-          print('Firebase User Info: ${firebaseUser.uid}/${firebaseUser.emailVerified}');
+          print('Firebase User Info: ${firebaseUser?.uid}/${firebaseUser?.emailVerified}');
           return SimpleDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
             title: Center(child: Text('Account Settings'),),
@@ -40,7 +40,7 @@ class AccountSettings extends StatelessWidget {
               TextButton(
                 child: Text('Deactivate Account'),
                 onPressed: () {
-                  print('User ${currentUser.email}, Provider: ${firebaseUser.providerData.first}');
+                  print('User ${currentUser?.email}, Provider: ${firebaseUser?.providerData.first}');
                   showDialog(
                     context: context,
                     builder: (context) {

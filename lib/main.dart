@@ -27,8 +27,8 @@ import 'SearchPage.dart';
 import 'ReplyToEpisode.dart';
 import 'PlayerAudioHandler.dart';
 
-AudioHandler _audioHandler;
-FirebaseApp fbApp;
+AudioHandler? _audioHandler;
+FirebaseApp? fbApp;
 
 
 void main() async {
@@ -57,7 +57,7 @@ class TestApp extends StatelessWidget {
 }
 
 class MainApp extends StatefulWidget {
-  const MainApp({ Key key }) : super(key: key);
+  const MainApp({ Key? key }) : super(key: key);
 
   @override
   MainAppState createState() => MainAppState();
@@ -107,23 +107,24 @@ class MainAppState extends State<MainApp> {
         )
     ) : MultiProvider(
       providers: [
-        StreamProvider<User>(create: (_) => FirebaseAuth.instance.userChanges()),
-        FutureProvider<bool>(create: (_) => updateNeeded()),
+        StreamProvider<User?>(create: (_) => FirebaseAuth.instance.userChanges(), initialData: null),
+        FutureProvider<bool?>(create: (_) => updateNeeded(), initialData: null),
       ],
-      child: Consumer<User>(
+      child: Consumer<User?>(
         builder: (context, firebaseUser, _) {
           //check if user has userdoc, if not create one
           DBService().checkOrCreateUserDoc(firebaseUser);
-          bool promptUpdate = Provider.of<bool>(context);
+          bool? promptUpdate = Provider.of<bool?>(context);
           print('Prompt Update: $promptUpdate');
           if(firebaseUser == null) {
             return MaterialApp(theme: new ThemeData (
                 primarySwatch: Colors.deepPurple
             ), home: Scaffold(body: LoginPage()));
           }
-          return StreamProvider<PerklUser>(
+          return StreamProvider<PerklUser?>(
+            initialData: null,
             create: (_) => UserManagement().streamCurrentUser(firebaseUser),
-            child: Consumer<PerklUser>(
+            child: Consumer<PerklUser?>(
                 builder: (context, user, _) {
                   //print('Temporary User: $userTemp/Firebase User: $firebaseUser');
                   //print('Temp User Followed Podcasts: ${user != null ? user.followedPodcasts : ''}');
@@ -138,9 +139,9 @@ class MainAppState extends State<MainApp> {
                           DBService().syncConversationPostsHeard();
                           return MultiProvider(
                             providers: [
-                              StreamProvider<PlaybackState>(create: (_) => _audioHandler.playbackState,),
-                              StreamProvider<List<MediaItem>>(create: (_) => _audioHandler.queue),
-                              StreamProvider<MediaItem>(create: (_) => _audioHandler.mediaItem),
+                              StreamProvider<PlaybackState?>(create: (_) => _audioHandler?.playbackState, initialData: null),
+                              StreamProvider<List<MediaItem>?>(create: (_) => _audioHandler?.queue, initialData: null),
+                              StreamProvider<MediaItem?>(create: (_) => _audioHandler?.mediaItem, initialData: null),
                             ],
                             child: MaterialApp(
                               title: 'Perkl',
@@ -206,92 +207,92 @@ class MainAppProvider extends ChangeNotifier {
   bool showLoadingDialog = false;
   ActivityManager activityManager = new ActivityManager();
   //List<PostPodItem> queue = new List<PostPodItem>();
-  List<Post> pagePosts;
+  List<Post>? pagePosts;
 
-  PostPodItem currentPostPodItem;
-  String currentPostPodId;
-  PostType currentPostType;
+  PostPodItem? currentPostPodItem;
+  String? currentPostPodId;
+  PostType? currentPostType;
   //AudioPlayer player = new AudioPlayer();
-  bool panelOpen = true;
-  PostPosition position;
-  PostDuration postLength;
+  bool? panelOpen = true;
+  //PostPosition? position;
+  //PostDuration? postLength;
   //For showing recording button time
   bool isRecording = false;
-  Duration recordingTime;
-  String _postAudioPath;
-  DateTime _startRecordDate;
+  Duration? recordingTime;
+  String? _postAudioPath;
+  DateTime? _startRecordDate;
 
   playPost(PostPodItem newPostPod) async {
-    MediaItem mediaItem = newPostPod.toMediaItem(FirebaseAuth.instance.currentUser.uid);
-    _audioHandler.playMediaItem(mediaItem);
+    MediaItem mediaItem = newPostPod.toMediaItem(currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '');
+    _audioHandler?.playMediaItem(mediaItem);
     notifyListeners();
   }
 
   playMediaItem(MediaItem mediaItem) async {
-    _audioHandler.playMediaItem(mediaItem);
+    _audioHandler?.playMediaItem(mediaItem);
     notifyListeners();
   }
 
   stopPost() {
     //isPlaying = false;
     currentPostPodItem = null;
-    _audioHandler.stop();
+    _audioHandler?.stop();
     notifyListeners();
   }
 
   resume() {
-    _audioHandler.play();
+    _audioHandler?.play();
     notifyListeners();
   }
 
   skipToNext() {
-    _audioHandler.skipToNext();
+    _audioHandler?.skipToNext();
     notifyListeners();
   }
 
   pausePost() {
     //print('Pausing...');
     //player.pause();
-    _audioHandler.pause();
+    _audioHandler?.pause();
     //AudioService.pause();
     //isPlaying = false;
     notifyListeners();
   }
 
   rewind() {
-    _audioHandler.rewind();
+    _audioHandler?.rewind();
     notifyListeners();
   }
 
   fastForward() {
-    _audioHandler.fastForward();
+    _audioHandler?.fastForward();
     notifyListeners();
   }
 
 
   updatePanelState() {
-    panelOpen = !panelOpen;
+    panelOpen = !(panelOpen ?? false);
     notifyListeners();
   }
 
   addPostToQueue(PostPodItem post) async {
-    MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
-    _audioHandler.addQueueItem(mediaItem);
+    MediaItem mediaItem = post.toMediaItem(currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '');
+    _audioHandler?.addQueueItem(mediaItem);
     notifyListeners();
   }
 
   insertPostToQueueFirst(PostPodItem post) async {
-    MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
+    MediaItem mediaItem = post.toMediaItem(currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '');
     //queue.insert(0, post);
     print('Media Item: $mediaItem');
-    _audioHandler.insertQueueItem(0, mediaItem);
+    _audioHandler?.insertQueueItem(0, mediaItem);
     //AudioService.addQueueItemAt(mediaItem, 0);
     notifyListeners();
   }
 
-  addUnheardToQueue({String conversationId, String userId}) async {
+  addUnheardToQueue({String? conversationId, String? userId}) async {
 
-    List<DirectPost> unheardPosts = List<DirectPost>();
+    List<DirectPost> unheardPosts = <DirectPost>[];
     List<String> heardPostIDs = await DBService().getHeardPostIds(conversationId: conversationId, userId: userId);
     List<DirectPost> conversationPosts = await DBService().getDirectPosts(conversationId);
     unheardPosts = conversationPosts;
@@ -300,20 +301,20 @@ class MainAppProvider extends ChangeNotifier {
     }
     unheardPosts.removeWhere((DirectPost post) => post.senderUID == userId);
     //print('Unheard posts: $unheardPosts');
-    List<MediaItem> currentQueue = _audioHandler.queue.valueWrapper.value;
+    List<MediaItem>? currentQueue = _audioHandler?.queue.valueWrapper?.value;
     List<MediaItem> unheardMediaItems = unheardPosts.map((item) {
       PostPodItem post = PostPodItem.fromDirectPost(item);
-      MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
+      MediaItem mediaItem = post.toMediaItem(currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '');
       return mediaItem;
     }).toList();
     //print('Unheard media items: $unheardMediaItems');
     if(currentQueue == null || currentQueue.length == 0) {
       print('setting queue to just unheard items: $unheardMediaItems');
-      await _audioHandler.updateQueue(unheardMediaItems.reversed.toList());
+      await _audioHandler?.updateQueue(unheardMediaItems.reversed.toList());
     } else {
       print('adding unheard to current queue');
       currentQueue.insertAll(0, unheardMediaItems.reversed.toList());
-      await _audioHandler.updateQueue(currentQueue);
+      await _audioHandler?.updateQueue(currentQueue);
     }
     /*
     unheardPosts.forEach((DirectPost post) {
@@ -321,25 +322,25 @@ class MainAppProvider extends ChangeNotifier {
       insertPostToQueueFirst(newItem);
     });
      */
-    await _audioHandler.skipToNext();
+    await _audioHandler?.skipToNext();
   }
 
   removeFromQueue(PostPodItem post) {
-    MediaItem mediaItem = post.toMediaItem(FirebaseAuth.instance.currentUser.uid);
+    MediaItem mediaItem = post.toMediaItem(currentUserId: FirebaseAuth.instance.currentUser?.uid  ?? '');
     //queue.removeWhere((element) => element.id == post.id);
-    _audioHandler.removeQueueItem(mediaItem);
+    _audioHandler?.removeQueueItem(mediaItem);
     //AudioService.removeQueueItem(mediaItem);
     notifyListeners();
   }
 
   removeQueueItem(MediaItem item) {
-    _audioHandler.removeQueueItem(item);
+    _audioHandler?.removeQueueItem(item);
     //AudioService.removeQueueItem(mediaItem);
     notifyListeners();
   }
 
   setSpeed(double speed) {
-    _audioHandler.setSpeed(speed);
+    _audioHandler?.setSpeed(speed);
     notifyListeners();
   }
 
@@ -353,15 +354,15 @@ class MainAppProvider extends ChangeNotifier {
   }
 
   startRecording() async {
-    if(_audioHandler.playbackState != null && _audioHandler.playbackState.valueWrapper.value.playing) {
+    if(_audioHandler?.playbackState != null && (_audioHandler?.playbackState.valueWrapper?.value.playing ?? false)) {
       pausePost();
     }
     isRecording = true;
     print('starting recorder...');
-    List<dynamic> startRecordVals = await activityManager.startRecordNewPost(this);
+    List<dynamic>? startRecordVals = await activityManager.startRecordNewPost(this);
     print('Start Record Vals: $startRecordVals');
-    String postPath = startRecordVals[0];
-    DateTime startDate = startRecordVals[1];
+    String postPath = startRecordVals?[0];
+    DateTime startDate = startRecordVals?[1];
     _postAudioPath = postPath;
     _startRecordDate = startDate;
     notifyListeners();
@@ -369,9 +370,9 @@ class MainAppProvider extends ChangeNotifier {
 
   stopRecording(BuildContext context) async {
     isRecording = false;
-    List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-    String recordingLocation = stopRecordVals[0];
-    int secondsLength = stopRecordVals[1];
+    List<dynamic>? stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
+    String recordingLocation = stopRecordVals?[0];
+    int secondsLength = stopRecordVals?[1];
     print('$recordingLocation -/- Length: $secondsLength');
     DateTime date = new DateTime.now();
     notifyListeners();
@@ -384,13 +385,13 @@ class MainAppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  setRecordingTime(Duration duration) {
+  setRecordingTime(Duration? duration) {
     recordingTime = duration;
     notifyListeners();
   }
 
-  replyToEpisode(Episode episode, Podcast podcast, BuildContext context) {
-    if(_audioHandler.playbackState.valueWrapper.value.playing) {
+  replyToEpisode(Episode? episode, Podcast? podcast, BuildContext context) {
+    if(_audioHandler?.playbackState.valueWrapper?.value.playing ?? false) {
       pausePost();
     }
     showDialog(
@@ -401,11 +402,11 @@ class MainAppProvider extends ChangeNotifier {
     );
   }
 
-  shareToConversation(BuildContext context, {Episode episode, Podcast podcast, PerklUser user}) {
+  shareToConversation(BuildContext context, {Episode? episode, Podcast? podcast, PerklUser? user}) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return ShareToDialog(recordingLocation: episode.contentUrl, episode: episode, podcast: podcast, currentUser: user,);
+        return ShareToDialog(recordingLocation: episode?.contentUrl, episode: episode, podcast: podcast, currentUser: user,);
       }
     );
   }

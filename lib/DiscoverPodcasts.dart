@@ -41,19 +41,20 @@ class DiscoverPodcasts extends StatelessWidget {
                       DropdownMenuItem(child: Text(Genre.TRUE_CRIME.name), value: Genre.TRUE_CRIME)
                     ],
                   value: dpp.selectedGenre,
-                  onChanged: (value) {
+                  onChanged: (Genre? value) {
                       print('Selected Genre ID: $value');
-                      dpp.changeGenre(value);
+                      dpp.changeGenre(value ?? Genre.ALL);
                   },
                 ),
                 Expanded(
                   child: FutureProvider<void>(
+                    initialData: null,
                       create: (_) => dpp.getPodcasts(),
                       child: Consumer<void>(
                         builder: (context, none, _) {
-                          print('Podcasts Num: ${dpp.podcasts == null ? '' : dpp.podcasts.length}');
+                          print('Podcasts Num: ${dpp.podcasts == null ? '' : dpp.podcasts?.length}');
                           return dpp.podcasts == null ? Center(child: CircularProgressIndicator()) : ListView(
-                            children: dpp.podcasts.map((pod) {
+                            children: dpp.podcasts?.map((pod) {
                               return Card(
                                 margin: EdgeInsets.all(5),
                                 elevation: 5,
@@ -64,13 +65,13 @@ class DiscoverPodcasts extends StatelessWidget {
                                       height: 50,
                                       width: 50,
                                       decoration: pod != null && pod.collectionName != null ? BoxDecoration(
-                                          image: DecorationImage(image: NetworkImage(pod.artworkUrl60), fit: BoxFit.cover)
+                                          image: DecorationImage(image: NetworkImage(pod.artworkUrl60 ?? ''), fit: BoxFit.cover)
                                       ) : BoxDecoration(
                                         color: Colors.deepPurple,
                                       ),
-                                      child: pod == null || pod.artworkUrl60 == null ? Text('${pod.collectionName.substring(0, 1)}') : Container(),
+                                      child: pod == null || pod.artworkUrl60 == null ? Text('${pod.collectionName?.substring(0, 1)}') : Container(),
                                     ),
-                                    title: Text(pod.collectionName, style: TextStyle(fontSize: 16)),
+                                    title: Text(pod.collectionName ?? '', style: TextStyle(fontSize: 16)),
                                     onTap: () async {
                                       showDialog(
                                           context: context,
@@ -87,7 +88,7 @@ class DiscoverPodcasts extends StatelessWidget {
                                   )
                                 ),
                               );
-                            }).toList(),
+                            }).toList() ?? [Container()],
                           );
                         },
                       )
@@ -104,7 +105,7 @@ class DiscoverPodcasts extends StatelessWidget {
 class DiscoverPodcastsProvider extends ChangeNotifier {
   Search podcastSearch = new Search();
   Genre selectedGenre = Genre.ALL;
-  List<Item> podcasts;
+  List<Item>? podcasts;
 
 
   changeGenre(Genre newGenre) async {
@@ -115,9 +116,9 @@ class DiscoverPodcastsProvider extends ChangeNotifier {
   }
 
   Future<void> getPodcasts() async {
-    SearchResult searchResult =  await Search().charts(country: Country.UNITED_STATES, limit: 30, explicit: true, genre: selectedGenre.id > 0 ? selectedGenre : null);
+    SearchResult searchResult =  await Search().charts(country: Country.UNITED_STATES, limit: 30, explicit: true, genre: selectedGenre);
     print(searchResult.items);
-    podcasts = searchResult.items.toList();
+    podcasts = searchResult.items?.toList();
     notifyListeners();
     return;
   }

@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class ListTileBubble extends StatelessWidget {
-  double width;
-  Widget leading;
-  Widget title;
-  Widget subTitle;
-  Widget trailing;
-  Function onTap;
-  MainAxisAlignment alignment;
-  Color color;
-  EdgeInsets padding;
+  double? width;
+  Widget? leading;
+  Widget? title;
+  Widget? subTitle;
+  Widget? trailing;
+  Function? onTap;
+  MainAxisAlignment? alignment;
+  Color? color;
+  EdgeInsets? padding;
 
   ListTileBubble({this.width, this.leading, this.title, this.subTitle, this.trailing, this.onTap, this.alignment, this.color, this.padding});
 
@@ -53,7 +53,7 @@ class ListTileBubble extends StatelessWidget {
       ),
       onTap: () {
         if(onTap != null) {
-          onTap();
+          onTap!();
         }
       },
     );

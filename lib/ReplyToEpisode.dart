@@ -17,30 +17,30 @@ import 'main.dart';
 import 'PageComponents.dart';
 
 class ReplyToEpisodeDialog extends StatelessWidget {
-  Episode _episode;
-  Podcast _podcast;
+  Episode? _episode;
+  Podcast? _podcast;
 
   ReplyToEpisodeDialog(this._episode, this._podcast);
 
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    User? firebaseUser = Provider.of<User?>(context);
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<ReplyToEpisodeProvider>(create: (_) => ReplyToEpisodeProvider(),),
-        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
+        StreamProvider<PerklUser?>(create: (_) => UserManagement().streamCurrentUser(firebaseUser), initialData: null)
       ],
       child: Consumer<ReplyToEpisodeProvider>(
         builder: (context, rep, _) {
-          PerklUser user = Provider.of<PerklUser>(context);
+          PerklUser? user = Provider.of<PerklUser?>(context);
           return rep.isUploading ? Center(child: CircularProgressIndicator()) : SimpleDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
-            title: Center(child: Text(_episode.title, textAlign: TextAlign.center)),
+            title: Center(child: Text(_episode?.title ?? '', textAlign: TextAlign.center)),
             contentPadding: EdgeInsets.all(10),
             children: <Widget>[
-              Center(child: Text(_podcast.title, style: TextStyle(fontSize: 16), textAlign: TextAlign.center,)),
+              Center(child: Text(_podcast?.title ?? '', style: TextStyle(fontSize: 16), textAlign: TextAlign.center,)),
               SizedBox(height: 20),
               Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -136,14 +136,14 @@ class ReplyToEpisodeDialog extends StatelessWidget {
 class ReplyToEpisodeProvider extends ChangeNotifier {
   bool _isRecording = false;
   bool _isPlaybackRecording = false;
-  DateTime replyDate;
+  DateTime? replyDate;
   ActivityManager activityManager = new ActivityManager();
   SoundRecorder recorder = new SoundRecorder(playInBackground: true);
   AudioPlayer audioPlayer = new AudioPlayer();
-  String filePath;
+  String? filePath;
   //Duration replyLength;
-  Duration recordingTime;
-  String _messageTitle;
+  Duration? recordingTime;
+  String? _messageTitle;
   bool isUploading = false;
 
   @override
@@ -152,7 +152,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     audioPlayer.dispose();
   }
 
-  String setMessageTitle(String val) {
+  setMessageTitle(String val) {
     _messageTitle = val;
     notifyListeners();
   }
@@ -176,7 +176,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     String tempFilePath = Track.tempFile(CustomMediaFormat());
     print('TempFilePath: $tempFilePath');
     await recorder.record(Track.fromFile(tempFilePath, mediaFormat: CustomMediaFormat()));
-    recorder.dispositionStream().listen((disposition) {
+    recorder.dispositionStream()?.listen((disposition) {
       setRecordingTime(disposition.duration);
     });
     filePath = Platform.isIOS ? tempFilePath.replaceAll('file://', '') : tempFilePath;
@@ -194,13 +194,13 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  setRecordingTime(Duration disposition) {
+  setRecordingTime(Duration? disposition) {
     recordingTime = disposition;
     notifyListeners();
   }
 
   playbackRecording() async {
-    await audioPlayer.setFilePath(filePath);
+    await audioPlayer.setFilePath(filePath ?? '');
     audioPlayer.play();
     audioPlayer.processingStateStream.listen((ProcessingState processState) {
       if(processState == ProcessingState.completed) {
@@ -218,7 +218,7 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  sendReply({Episode episode, Podcast podcast, PerklUser user}) async {
+  sendReply({Episode? episode, Podcast? podcast, PerklUser? user}) async {
     isUploading = true;
     notifyListeners();
     print('episode: $episode/guid:');
@@ -228,10 +228,10 @@ class ReplyToEpisodeProvider extends ChangeNotifier {
     return;
   }
 
-  String getDurationString(Duration duration) {
-    int hours = duration.inHours;
-    int minutes = duration.inMinutes.remainder(60);
-    int seconds = duration.inSeconds.remainder(60);
+  String getDurationString(Duration? duration) {
+    int hours = duration?.inHours ?? 0;
+    int minutes = duration?.inMinutes.remainder(60) ?? 0;
+    int seconds = duration?.inSeconds.remainder(60) ?? 0;
     String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
     String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
     if(hours > 0)

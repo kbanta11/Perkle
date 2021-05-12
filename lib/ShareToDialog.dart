@@ -10,13 +10,13 @@ import 'main.dart';
 
 
 class ShareToDialog extends StatefulWidget {
-  Post post;
-  Episode episode;
-  Podcast podcast;
-  PerklUser currentUser;
-  String recordingLocation;
+  Post? post;
+  Episode? episode;
+  Podcast? podcast;
+  PerklUser? currentUser;
+  String? recordingLocation;
 
-  ShareToDialog({Key key, this.post, this.episode, this.podcast, this.currentUser, @required this.recordingLocation,}) : super(key: key);
+  ShareToDialog({Key? key, this.post, this.episode, this.podcast, this.currentUser, @required this.recordingLocation,}) : super(key: key);
 
   @override
   _ShareToDialogState createState() => new _ShareToDialogState();
@@ -29,27 +29,27 @@ class _ShareToDialogState extends State<ShareToDialog> {
   Map<String, dynamic> _sendToUsers = new Map<String, dynamic>();
   Map<String, dynamic> _addToConversations = new Map<String, dynamic>();
 
-  Widget getSelectList(PerklUser user) {
-    List<String> selectableFollowers = user.followers.where((followerID) => user.following.contains(followerID)).toList();
+  Widget getSelectList(PerklUser? user) {
+    List<String> selectableFollowers = user?.followers?.where((followerID) => user.following?.contains(followerID) ?? false).toList() ?? [];
     return Expanded(
         child: StreamBuilder(
-            stream: DBService().streamConversations(user.uid),
+            stream: DBService().streamConversations(user?.uid),
             builder: (context, AsyncSnapshot<List<Conversation>> convoSnap) {
               print('Convo Snap: ${convoSnap.data}');
               if(convoSnap.hasData) {
-                List<Conversation> convoList = convoSnap.data;
-                List<Widget> tileList = List<Widget>();
-                for(Conversation convo in convoList) {
-                  if(!_addToConversations.containsKey(convo.id))
-                    _addToConversations.addAll({convo.id: false});
-                  bool _val = _addToConversations[convo.id];
+                List<Conversation?> convoList = convoSnap.data ?? [];
+                List<Widget> tileList = <Widget>[];
+                for(Conversation? convo in convoList) {
+                  if(!_addToConversations.containsKey(convo?.id))
+                    _addToConversations.addAll({convo?.id ?? '': false});
+                  bool _val = _addToConversations[convo?.id];
                   tileList.add(CheckboxListTile(
-                      title: Text(convo.getTitle(user), style: TextStyle(fontSize: 14)),
+                      title: Text(convo?.getTitle(user) ?? '', style: TextStyle(fontSize: 14)),
                       value: _val,
                       onChanged: (value) {
                         print(_addToConversations);
                         setState(() {
-                          _addToConversations[convo.id] = value;
+                          _addToConversations[convo?.id ?? ''] = value;
                         });
                       }
                   ));
@@ -69,7 +69,7 @@ class _ShareToDialogState extends State<ShareToDialog> {
                           //select newly created convo
                           Conversation newConvo = val;
                           setState(() {
-                            _addToConversations.addAll({newConvo.id: true});
+                            _addToConversations.addAll({newConvo.id ?? '': true});
                           });
                         } else {
                           print('Group Creation Cancelled...');
@@ -96,7 +96,7 @@ class _ShareToDialogState extends State<ShareToDialog> {
                           builder: (context, AsyncSnapshot<PerklUser> thisUserSnap) {
                             if(!thisUserSnap.hasData)
                               return Container();
-                            return Text(thisUserSnap.data.username, style: TextStyle(fontSize: 14),);
+                            return Text(thisUserSnap.data?.username ?? '', style: TextStyle(fontSize: 14),);
                           }
                       ),
                       value: _val,
@@ -139,8 +139,8 @@ class _ShareToDialogState extends State<ShareToDialog> {
             )
         ) : Column(
             children: <Widget>[
-              Center(child: Text('${widget.episode.title}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center,),),
-              Center(child: Text('${widget.podcast.title}', style: TextStyle(fontSize: 16), textAlign: TextAlign.center)),
+              Center(child: Text('${widget.episode?.title}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center,),),
+              Center(child: Text('${widget.podcast?.title}', style: TextStyle(fontSize: 16), textAlign: TextAlign.center)),
               SizedBox(height: 10),
               getSelectList(widget.currentUser),
               /*
@@ -255,25 +255,28 @@ class _ShareToDialogState extends State<ShareToDialog> {
               Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
-                    FlatButton(
-                        child: Text('Cancel'),
-                        textColor: Colors.deepPurple,
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                      ),
+                        child: Text('Cancel', style: TextStyle(color: Colors.white)),
                         onPressed: () {
                           Navigator.of(context).pop();
                         }
                     ),
-                    widget.recordingLocation == null ? OutlineButton(
-                      color: Colors.red,
-                      borderSide: BorderSide(color: Colors.red),
+                    widget.recordingLocation == null ? OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.red),
+                      ),
                       child: Text('Record First'),
                       onPressed: () {
 
                       },
-                    ) : FlatButton(
-                        color: Colors.deepPurple,
-                        child: Text('Add Post'),
-
-                        textColor: Colors.white,
+                    ) : TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                        ),
+                        child: Text('Add Post', style: TextStyle(color: Colors.white)),
                         onPressed: () async {
                           if(widget.recordingLocation != null) {
                             _sendToUsers.removeWhere((key, value) => value == false);

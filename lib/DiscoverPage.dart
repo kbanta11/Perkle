@@ -27,20 +27,20 @@ class DiscoverPageMobile extends StatelessWidget {
 
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
+    User? firebaseUser = Provider.of<User?>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser)),
+        StreamProvider<PerklUser?>(create: (_) => UserManagement().streamCurrentUser(firebaseUser), initialData: null),
         ChangeNotifierProvider<DiscoverPageMobileProvider>(create: (_) => DiscoverPageMobileProvider()),
-        FutureProvider<List<DiscoverTag>>(create: (_) => DBService().getDiscoverTags()),
+        FutureProvider<List<DiscoverTag>?>(create: (_) => DBService().getDiscoverTags(), initialData: null),
       ],
-      child: Consumer<PerklUser>(
+      child: Consumer<PerklUser?>(
           builder: (context, user, _) {
             DiscoverPageMobileProvider pageProvider = Provider.of<DiscoverPageMobileProvider>(context);
-            List<DiscoverTag> discoverTags = Provider.of<List<DiscoverTag>>(context);
+            List<DiscoverTag>? discoverTags = Provider.of<List<DiscoverTag>?>(context);
             print('DiscoverTags: $discoverTags');
-            String firstTag = discoverTags != null ? discoverTags.first.value : null;
+            String? firstTag = discoverTags != null ? discoverTags.first.value : null;
             print('Current Tag: ${pageProvider.selectedTag ?? firstTag}');
             return user == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
               bottomNavIndex: 1,
@@ -110,17 +110,19 @@ class DiscoverPageMobile extends StatelessWidget {
                     ),
                   ) :
                   */ pageProvider.selectedCat == 'People' ? Expanded(
-                    child: StreamProvider<List<String>>(
+                    child: StreamProvider<List<String>?>(
                       create: (context) => DBService().streamDiscoverPods(),
-                      child: Consumer<List<String>>(
+                      initialData: null,
+                      child: Consumer<List<String>?>(
                         builder: (context, userList, _) {
                           if(userList == null)
                             return Center(child: CircularProgressIndicator());
                           return SingleChildScrollView(
                             child: Column(
-                              children: userList.map((userId) => StreamProvider<PerklUser>(
+                              children: userList.map((userId) => StreamProvider<PerklUser?>(
+                                initialData: null,
                                   create: (context) => UserManagement().streamUserDoc(userId),
-                                  child: Consumer<PerklUser>(
+                                  child: Consumer<PerklUser?>(
                                       builder: (context, user, _) {
                                         return user == null ? Container()
                                             : Card(
@@ -137,7 +139,7 @@ class DiscoverPageMobile extends StatelessWidget {
                                                     color: Colors.deepPurple,
                                                     image: DecorationImage(
                                                         fit: BoxFit.cover,
-                                                        image: NetworkImage(user.profilePicUrl)
+                                                        image: NetworkImage(user.profilePicUrl ?? '')
                                                     )
                                                 )
                                             ) : Container(
@@ -155,7 +157,7 @@ class DiscoverPageMobile extends StatelessWidget {
                                                 children: <Widget>[
                                                   FaIcon(FontAwesomeIcons.users, color: Colors.black, size: 16,),
                                                   SizedBox(width: 5),
-                                                  Text('${user.followers != null ? user.followers.length.toString() : '0'}', style: TextStyle(fontSize: 16))
+                                                  Text('${user.followers != null ? user.followers?.length.toString() : '0'}', style: TextStyle(fontSize: 16))
                                                 ],
                                               ),
                                             ),
@@ -189,7 +191,7 @@ class DiscoverPageMobile extends StatelessWidget {
 
 class DiscoverPageMobileProvider extends ChangeNotifier {
   String selectedCat = 'Pods';
-  String selectedTag;
+  String? selectedTag;
 
   void selectCategory(String value) {
     selectedCat = value;

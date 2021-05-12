@@ -17,22 +17,22 @@ class QueuePage extends StatelessWidget {
   @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
-    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
-    List<MediaItem> queueItems = Provider.of<List<MediaItem>>(context);
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
+    MediaItem? currentMediaItem = Provider.of<MediaItem?>(context);
+    List<MediaItem>? queueItems = Provider.of<List<MediaItem>?>(context);
     List<Widget> queueWidgets = <Widget>[];
 
     tapItemTile(MediaItem item) async {
       print('item tapped: $item');
-      if(item.extras['type'] == 'PostType.PODCAST_EPISODE') {
+      if(item.extras?['type'] == 'PostType.PODCAST_EPISODE') {
         showDialog(
           context: context,
           builder: (context) {
             return Center(child: CircularProgressIndicator());
           }
         );
-        Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
-        Map<String, dynamic> episodeMap = item.extras['episode'];
+        Podcast podcast = await Podcast.loadFeed(url: item.extras?['podcast_url']);
+        Map<String, dynamic> episodeMap = item.extras?['episode'];
         Episode ep = Episode.of(
             guid: episodeMap['guid'],
             title: episodeMap['title'],
@@ -54,15 +54,15 @@ class QueuePage extends StatelessWidget {
             }
         );
       }
-      if(item.extras['type'] == 'PostType.EPISODE_REPLY'){
+      if(item.extras?['type'] == 'PostType.EPISODE_REPLY'){
         showDialog(
             context: context,
             builder: (context) {
               return Center(child: CircularProgressIndicator());
             }
         );
-        Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
-        Map<String, dynamic> episodeMap = item.extras['episode'];
+        Podcast podcast = await Podcast.loadFeed(url: item.extras?['podcast_url']);
+        Map<String, dynamic> episodeMap = item.extras?['episode'];
         Episode ep = Episode.of(
             guid: episodeMap['guid'],
             title: episodeMap['title'],
@@ -84,8 +84,8 @@ class QueuePage extends StatelessWidget {
             }
         );
       }
-      if(item.extras['type'] == 'PostType.POST') {
-        Map<String, dynamic> postMap = item.extras['post'];
+      if(item.extras?['type'] == 'PostType.POST') {
+        Map<String, dynamic> postMap = item.extras?['post'];
         Post post = Post(
           id: postMap['id'],
           userUID: postMap['userUID'],
@@ -103,24 +103,24 @@ class QueuePage extends StatelessWidget {
             context: context,
             builder: (BuildContext context) {
               return SimpleDialog(
-                title: Center(child: Text(post.postTitle ?? DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted).toString())),
+                title: Center(child: Text(post.postTitle ?? DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted ?? DateTime(1900, 1, 1)).toString())),
                 contentPadding: EdgeInsets.all(10),
                 children: <Widget>[
                   Text('Posted By:\n@${post.username}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
                   post.postValue != null ? Text('${post.postValue ?? ''}') : Container(),
                   SizedBox(height: 10),
-                  Text('Date Posted:\n${DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted).toString()}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
+                  Text('Date Posted:\n${DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted ?? DateTime(1900,1,1)).toString()}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
                   SizedBox(height: 10),
-                  post.streamList != null && post.streamList.length > 0 ? Wrap(
+                  post.streamList != null && (post.streamList?.length ?? 0) > 0 ? Wrap(
                     spacing: 8,
-                    children: post.streamList.map((tag) => InkWell(
+                    children: post.streamList?.map((tag) => InkWell(
                         child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
                               builder: (context) => StreamTagPageMobile(tag: tag,)
                           ));
                         }
-                    )).toList(),
+                    )).toList() ?? [Container()],
                   ) : Container(),
                   Row(
                     children: <Widget>[
@@ -137,8 +137,8 @@ class QueuePage extends StatelessWidget {
             }
         );
       }
-      if(item.extras['type'] == 'PostType.DIRECT_POST') {
-        if(item.extras['clip'] != null ? item.extras['clip'] : false) {
+      if(item.extras?['type'] == 'PostType.DIRECT_POST') {
+        if(item.extras?['clip'] ?? false) {
           await showDialog(
             context: context,
             builder: (context) {
@@ -156,9 +156,9 @@ class QueuePage extends StatelessWidget {
                             return Center(child: CircularProgressIndicator());
                           }
                         );
-                        print('Episode: ${item.extras['episode']}');
-                        Episode ep = Episode.fromJson(item.extras['episode']);
-                        Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
+                        print('Episode: ${item.extras?['episode']}');
+                        Episode ep = Episode.fromJson(item.extras?['episode']);
+                        Podcast podcast = await Podcast.loadFeed(url: item.extras?['podcast_url']);
                         Navigator.of(context).pop();
                         Navigator.push(context, MaterialPageRoute(
                             builder: (context) => EpisodePage(ep, podcast)
@@ -170,7 +170,7 @@ class QueuePage extends StatelessWidget {
                         style: TextButton.styleFrom(backgroundColor: Colors.deepPurple),
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(
-                              builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
+                              builder: (context) => ConversationPageMobile(conversationId: item.extras?['conversationId'],)
                           ));
                         }
                     ),
@@ -188,7 +188,7 @@ class QueuePage extends StatelessWidget {
           );
         } else {
           Navigator.push(context, MaterialPageRoute(
-              builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
+              builder: (context) => ConversationPageMobile(conversationId: item.extras?['conversationId'],)
           ));
         }
       }
@@ -202,7 +202,7 @@ class QueuePage extends StatelessWidget {
             padding: EdgeInsets.all(5),
             child: ListTile(
               title: Text(currentMediaItem.title),
-              subtitle: Text(currentMediaItem.artist),
+              subtitle: Text(currentMediaItem.artist ?? ''),
               onTap: () {
                 tapItemTile(currentMediaItem);
               },
@@ -210,7 +210,7 @@ class QueuePage extends StatelessWidget {
           )
       ));
     }
-    queueWidgets.addAll(queueItems.map((MediaItem item) {
+    queueWidgets.addAll(queueItems?.map((MediaItem item) {
       return Card(
           color: Colors.deepPurple[50],
           margin: EdgeInsets.all(5),
@@ -219,7 +219,7 @@ class QueuePage extends StatelessWidget {
               padding: EdgeInsets.all(5),
               child: ListTile(
                 title: Text(item.title),
-                subtitle: Text(item.artist),
+                subtitle: Text(item.artist ?? ''),
                 trailing: Container(
                   width: 85,
                   child: Column(
@@ -235,10 +235,10 @@ class QueuePage extends StatelessWidget {
                                   shape: BoxShape.circle,
                                   color: currentMediaItem != null && currentMediaItem.id == item.id ? Colors.red : Colors.deepPurple
                               ),
-                              child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == item.id && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                              child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == item.id && (playbackState?.playing ?? false) ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                             ),
                             onTap: () {
-                              playbackState.playing != null && playbackState.playing && mp.currentPostPodId == item.id ? mp.pausePost() : mp.playMediaItem(item);
+                              (playbackState?.playing ?? false) && mp.currentPostPodId == item.id ? mp.pausePost() : mp.playMediaItem(item);
                             },
                           ),
                           SizedBox(width: 5,),
@@ -267,7 +267,7 @@ class QueuePage extends StatelessWidget {
               )
           )
       );
-    }).toList());
+    }).toList() ?? [Container()]);
     return MainPageTemplate(
       bottomNavIndex: 1,
       noBottomNavSelected: true,

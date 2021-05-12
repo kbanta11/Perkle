@@ -15,7 +15,7 @@ List tutorialImages = [
 
 class TutorialPage extends StatefulWidget {
 
-  TutorialPage({Key key,}) : super(key: key);
+  TutorialPage({Key? key,}) : super(key: key);
 
   @override
   _TutorialPageState createState() => _TutorialPageState();

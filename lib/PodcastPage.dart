@@ -1,4 +1,5 @@
 import 'package:Perkl/main.dart';
+import 'package:collection/collection.dart';
 //import 'package:Perkl/services/UserManagement.dart';
 import 'package:Perkl/services/db_services.dart';
 import 'package:audio_service/audio_service.dart';
@@ -18,9 +19,10 @@ import 'MainPageTemplate.dart';
 import 'EpisodePage.dart';
 import 'services/models.dart';
 import 'services/local_services.dart';
+import 'services/Helper.dart';
 
 class PodcastPage extends StatelessWidget {
-  Podcast podcast;
+  Podcast? podcast;
   LocalService _historyService = LocalService(filename: 'history.json');
 
   PodcastPage(this.podcast);
@@ -28,13 +30,13 @@ class PodcastPage extends StatelessWidget {
   Future<List<MediaItem>> getHistory() async {
     List<MediaItem> listeningHistory = await _historyService.getData('items').then((dynamic itemList) {
       if(itemList == null) {
-        return null;
+        return Future.value();
       }
-      List<MediaItem> mediaItemList = (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
+      List<MediaItem> mediaItemList = (itemList as List).map((item) => Helper().getMediaItemFromJson(item)).toList();
       if(mediaItemList != null) {
         mediaItemList.sort((MediaItem a, MediaItem b) {
           //print('${a.extras['listenDate'] ?? 0} >>> ${b.extras['listenDate'] ?? 0}');
-          return Comparable.compare(b.extras['listenDate'] ?? 0, a.extras['listenDate'] ?? 0);
+          return Comparable.compare(b.extras?['listenDate'] ?? 0, a.extras?['listenDate'] ?? 0);
         });
       }
       return mediaItemList.reversed.toList();
@@ -45,12 +47,12 @@ class PodcastPage extends StatelessWidget {
   @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    PerklUser user = Provider.of<PerklUser>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
-    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
-    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
+    PerklUser? user = Provider.of<PerklUser?>(context);
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
+    MediaItem? currentMediaItem = Provider.of<MediaItem?>(context);
+    List<MediaItem>? mediaQueue = Provider.of<List<MediaItem>?>(context);
     //print('Followed Podcasts: ${user.followedPodcasts}/Podcast URL: ${podcast.url}/${user.followedPodcasts.contains(podcast.url)}');
-    bool podcastFollowed = user.followedPodcasts != null && user.followedPodcasts.contains(podcast.url.replaceFirst('http:', 'https:'));
+    bool podcastFollowed = user?.followedPodcasts != null && (user?.followedPodcasts?.contains(podcast?.url?.replaceFirst('http:', 'https:')) ?? false);
     return podcast == null ? Center(child: CircularProgressIndicator()) : MainPageTemplate(
       bottomNavIndex: 3,
       noBottomNavSelected: true,
@@ -70,8 +72,8 @@ class PodcastPage extends StatelessWidget {
                               child: Container(
                                 height: 75,
                                 width: 75,
-                                decoration: podcast.image == null ? BoxDecoration(color: Colors.purple) : BoxDecoration(
-                                  image: DecorationImage(image: NetworkImage(podcast.image), fit: BoxFit.cover,),
+                                decoration: podcast?.image == null ? BoxDecoration(color: Colors.purple) : BoxDecoration(
+                                  image: DecorationImage(image: NetworkImage(podcast?.image ?? ''), fit: BoxFit.cover,),
                                 ),
                               ),
                             ),
@@ -95,10 +97,10 @@ class PodcastPage extends StatelessWidget {
                                         fbp.changeFollowLoading();
                                         if(podcastFollowed) {
                                           //Unfollow podcast
-                                          await DBService().unfollowPodcast(user: user, podcastUrl: podcast.url.replaceFirst('http:', 'https:'));
+                                          await DBService().unfollowPodcast(user: user, podcastUrl: podcast?.url?.replaceFirst('http:', 'https:'));
                                         } else {
                                           //Follow Podcast
-                                          await DBService().followPodcast(user: user, podcastUrl: podcast.url.replaceFirst('http:', 'https:'));
+                                          await DBService().followPodcast(user: user, podcastUrl: podcast?.url?.replaceFirst('http:', 'https:'));
                                         }
                                         fbp.changeFollowLoading();
                                       },
@@ -116,13 +118,13 @@ class PodcastPage extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: <Widget>[
                                 SizedBox(height: 10),
-                                Text(podcast.title, style: TextStyle(fontSize: 18, color: Colors.black)),
+                                Text(podcast?.title ?? '', style: TextStyle(fontSize: 18, color: Colors.black)),
                                 Container(
                                   height: 100,
                                   child: SingleChildScrollView(
                                     scrollDirection: Axis.vertical,
                                     child: Html(
-                                      data: podcast.description,
+                                      data: podcast?.description ?? '',
                                     ),
                                   ),
                                 ),
@@ -139,16 +141,16 @@ class PodcastPage extends StatelessWidget {
                   builder: (context, AsyncSnapshot<List<MediaItem>> historySnap) {
                     List<MediaItem> history = historySnap.data ?? <MediaItem>[];
                     return ListView(
-                      children: podcast.episodes.map((Episode ep) {
-                        MediaItem thisItem = history.firstWhere((element) => element.id == ep.contentUrl, orElse: () => null);
+                      children: podcast?.episodes?.map((Episode ep) {
+                        MediaItem? thisItem = history.firstWhereOrNull((element) => element.id == ep.contentUrl);
                         int pctComplete = 0;
                         if(thisItem != null) {
-                          int position = thisItem.extras['position'] ?? 0;
-                          int duration = thisItem.duration.inMilliseconds;
+                          int position = thisItem.extras?['position'] ?? 0;
+                          int duration = thisItem.duration?.inMilliseconds ?? 1000;
                           pctComplete = ((position/duration) * 100).round();
                         }
                         if(ep.author == null)
-                          ep.author = podcast.title;
+                          ep.author = podcast?.title;
                         return Card(
                             elevation: 5,
                             color: Colors.deepPurple[50],
@@ -166,8 +168,8 @@ class PodcastPage extends StatelessWidget {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Text(ep.title),
-                                              Text('${ep.publicationDate != null ? DateFormat().format(ep.publicationDate) : ''}', style: TextStyle(color: Colors.black54)),
+                                              Text(ep.title ?? ''),
+                                              Text('${ep.publicationDate != null ? DateFormat().format(ep.publicationDate ?? DateTime(1900, 1, 1)) : ''}', style: TextStyle(color: Colors.black54)),
                                             ]
                                           )
                                         ),
@@ -262,7 +264,7 @@ class PodcastPage extends StatelessWidget {
                               ],
                             )
                         );
-                      }).toList(),
+                      }).toList() ?? [Container()],
                     );
                   }
                 )
@@ -283,21 +285,21 @@ class FollowButtonProvider extends ChangeNotifier {
 }
 
 class EpisodeDialog extends StatelessWidget {
-  Episode ep;
-  Podcast podcast;
+  Episode? ep;
+  Podcast? podcast;
 
   EpisodeDialog({this.ep, this.podcast});
   @override
   build(BuildContext context) {
     return SimpleDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
-      title: Center(child: Text(podcast.title)),
+      title: Center(child: Text(podcast?.title ?? '')),
       contentPadding: EdgeInsets.all(10),
       children: <Widget>[
-        Text(ep.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(ep?.title ?? '', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         SingleChildScrollView(
             child: Html(
-              data: ep.description,
+              data: ep?.description ?? '',
             )
         ),
         Row(
@@ -321,9 +323,9 @@ class EpisodeDialog extends StatelessWidget {
                     return Center(child: CircularProgressIndicator());
                   }
                 );
-                if(podcast.episodes == null){
-                  print('Podcast URL: ${podcast.url}/Title: ${podcast.title}');
-                  podcast = await Podcast.loadFeed(url: podcast.url, timeout: 50000);
+                if(podcast?.episodes == null){
+                  //print('Podcast URL: ${podcast.url}/Title: ${podcast.title}');
+                  podcast = await Podcast.loadFeed(url: podcast?.url, timeout: 50000);
                 }
                 Navigator.of(context).pop();
                 Navigator.push(context, MaterialPageRoute(

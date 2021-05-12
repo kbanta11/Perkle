@@ -3,22 +3,22 @@ import 'package:Perkl/services/models.dart';
 import 'package:Perkl/services/db_services.dart';
 
 class CreateGroupDialog extends StatefulWidget {
-  PerklUser user;
+  PerklUser? user;
 
-  CreateGroupDialog({Key key, @required this.user}) : super(key: key);
+  CreateGroupDialog({Key? key, @required this.user}) : super(key: key);
 
   @override
   _CreateGroupDialogState createState() => new _CreateGroupDialogState();
 }
 
 class _CreateGroupDialogState extends State<CreateGroupDialog> {
-  String _groupName;
+  String? _groupName;
   Map<String, dynamic> _groupUsers = new Map<String, dynamic>();
 
   @override
   build(BuildContext context) {
     if(widget.user != null) {
-      List<String> selectableFollowers = widget.user.followers.where((followerID) => widget.user.following.contains(followerID)).toList();
+      List<String> selectableFollowers = widget.user?.followers?.where((followerID) => widget.user?.following?.contains(followerID) ?? false).toList() ?? [];
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
         title: Center(child: Text('Create New Group')),
@@ -59,7 +59,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                                     if(!thisUserSnap.hasData) {
                                       return Container();
                                     }
-                                    return Text(thisUserSnap.data.username, style: TextStyle(fontSize: 14),);
+                                    return Text(thisUserSnap.data?.username ?? '', style: TextStyle(fontSize: 14),);
                                   }
                               ),
                               value: _val,
@@ -76,7 +76,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    FlatButton(
+                    TextButton(
                       child: Text('Cancel', style: TextStyle(color: Colors.deepPurple)),
                       onPressed: () {
                         Navigator.pop(context, null);
@@ -89,7 +89,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                         _groupUsers.removeWhere((String id, dynamic val) => !val);
                         print('Users in new group: ${_groupUsers.keys.toList()}');
                         List<String> groupUserIds = _groupUsers.keys.toList();
-                        groupUserIds.add(widget.user.uid);
+                        groupUserIds.add(widget.user?.uid ?? '');
                         Conversation newConvo = await DBService().createNewGroup(_groupName, groupUserIds);
                         Navigator.pop(context, newConvo);
                       },

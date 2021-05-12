@@ -17,7 +17,7 @@ import 'services/ActivityManagement.dart';
 
 //New Version
 class StreamTagPageMobile extends StatelessWidget {
-  String tag;
+  String? tag;
 
   StreamTagPageMobile({this.tag});
 

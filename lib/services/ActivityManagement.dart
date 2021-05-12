@@ -47,8 +47,8 @@ class PostAudioPlayer {
 class ActivityManager {
   SoundRecorder recorder = new SoundRecorder(playInBackground: true,);
   LocalService localService = new LocalService();
-  Timer recordingTimer;
-  Duration recordingDuration;
+  late Timer recordingTimer;
+  late Duration recordingDuration;
   //StreamSubscription<RecordStatus> recordingSubscription;
 
   bool isLoggedIn() {
@@ -59,14 +59,14 @@ class ActivityManager {
     }
   }
 
-  addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic> sendToUsers, Map<String, dynamic> addToConversations) async {
+  addPost(BuildContext context, Map<String, dynamic> postData, bool addToTimeline, bool sendAsGroup, Map<String, dynamic>? sendToUsers, Map<String, dynamic>? addToConversations) async {
     if (isLoggedIn()) {
       print('Starting post add');
       await FirebaseFirestore.instance.runTransaction((Transaction transaction) async {
-        String userId = FirebaseAuth.instance.currentUser.uid;
-        String username = await UserManagement().getUserData().then((DocumentReference ref) async {
+        String? userId = FirebaseAuth.instance.currentUser?.uid;
+        String? username = await UserManagement().getUserData().then((DocumentReference ref) async {
           return await ref.get().then((DocumentSnapshot snapshot) {
-            return snapshot.data()['username'];
+            return snapshot.data()?['username'];
           });
         });
 
@@ -74,7 +74,7 @@ class ActivityManager {
         File audioFile = new File(postData['localRecordingLocation']);
         String filename = postData['date'].toString().replaceAll(new RegExp(r' '), '_');
         print('Filename: $filename');
-        final Reference fsRef = FirebaseStorage.instance.ref().child(userId).child('$filename');
+        final Reference fsRef = FirebaseStorage.instance.ref().child(userId ?? 'ERROR').child('$filename');
         print('Post storage ref: $fsRef');
         print('File ($audioFile) exists: ${audioFile.existsSync()}');
         final UploadTask uploadTask = fsRef.putFile(audioFile);
@@ -100,11 +100,11 @@ class ActivityManager {
             print('user doc in add post: $userDoc');
             return await userDoc.get().then((DocumentSnapshot userSnap){
               print('got user snap: $userSnap // ${userSnap.data.toString()}');
-              print(userSnap.data()['timelinesIncluded']);
-              if(userSnap.data()['timelinesIncluded'] != null) {
+              print(userSnap.data()?['timelinesIncluded']);
+              if(userSnap.data()?['timelinesIncluded'] != null) {
                 print('user is included on timelines');
                 return new Map<String, dynamic>.from(
-                    userSnap.data()['timelinesIncluded']);
+                    userSnap.data()?['timelinesIncluded']);
               } else {
                 return new Map<String, dynamic>();
               }
@@ -136,10 +136,10 @@ class ActivityManager {
             if(sendAsGroup) {
               //Create memberMap {uid: username} for all users in group
               Map<String, dynamic> _memberMap = new Map<String, dynamic>();
-              _memberMap.addAll({userId: username});
+              _memberMap.addAll({userId ?? '': username});
               sendToUsers.forEach((key, value) async {
                 String _username = await FirebaseFirestore.instance.collection('users').doc(key).get().then((doc) {
-                  return doc.data()['username'];
+                  return doc.data()?['username'];
                 });
                 _memberMap.addAll({key: _username});
               });
@@ -150,9 +150,9 @@ class ActivityManager {
               // memberMap of currentUser and send to user
               sendToUsers.forEach((key, value) async {
                 Map<String, dynamic> _memberMap = new Map<String, dynamic>();
-                _memberMap.addAll({userId: username});
+                _memberMap.addAll({userId ?? '': username});
                 String _thisUsername = await FirebaseFirestore.instance.collection('users').doc(key).get().then((doc) {
-                  return doc.data()['username'];
+                  return doc.data()?['username'];
                 });
                 _memberMap.addAll({key: _thisUsername});
                 //send direct post to this user
@@ -176,7 +176,7 @@ class ActivityManager {
     }
   }
 
-  Future<void> sendDirectPostDialog(BuildContext context, {String conversationId, Map<String,dynamic> memberMap}) async {
+  Future<void> sendDirectPostDialog(BuildContext context, {String? conversationId, Map<String,dynamic>? memberMap}) async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -185,8 +185,8 @@ class ActivityManager {
     );
   }
 
-  Future<void> sendDirectPost(String messageTitle, String audioPath, int secondsLength, {String conversationId, Map<String, dynamic> memberMap, String fileUrl}) async {
-    String _conversationId = conversationId;
+  Future<void> sendDirectPost(String? messageTitle, String? audioPath, int? secondsLength, {String? conversationId, Map<String, dynamic>? memberMap, String? fileUrl}) async {
+    String? _conversationId = conversationId;
     if(isLoggedIn()) {
         WriteBatch batch = FirebaseFirestore.instance.batch();
         DateTime date = DateTime.now();
@@ -199,8 +199,8 @@ class ActivityManager {
         //Get posting user id and username
         DocumentReference postingUserDoc = await UserManagement().getUserData();
         String postingUserID = postingUserDoc.id;
-        String postingUsername = await postingUserDoc.get().then((DocumentSnapshot snapshot) async {
-          return snapshot.data()['username'].toString();
+        String? postingUsername = await postingUserDoc.get().then((DocumentSnapshot snapshot) async {
+          return snapshot.data()?['username']?.toString();
         });
 
         //Get recipient user doc
@@ -216,7 +216,7 @@ class ActivityManager {
         String fileUrlString;
         if(fileUrl == null) {
           //Get audio file
-          File audioFile = File(audioPath);
+          File audioFile = File(audioPath ?? '');
           String dateString = DateFormat("yyyy-MM-dd_HH_mm_ss").format(date).toString();
           final Reference storageRef = FirebaseStorage.instance.ref().child(postingUserID).child('direct-posts').child(dateString);
           final UploadTask uploadTask = storageRef.putFile(audioFile);
@@ -233,7 +233,7 @@ class ActivityManager {
 
 
         //Check if conversation exists
-        List<String> _memberList = new List<String>();
+        List<String> _memberList = <String>[];
         if(memberMap != null)
           _memberList.addAll(memberMap.keys);
         _memberList.sort();
@@ -257,18 +257,18 @@ class ActivityManager {
         if(conversationExists) {
           print('Conversation exists: $_conversationId');
           DocumentReference conversationRef = FirebaseFirestore.instance.collection('/conversations').doc(_conversationId);
-          Map<String, dynamic> postMap;
-          Map<String, dynamic> conversationMembers;
+          Map<String, dynamic>? postMap;
+          Map<String, dynamic>? conversationMembers;
           await conversationRef.get().then((DocumentSnapshot snapshot) {
-            postMap = Map<String, dynamic>.from(snapshot.data()['postMap']);
-            conversationMembers = Map<String, dynamic>.from(snapshot.data()['conversationMembers']);
+            postMap = Map<String, dynamic>.from(snapshot.data()?['postMap']);
+            conversationMembers = Map<String, dynamic>.from(snapshot.data()?['conversationMembers']);
           });
 
           //To-Do --increment unread posts for all users other than posting user
           //-------------------------------------------------------------------
-          print('Members: $conversationMembers');
+          //print('Members: $conversationMembers');
           Map<String, dynamic> newMemberMap = new Map<String, dynamic>();
-          conversationMembers.forEach((uid, details) {
+          conversationMembers?.forEach((uid, details) {
             Map<dynamic, dynamic> newDetails = details;
             if(uid != postingUserID) {
               int unheardCnt = details['unreadPosts'];
@@ -279,7 +279,7 @@ class ActivityManager {
             newMemberMap[uid] = newDetails;
           });
 
-          postMap.addAll({directPostDocId: postingUserID});
+          postMap?.addAll({directPostDocId: postingUserID});
           batch.update(conversationRef, {'postMap': postMap, 'lastDate': date, 'lastPostUsername': postingUsername, 'lastPostUserId': postingUserID, 'conversationMembers': newMemberMap});
         } else {
           //Create new conversation document and update data
@@ -287,7 +287,7 @@ class ActivityManager {
           conversationId = newConversationRef.id;
           print('creating new conversation: $conversationId');
           Map<String, dynamic> conversationMembers = new Map<String, dynamic>();
-          memberMap.forEach((uid, username) {
+          memberMap?.forEach((uid, username) {
             if(uid == postingUserID)
               conversationMembers.addAll({uid: {'username': username, 'unreadPosts': 0}});
             else
@@ -348,7 +348,7 @@ class ActivityManager {
     }
   }
 
-  Future<List<dynamic>> startRecordNewPost(MainAppProvider mp) async {
+  Future<List<dynamic>?> startRecordNewPost(MainAppProvider mp) async {
     if(recorder != null) {
       recorder.release();
       print('creating new sound recorder');
@@ -379,7 +379,7 @@ class ActivityManager {
       await recorder.record(Track.fromFile(tempFilePath, mediaFormat: CustomMediaFormat()));
       recordingDuration = Duration(milliseconds: 0);
       mp.setRecordingTime(recordingDuration);
-      recorder.dispositionStream().listen((disposition) {
+      recorder.dispositionStream()?.listen((disposition) {
         mp.setRecordingTime(disposition.duration);
       });
       recorder.onStopped = ({bool wasUser = true}) {
@@ -401,7 +401,7 @@ class ActivityManager {
     }
   }
 
-  Future<List<dynamic>> stopRecordNewPost(String postPath, DateTime startDateTime) async {
+  Future<List<dynamic>?> stopRecordNewPost(String? postPath, DateTime? startDateTime) async {
     Wakelock.disable();
     try {
       //await fsRecorder.stopRecorder();
@@ -410,7 +410,7 @@ class ActivityManager {
       //recordingTimer.cancel();
       recorder = new SoundRecorder();
       DateTime endRecordDateTime = DateTime.now();
-      Duration recordingTime = endRecordDateTime.difference(startDateTime);
+      Duration recordingTime = endRecordDateTime.difference(startDateTime ?? DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day));
 
       int secondsLength = recordingTime.inSeconds;
       print('$startDateTime - $endRecordDateTime');
@@ -422,29 +422,29 @@ class ActivityManager {
     return null;
   }
 
-  Future<void> followUser(String newFollowUID) async {
+  Future<void> followUser(String? newFollowUID) async {
     WriteBatch batch = FirebaseFirestore.instance.batch();
 
     //add newly followed user Id to current user's list of following
     DocumentReference currentUserDoc = await UserManagement().getUserData();
-    String currentUserId = await currentUserDoc.get().then((snapshot) {
-      return snapshot.data()['uid'].toString();
+    String? currentUserId = await currentUserDoc.get().then((snapshot) {
+      return snapshot.data()?['uid']?.toString();
     });
 
 
-    Map<String, dynamic> currentFollowing = await currentUserDoc.get().then((snapshot) {
+    Map<String, dynamic>? currentFollowing = await currentUserDoc.get().then((snapshot) {
       print('setting currentFollowing');
-      if(snapshot.data()['following'] != null)
-        return new Map<String, dynamic>.from(snapshot.data()['following']);
+      if(snapshot.data()?['following'] != null)
+        return new Map<String, dynamic>.from(snapshot.data()?['following']);
       return null;
     });
 
     print('setting new following');
     Map<String, dynamic> newFollowing;
     if(currentFollowing == null) {
-      newFollowing = {newFollowUID: true};
+      newFollowing = {newFollowUID ?? '': true};
     } else {
-      currentFollowing.addAll({newFollowUID: true});
+      currentFollowing.addAll({newFollowUID ?? '': true});
       newFollowing = currentFollowing;
     }
 
@@ -452,31 +452,33 @@ class ActivityManager {
       //add current users Id to newly followed user's list of followers and add current users mainFeedTimelineId to followed users list of including timelines
     DocumentReference followedUserDoc = FirebaseFirestore.instance.collection('/users').doc(newFollowUID);
 
-    Map<String, dynamic> currentFollowers = await followedUserDoc.get().then((snapshot) {
-      if(snapshot.data()['followers'] != null)
-        return Map<String, dynamic>.from(snapshot.data()['followers']);
+    Map<String, dynamic>? currentFollowers = await followedUserDoc.get().then((snapshot) {
+      if(snapshot.data()?['followers'] != null)
+        return Map<String, dynamic>.from(snapshot.data()?['followers']);
       return null;
     });
-    Map<String, dynamic> currentTimelinesIncluded = await followedUserDoc.get().then((snapshot) {
-      if(snapshot.data()['timelinesIncluded'] != null)
-        return Map<String, dynamic>.from(snapshot.data()['timelinesIncluded']);
+    Map<String, dynamic>? currentTimelinesIncluded = await followedUserDoc.get().then((snapshot) {
+      if(snapshot.data()?['timelinesIncluded'] != null)
+        return Map<String, dynamic>.from(snapshot.data()?['timelinesIncluded']);
       return null;
     });
     String currentUserMainFeedTimelineId = await currentUserDoc.get().then((snapshot) {
-      return snapshot.data()['mainFeedTimelineId'];
+      return snapshot.data()?['mainFeedTimelineId'];
     });
 
-    Map<String, dynamic> newFollowers;
+    Map<String, dynamic> newFollowers = {};
     Map<String, dynamic> newTimelinesIncluded;
 
     if(currentUserMainFeedTimelineId == null) {
       print('current user does not have a main timeline id');
     } else {
-      if(currentFollowers == null){
-        newFollowers = {currentUserId: true};
-      } else {
-        currentFollowers.addAll({currentUserId: true});
-        newFollowers = currentFollowers;
+      if(currentUserId != null) {
+        if(currentFollowers == null){
+          newFollowers = {currentUserId: true};
+        } else {
+          currentFollowers.addAll({currentUserId: true});
+          newFollowers = currentFollowers;
+        }
       }
 
       if(currentTimelinesIncluded == null){
@@ -496,10 +498,10 @@ class ActivityManager {
         print('user has no posts');
       } else {
         snapshot.docs.forEach((DocumentSnapshot postSnapshot) {
-         List<dynamic> newPostTimelines = new List<dynamic>();
-         if(postSnapshot.data()['timelines'] != null && postSnapshot.data()['timelines'].length > 0) {
+         List<dynamic> newPostTimelines = <dynamic>[];
+         if(postSnapshot.data()?['timelines'] != null && postSnapshot.data()?['timelines'].length > 0) {
            print('post has timeline field');
-           List<dynamic> currentPostTimelines = postSnapshot.data()['timelines'];
+           List<dynamic> currentPostTimelines = postSnapshot.data()?['timelines'];
            newPostTimelines.addAll(currentPostTimelines);
            newPostTimelines.add(currentUserMainFeedTimelineId);
            print('set list to current timeline list');
@@ -518,7 +520,7 @@ class ActivityManager {
     batch.commit();
   }
 
-  Future<void> unfollowUser(String unfollowUID) async {
+  Future<void> unfollowUser(String? unfollowUID) async {
     WriteBatch batch = FirebaseFirestore.instance.batch();
 
     DocumentReference loggedInUserDoc = await UserManagement().getUserData().then((doc) => doc);
@@ -526,15 +528,15 @@ class ActivityManager {
       return snapshot.docs.first.reference;
     });
     String loggedInUID = await loggedInUserDoc.get().then((snapshot) {
-      return snapshot.data()['uid'];
+      return snapshot.data()?['uid'];
     });
     String loggedInMainFeedTimelineId = await loggedInUserDoc.get().then((snapshot) {
-      return snapshot.data()['mainFeedTimelineId'];
+      return snapshot.data()?['mainFeedTimelineId'];
     });
 
     //Remove userId from logged in user's list of following
     Map<String, dynamic> currentFollowing = await loggedInUserDoc.get().then((snapshot) {
-      return new Map<String, dynamic>.from(snapshot.data()['following']);
+      return new Map<String, dynamic>.from(snapshot.data()?['following']);
     });
     print('wint');
     currentFollowing.remove(unfollowUID);
@@ -542,10 +544,10 @@ class ActivityManager {
     batch.update(loggedInUserDoc, {'following': currentFollowing});
     //remove logged in user's userId from unfollowed user's list of followers
     Map<String, dynamic> unfollowedUserFollowers = await unfollowedUserDoc.get().then((snapshot) {
-      return new Map<String, dynamic>.from(snapshot.data()['followers']);
+      return new Map<String, dynamic>.from(snapshot.data()?['followers']);
     });
     Map<String, dynamic> unfollowedTimelinesIncluded = await unfollowedUserDoc.get().then((snapshot) {
-      return new Map<String, dynamic>.from(snapshot.data()['timelinesIncluded']);
+      return new Map<String, dynamic>.from(snapshot.data()?['timelinesIncluded']);
     });
     unfollowedUserFollowers.remove(loggedInUID);
     unfollowedTimelinesIncluded.remove(loggedInMainFeedTimelineId);
@@ -557,7 +559,7 @@ class ActivityManager {
         print('unfollowed user has no posts');
       } else {
         snapshot.docs.forEach((DocumentSnapshot docSnap) {
-          List<String> postTimelines = new List<String>.from(docSnap.data()['timelines']);
+          List<String> postTimelines = new List<String>.from(docSnap.data()?['timelines']);
           postTimelines.remove(loggedInMainFeedTimelineId);
 
           batch.update(docSnap.reference, {'timelines': postTimelines});
@@ -568,11 +570,11 @@ class ActivityManager {
     batch.commit();
   }
 
-  String getDurationString(Duration duration) {
+  String getDurationString(Duration? duration) {
     bool isNegative = false;
-    int hours = duration.inHours;
-    int minutes = duration.inMinutes.remainder(60);
-    int seconds = duration.inSeconds.remainder(60);
+    int hours = duration?.inHours ?? 0;
+    int minutes = duration?.inMinutes.remainder(60) ?? 0;
+    int seconds = duration?.inSeconds.remainder(60) ?? 0;
     if(hours < 0 || minutes < 0 || seconds < 0) {
       isNegative = true;
     }
@@ -585,7 +587,7 @@ class ActivityManager {
   }
 }
 
-List<String> processTagString(String postTags) {
+List<String>? processTagString(String postTags) {
   if(postTags != null) {
     String strippedSpaces = postTags.replaceAll(new RegExp(r' '), '');
     List<String> tagList = strippedSpaces.split("#");
@@ -603,12 +605,12 @@ class UploadPostDialog extends StatefulWidget {
 class _UploadPostDialogState extends State<UploadPostDialog> {
   DateTime date = DateTime.now();
   String dateString = new DateFormat('yyyy-mm-dd hh:mm:ss').format(DateTime.now());
-  String fileName;
-  String filepath;
-  Duration duration;
-  String postTitle;
-  String postTags;
-  String noFileError;
+  String? fileName;
+  String? filepath;
+  Duration? duration;
+  String? postTitle;
+  String? postTags;
+  String? noFileError;
 
   @override
   Widget build(BuildContext context) {
@@ -645,20 +647,25 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
           },
         ),
         SizedBox(height: 10.0),
-        FlatButton(
-          color: Colors.deepPurple,
-          textColor: Colors.white,
-          child: Center(child: fileName == null ? Text('Choose a file...') : Text(fileName)),
+        TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.deepPurple,
+            textStyle: TextStyle(color: Colors.white)
+          ),
+          child: Center(child: Text(fileName ?? 'Choose a file...')),
           onPressed: () async {
 
-            String path = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['mp3', 'aac', 'm4a'], allowMultiple: false).then((result) => result.files.first.path);
+            String? path = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['mp3', 'aac', 'm4a'], allowMultiple: false).then((result) => result?.files?.first?.path);
+            if(path == null) {
+              return;
+            }
             File uploadFile = File(path);
             print('Selected File Path: $path');
             print('File: $uploadFile: ${await uploadFile.exists()}');
             AudioPlayer tempPlayer = new AudioPlayer();
             await tempPlayer.setFilePath(path);
             //int audioDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.duration);
-            Duration postDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.duration);
+            Duration? postDuration = await Future.delayed(Duration(seconds: 2), () => tempPlayer.duration);
             //print('Duration: $audioDuration/Seconds: ${postDuration.inSeconds}');
             setState(() {
               filepath = path;
@@ -668,19 +675,21 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
 
           },
         ),
-        Center(child: noFileError == null ? Container() : Text(noFileError, style: TextStyle(color: Colors.red),)),
+        Center(child: noFileError == null ? Container() : Text(noFileError ?? '', style: TextStyle(color: Colors.red),)),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            FlatButton(
+            TextButton(
               child: Text('Cancel'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
-            OutlineButton(
-              borderSide: BorderSide(
-                color: Colors.deepPurple
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                    color: Colors.deepPurple
+                ),
               ),
               child: Text('Upload Post', style: TextStyle(color: Colors.deepPurple),),
               onPressed: () async {
@@ -690,13 +699,13 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
                   });
                 } else {
                   noFileError = null;
-                  List<String> tagList = processTagString(postTags);
+                  List<String>? tagList = processTagString(postTags ?? '');
                   await ActivityManager().addPost(context, {"postTitle": postTitle,
                     "localRecordingLocation": filepath,
                     "date": date,
                     "dateString": dateString,
                     "listens": 0,
-                    "secondsLength": duration.inSeconds,
+                    "secondsLength": duration?.inSeconds,
                     "streamList": tagList,
                   }, true, false, null, null);
                   //print('Post added');
@@ -712,22 +721,22 @@ class _UploadPostDialogState extends State<UploadPostDialog> {
 }
 
 class DirectMessageDialog extends StatefulWidget {
-  final String conversationId;
-  final Map<String, dynamic> memberMap;
+  final String? conversationId;
+  final Map<String, dynamic>? memberMap;
 
-  DirectMessageDialog({Key key, @required this.conversationId, this.memberMap}) : super(key: key);
+  DirectMessageDialog({Key? key, @required this.conversationId, this.memberMap}) : super(key: key);
 
   @override
   _DirectMessageDialogState createState() => new _DirectMessageDialogState();
 }
 
 class _DirectMessageDialogState extends State<DirectMessageDialog> {
-  String _messageTitle;
+  String? _messageTitle;
   bool _isRecording = false;
   bool _isPlaybackRecording = false;
-  String _postAudioPath;
-  DateTime _startRecordDate;
-  int _secondsLength;
+  String? _postAudioPath;
+  DateTime? _startRecordDate;
+  int? _secondsLength;
   ActivityManager activityManager = new ActivityManager();
   AudioPlayer audioPlayer = new AudioPlayer();
   bool _isLoading = false;
@@ -742,7 +751,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
   @override
   Widget build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
     return SimpleDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
       contentPadding: EdgeInsets.fromLTRB(15.0, 8.0, 15.0, 10.0),
@@ -784,9 +793,9 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                             mp.pausePost();
                           }
                           if(_isRecording) {
-                            List<dynamic> stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath, _startRecordDate);
-                            String recordingLocation = stopRecordVals[0];
-                            int secondsLength = stopRecordVals[1];
+                            List<dynamic>? stopRecordVals = await activityManager.stopRecordNewPost(_postAudioPath ?? '', _startRecordDate ?? DateTime.now());
+                            String? recordingLocation = stopRecordVals?[0];
+                            int? secondsLength = stopRecordVals?[1];
 
                             print('$recordingLocation -/- Length: $secondsLength');
                             setState(() {
@@ -798,9 +807,9 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                             print('date before dialog: $date');
                             //await addPostDialog(context, date, recordingLocation, secondsLength);
                           } else {
-                            List<dynamic> startRecordVals = await activityManager.startRecordNewPost(mp);
-                            String postPath = startRecordVals[0];
-                            DateTime startDate = startRecordVals[1];
+                            List<dynamic>? startRecordVals = await activityManager.startRecordNewPost(mp);
+                            String? postPath = startRecordVals?[0];
+                            DateTime? startDate = startRecordVals?[1];
                             setState(() {
                               _isRecording = !_isRecording;
                               _postAudioPath = postPath;
@@ -825,7 +834,7 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
                         _isPlaybackRecording = false;
                       });
                     } else {
-                      await audioPlayer.setFilePath(_postAudioPath);
+                      await audioPlayer.setFilePath(_postAudioPath ?? '');
                       audioPlayer.play();
                       //audioPlayer.play(_postAudioPath, isLocal: true);
                       audioPlayer.processingStateStream.listen((ProcessingState state) {
@@ -860,15 +869,17 @@ class _DirectMessageDialogState extends State<DirectMessageDialog> {
             Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  FlatButton(
+                  TextButton(
                       child: Text('Cancel'),
                       onPressed: () {
                         Navigator.of(context).pop();
                       }
                   ),
-                  _isLoading ? Container() : FlatButton(
+                  _isLoading ? Container() : TextButton(
+                    style: TextButton.styleFrom(
+                      backgroundColor: _postAudioPath != null && _secondsLength != null ? Colors.deepPurple : Colors.transparent,
+                    ),
                     child: Text('Send', style: TextStyle(color: _postAudioPath != null && _secondsLength != null ? Colors.white : Colors.grey)),
-                    color: _postAudioPath != null && _secondsLength != null ? Colors.deepPurple : Colors.transparent,
                     onPressed: () async {
                       if(_postAudioPath != null && _secondsLength != null){
                         setState(() {

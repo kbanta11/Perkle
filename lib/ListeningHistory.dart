@@ -10,6 +10,7 @@ import 'ConversationPage.dart';
 import 'services/ActivityManagement.dart';
 import 'services/local_services.dart';
 import 'services/models.dart';
+import 'services/Helper.dart';
 import 'main.dart';
 
 class ListeningHistoryPage extends StatefulWidget {
@@ -23,13 +24,14 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
   Future<List<MediaItem>> getHistory() async {
     List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
       if(itemList == null) {
-        return null;
+        return Future.value();
       }
-      List<MediaItem> mediaItemList = (itemList as List).map((item) => MediaItem.fromJson(item)).toList();
+
+      List<MediaItem> mediaItemList = (itemList as List).map((item) => Helper().getMediaItemFromJson(item)).toList().cast<MediaItem>();
       if(mediaItemList != null) {
         mediaItemList.sort((MediaItem a, MediaItem b) {
           //print('${a.extras['listenDate'] ?? 0} >>> ${b.extras['listenDate'] ?? 0}');
-          return Comparable.compare(a.extras['listenDate'] ?? 0, b.extras['listenDate'] ?? 0);
+          return Comparable.compare(a.extras?['listenDate'] ?? 0, b.extras?['listenDate'] ?? 0);
         });
       }
       return mediaItemList.reversed.toList();
@@ -39,15 +41,15 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
 
   tapItemTile(MediaItem item) async {
     print('item tapped: $item');
-    if(item.extras['type'] == 'PostType.PODCAST_EPISODE') {
+    if(item.extras?['type'] == 'PostType.PODCAST_EPISODE') {
       showDialog(
           context: context,
           builder: (context) {
             return Center(child: CircularProgressIndicator());
           }
       );
-      Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
-      Map<String, dynamic> episodeMap = item.extras['episode'];
+      Podcast podcast = await Podcast.loadFeed(url: item.extras?['podcast_url']);
+      Map<String, dynamic> episodeMap = item.extras?['episode'];
       Episode ep = Episode.of(
           guid: episodeMap['guid'],
           title: episodeMap['title'],
@@ -69,15 +71,15 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
           }
       );
     }
-    if(item.extras['type'] == 'PostType.EPISODE_REPLY'){
+    if(item.extras?['type'] == 'PostType.EPISODE_REPLY'){
       showDialog(
           context: context,
           builder: (context) {
             return Center(child: CircularProgressIndicator());
           }
       );
-      Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
-      Map<String, dynamic> episodeMap = item.extras['episode'];
+      Podcast podcast = await Podcast.loadFeed(url: item.extras?['podcast_url']);
+      Map<String, dynamic> episodeMap = item.extras?['episode'];
       Episode ep = Episode.of(
           guid: episodeMap['guid'],
           title: episodeMap['title'],
@@ -99,8 +101,8 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
           }
       );
     }
-    if(item.extras['type'] == 'PostType.POST') {
-      Map<String, dynamic> postMap = item.extras['post'];
+    if(item.extras?['type'] == 'PostType.POST') {
+      Map<String, dynamic> postMap = item.extras?['post'];
       Post post = Post(
         id: postMap['id'],
         userUID: postMap['userUID'],
@@ -118,24 +120,24 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
           context: context,
           builder: (BuildContext context) {
             return SimpleDialog(
-              title: Center(child: Text(post.postTitle ?? DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted).toString())),
+              title: Center(child: Text(post.postTitle ?? DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted ?? DateTime(1900,1,1)).toString())),
               contentPadding: EdgeInsets.all(10),
               children: <Widget>[
                 Text('Posted By:\n@${post.username}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
                 post.postValue != null ? Text('${post.postValue ?? ''}') : Container(),
                 SizedBox(height: 10),
-                Text('Date Posted:\n${DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted).toString()}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
+                Text('Date Posted:\n${DateFormat("MMMM dd, yyyy @ hh:mm").format(post.datePosted ?? DateTime(1900,1,1)).toString()}', textAlign: TextAlign.center, style: TextStyle(fontSize: 16),),
                 SizedBox(height: 10),
-                post.streamList != null && post.streamList.length > 0 ? Wrap(
+                post.streamList != null && (post.streamList?.length ?? 0) > 0 ? Wrap(
                   spacing: 8,
-                  children: post.streamList.map((tag) => InkWell(
+                  children: post.streamList?.map((tag) => InkWell(
                       child: Text('#$tag', style: TextStyle(color: Colors.lightBlue)),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(
                             builder: (context) => StreamTagPageMobile(tag: tag,)
                         ));
                       }
-                  )).toList(),
+                  )).toList() ?? [Container()],
                 ) : Container(),
                 Row(
                   children: <Widget>[
@@ -152,8 +154,8 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
           }
       );
     }
-    if(item.extras['type'] == 'PostType.DIRECT_POST') {
-      if(item.extras['clip'] != null ? item.extras['clip'] : false) {
+    if(item.extras?['type'] == 'PostType.DIRECT_POST') {
+      if(item.extras?['clip'] ?? false) {
         await showDialog(
             context: context,
             builder: (context) {
@@ -171,9 +173,9 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
                                     return Center(child: CircularProgressIndicator());
                                   }
                               );
-                              print('Episode: ${item.extras['episode']}');
-                              Episode ep = Episode.fromJson(item.extras['episode']);
-                              Podcast podcast = await Podcast.loadFeed(url: item.extras['podcast_url']);
+                              print('Episode: ${item.extras?['episode']}');
+                              Episode ep = Episode.fromJson(item.extras?['episode']);
+                              Podcast podcast = await Podcast.loadFeed(url: item.extras?['podcast_url']);
                               Navigator.of(context).pop();
                               Navigator.push(context, MaterialPageRoute(
                                   builder: (context) => EpisodePage(ep, podcast)
@@ -185,7 +187,7 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
                             style: TextButton.styleFrom(backgroundColor: Colors.deepPurple),
                             onPressed: () {
                               Navigator.push(context, MaterialPageRoute(
-                                  builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
+                                  builder: (context) => ConversationPageMobile(conversationId: item.extras?['conversationId'],)
                               ));
                             }
                         ),
@@ -203,7 +205,7 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
         );
       } else {
         Navigator.push(context, MaterialPageRoute(
-            builder: (context) => ConversationPageMobile(conversationId: item.extras['conversationId'],)
+            builder: (context) => ConversationPageMobile(conversationId: item.extras?['conversationId'],)
         ));
       }
     }
@@ -219,8 +221,8 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
         future: getHistory(),
         builder: (context, AsyncSnapshot<List<MediaItem>> historySnap) {
           if(historySnap.hasData) {
-            historyWidgets.addAll(historySnap.data.map((MediaItem item) {
-              print('Position: ${item.extras['position']}');
+            historyWidgets.addAll(historySnap.data?.map((MediaItem item) {
+              print('Position: ${item.extras?['position']}');
               print('Duration: ${item.duration}');
               return Card(
                   color: Colors.deepPurple[50],
@@ -230,15 +232,15 @@ class _ListeningHistoryPageState extends State<ListeningHistoryPage> {
                       padding: EdgeInsets.all(5),
                       child: ListTile(
                         title: Text(item.title),
-                        subtitle: Text(item.artist),
-                        trailing: Text('${ActivityManager().getDurationString(Duration(milliseconds: item.extras['position']))}/${ActivityManager().getDurationString(item.duration)}'),
+                        subtitle: Text(item.artist ?? ''),
+                        trailing: Text('${ActivityManager().getDurationString(Duration(milliseconds: item.extras?['position']))}/${ActivityManager().getDurationString(item.duration)}'),
                         onTap: () {
                           tapItemTile(item);
                         },
                       )
                   )
               );
-            }).toList());
+            }).toList() ?? []);
             return ListView(
                 children: historyWidgets
             );

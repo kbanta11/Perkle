@@ -14,30 +14,30 @@ import 'ProfilePage.dart';
 import 'PodcastPage.dart';
 
 class EpisodePage extends StatelessWidget {
-  Episode _episode;
-  Podcast _podcast;
+  Episode? _episode;
+  Podcast? _podcast;
 
   EpisodePage(this._episode, this._podcast);
 
   @override
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
-    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
-    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
-    print('Episode Guid: ${_episode.guid}/Episode Link: ${_episode.link}');
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
+    MediaItem? currentMediaItem = Provider.of<MediaItem?>(context);
+    List<MediaItem>? mediaQueue = Provider.of<List<MediaItem>?>(context);
+    print('Episode Guid: ${_episode?.guid}/Episode Link: ${_episode?.link}');
 
-    String getDurationString(Duration duration) {
-      int hours = duration.inHours;
-      int minutes = duration.inMinutes.remainder(60);
-      int seconds = duration.inSeconds.remainder(60);
+    String getDurationString(Duration? duration) {
+      int hours = duration?.inHours ?? 0;
+      int minutes = duration?.inMinutes.remainder(60) ?? 0;
+      int seconds = duration?.inSeconds.remainder(60) ?? 0;
       String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
       String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
       if(hours > 0)
         return '$hours:$minutesString:$secondsString';
       return '$minutesString:$secondsString';
     }
-    List<MediaItem> queueSnap = Provider.of<List<MediaItem>>(context);
+    List<MediaItem>? queueSnap = Provider.of<List<MediaItem>?>(context);
     return MainPageTemplate(
       bottomNavIndex: 1,
       noBottomNavSelected: true,
@@ -58,9 +58,9 @@ class EpisodePage extends StatelessWidget {
                               child: Container(
                                   height: 120,
                                   width: 120,
-                                  decoration: _podcast.image != null ?  BoxDecoration(
+                                  decoration: _podcast?.image != null ?  BoxDecoration(
                                       image: DecorationImage(
-                                          image: NetworkImage(_podcast.image),
+                                          image: NetworkImage(_podcast?.image ?? ''),
                                           fit: BoxFit.cover
                                       )
                                   ) : BoxDecoration(
@@ -98,12 +98,12 @@ class EpisodePage extends StatelessWidget {
                                     width: 35,
                                     decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: currentMediaItem != null && currentMediaItem.id == _episode.contentUrl ? Colors.red : Colors.deepPurple//mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
+                                        color: currentMediaItem != null && currentMediaItem.id == _episode?.contentUrl ? Colors.red : Colors.deepPurple//mp.queue.where((p) => p.id == post.id).length > 0 ? Colors.grey : Colors.deepPurple
                                     ),
-                                    child: Center(child: FaIcon(playbackState.playing && currentMediaItem.id == _episode.contentUrl ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                    child: Center(child: FaIcon((playbackState?.playing ?? false) && currentMediaItem?.id == _episode?.contentUrl ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                   ),
                                   onTap: () {
-                                    if(playbackState != null && currentMediaItem != null && playbackState.playing && currentMediaItem.id == _episode.contentUrl)
+                                    if(playbackState != null && currentMediaItem != null && playbackState.playing && currentMediaItem.id == _episode?.contentUrl)
                                       mp.pausePost();
                                     else
                                       mp.playPost(PostPodItem.fromEpisode(_episode, _podcast));
@@ -116,12 +116,12 @@ class EpisodePage extends StatelessWidget {
                                     width: 35,
                                     decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: mediaQueue != null && mediaQueue.where((p) => p.id == _episode.contentUrl).length > 0 ? Colors.grey : Colors.deepPurple
+                                        color: mediaQueue != null && mediaQueue.where((p) => p.id == _episode?.contentUrl).length > 0 ? Colors.grey : Colors.deepPurple
                                     ),
                                     child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16)),
                                   ),
                                   onTap: () {
-                                    if(mediaQueue == null || mediaQueue.where((MediaItem p) => p.id == _episode.contentUrl).length <= 0)
+                                    if(mediaQueue == null || mediaQueue.where((MediaItem p) => p.id == _episode?.contentUrl).length <= 0)
                                       mp.addPostToQueue(PostPodItem.fromEpisode(_episode, _podcast));
                                   },
                                 ),
@@ -139,9 +139,9 @@ class EpisodePage extends StatelessWidget {
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
-                                    Text('${_episode.title}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                    Text('${_podcast.title}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    Html(data: _episode.description,)
+                                    Text('${_episode?.title}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                    Text('${_podcast?.title}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    Html(data: _episode?.description ?? '',)
                                   ]
                               )
                           ),
@@ -153,9 +153,9 @@ class EpisodePage extends StatelessWidget {
           ),
           Expanded(
             child: StreamBuilder<List<EpisodeReply>>(
-              stream: DBService().streamEpisodeReplies(_episode.guid != null ? _episode.guid : _episode.link),
+              stream: DBService().streamEpisodeReplies(_episode?.guid ?? _episode?.link ?? ''),
               builder: (context, AsyncSnapshot<List<EpisodeReply>> listSnap) {
-                List<EpisodeReply> replyList = listSnap.data;
+                List<EpisodeReply>? replyList = listSnap.data;
                 if(replyList == null || replyList.length == 0)
                   return Center(child: Text('Be the first to record a comment!'));
                 return ListView(
@@ -181,7 +181,7 @@ class EpisodePage extends StatelessWidget {
                                     color: Colors.deepPurple,
                                     image: DecorationImage(
                                       fit: BoxFit.cover,
-                                      image: NetworkImage(userSnap.data.profilePicUrl),
+                                      image: NetworkImage(userSnap.data?.profilePicUrl ?? ''),
                                     ),
                                   ),
                                   child: InkWell(
@@ -189,14 +189,14 @@ class EpisodePage extends StatelessWidget {
                                     onTap: () {
                                       Navigator.push(context, MaterialPageRoute(
                                         builder: (context) =>
-                                            ProfilePageMobile(userId: userSnap.data.uid,),
+                                            ProfilePageMobile(userId: userSnap.data?.uid,),
                                       ));
                                     },
                                   )
                               );
                             },
                           ),
-                          title: Text(reply.replyTitle != null ? reply.replyTitle : DateFormat("MMMM dd, yyyy @ hh:mm a").format(reply.replyDate).toString()),
+                          title: Text(reply.replyTitle ?? DateFormat("MMMM dd, yyyy @ hh:mm a").format(reply.replyDate ?? DateTime(1900, 1, 1)).toString()),
                           subtitle: Text('@${reply.posterUsername}', style: TextStyle(fontSize: 16)),
                           trailing: Container(
                             width: 85,
@@ -214,10 +214,10 @@ class EpisodePage extends StatelessWidget {
                                             shape: BoxShape.circle,
                                             color: currentMediaItem?.id == reply.audioFileLocation ? Colors.red : Colors.deepPurple
                                         ),
-                                        child: Center(child: FaIcon(currentMediaItem?.id == reply.audioFileLocation && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
+                                        child: Center(child: FaIcon(currentMediaItem?.id == reply.audioFileLocation && (playbackState?.playing ?? false) ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                       ),
                                       onTap: () {
-                                        playbackState.playing != null && playbackState.playing && currentMediaItem?.id == reply.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
+                                        (playbackState?.playing ?? false) && currentMediaItem?.id == reply.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromEpisodeReply(reply, _episode, _podcast));
                                       },
                                     ),
                                     SizedBox(width: 5,),

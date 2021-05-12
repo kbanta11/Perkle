@@ -13,17 +13,17 @@ import 'package:image_cropper/image_cropper.dart';
 class UserManagement {
   FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Future<void> storeNewUser(User user, {String username, bool tosAccepted}) async {
+  Future<void> storeNewUser(User? user, {String? username, bool? tosAccepted}) async {
     //print('Storing new user data');
     WriteBatch batch = _db.batch();
     DocumentReference timelineRef = _db.collection('/timelines').doc();
-    batch.set(timelineRef, {'type': 'UserMainFeed', 'userUID': user.uid});
+    batch.set(timelineRef, {'type': 'UserMainFeed', 'userUID': user?.uid});
 
     String timelineId = timelineRef.id;
-    DocumentReference userRef = _db.collection('/users').doc(user.uid);
+    DocumentReference userRef = _db.collection('/users').doc(user?.uid);
     batch.set(userRef, {
-      'email': user.email,
-      'uid': user.uid,
+      'email': user?.email,
+      'uid': user?.uid,
       'username': username != null ? username : null,
       'usernameCaseInsensitive': username != null ? username.toLowerCase() : null,
       'mainFeedTimelineId': timelineId,
@@ -41,14 +41,13 @@ class UserManagement {
     }
   }
 
-  Stream<PerklUser> streamCurrentUser(User user) {
-    if(user == null)
-      return null;
+  Stream<PerklUser> streamCurrentUser(User? user) {
+    if(user == null) return Stream.empty();
     return _db.collection('users').doc(user.uid).snapshots().map((snap) => PerklUser.fromFirestore(snap));
     //await currentUser.loadFollowedPodcasts();
   }
   
-  Stream<PerklUser> streamUserDoc(String userId) {
+  Stream<PerklUser> streamUserDoc(String? userId) {
     return _db.collection('users').doc(userId).snapshots().map((snap) => PerklUser.fromFirestore(snap));
   }
 
@@ -75,8 +74,8 @@ class UserManagement {
       await getUserData().then((DocumentReference doc) async {
         await doc.get().then((DocumentSnapshot snapshot) async {
           print('set currposts');
-          print(snapshot.data()['posts'].runtimeType);
-          Map<dynamic, dynamic> currPosts = snapshot.data()['posts'];
+          print(snapshot.data()?['posts'].runtimeType);
+          Map<dynamic, dynamic> currPosts = snapshot.data()?['posts'];
           print('check currposts');
           if(currPosts != null) {
             print('setting postMap to currPosts');
@@ -95,23 +94,23 @@ class UserManagement {
   }
 
   Future<DocumentReference> getUserData() async {
-    User user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return null;
+      return Future.value();
     }
     print('getting user data document------------------');
     return _db.collection('users').doc(user.uid);
   }
 
   Future<String> getUID() async {
-    return FirebaseAuth.instance.currentUser.uid;
+    return FirebaseAuth.instance.currentUser?.uid ?? '';
   }
 
 
   Future<bool> userAlreadyCreated () async {
-    User user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
     //print('User UID: $user.uid--------------');
-    return await _db.collection('users').doc(user.uid).get().then((snapshot) {
+    return await _db.collection('users').doc(user?.uid ?? '').get().then((snapshot) {
       return snapshot.exists;
     });
   }
@@ -156,7 +155,7 @@ Future<void> usernameInUse(BuildContext context) {
         title: Text('Username Taken!', textAlign: TextAlign.center),
         content: Text('This username is already in use. Please choose a different usename.', textAlign: TextAlign.center),
         actions: <Widget>[
-          FlatButton(
+          TextButton(
             child: Text('Ok'),
             onPressed: () {
               Navigator.of(context).pop();
@@ -177,7 +176,7 @@ Future<void> usernameError(BuildContext context) {
         title: Text('Invalid Username!', textAlign: TextAlign.center),
         content: Text('The chosen username is invalid.  Usernames must be between 3 and 30 characters and can only contain letters (a-z, A-Z), numbers (0-9), periods (.) and underscores (_).'),
         actions: <Widget>[
-          FlatButton(
+          TextButton(
             child: Text('Ok'),
             onPressed: () {
               Navigator.of(context).pop();
@@ -189,21 +188,21 @@ Future<void> usernameError(BuildContext context) {
   );
 }
 
-String validateUsername(String username, {allowEmpty = false}) {
+String? validateUsername(String? username, {allowEmpty = false}) {
   if(username == '' && allowEmpty) {
     return null;
   }
-  if(username.length < 3) {
+  if((username?.length ?? 0) < 3) {
     return 'Usernames must be at least 3 characters in length';
   }
-  if(username.length > 30) {
+  if((username?.length ?? 0) > 30) {
     return 'Usernames cannot be longer than 30 characters';
   }
   RegExp exp = new RegExp(
     r'^[a-zA-Z0-9_\.]+$',
   );
-  print(exp.allMatches(username).length);
-  if(exp.allMatches(username).length == 0){
+  print(exp.allMatches(username ?? '').length);
+  if(exp.allMatches(username ?? '').length == 0){
     return 'Usernames can only contain letters, numbers, underscores (_) and periods (.)';
   }
   return null;
@@ -216,8 +215,8 @@ class UsernameDialog extends StatefulWidget {
 }
 
 class _UsernameDialogState extends State<UsernameDialog> {
-  String _validateUsernameError;
-  String _username;
+  String? _validateUsernameError;
+  String? _username;
 
   @override
   Widget build(BuildContext context) {
@@ -235,13 +234,13 @@ class _UsernameDialogState extends State<UsernameDialog> {
             onChanged: (value) {
               setState(() {
                 _username = value;
-                _validateUsernameError = validateUsername(_username);
+                _validateUsernameError = validateUsername(_username ?? '');
               });
             }
         )
       ),
       actions: <Widget>[
-        FlatButton(
+        TextButton(
           child: Text('Ok'),
           onPressed: () async {
             if(_username == null || _username == ''){
@@ -259,7 +258,7 @@ class _UsernameDialogState extends State<UsernameDialog> {
               );
               await UserManagement().updateUser(context, {
                 'username': _username,
-                'usernameCaseInsensitive': _username.toLowerCase(),
+                'usernameCaseInsensitive': _username?.toLowerCase(),
               });
               Navigator.of(context).pop();
             }
@@ -276,16 +275,16 @@ class UpdateProfileDialog extends StatefulWidget {
 }
 
 class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
-  String newUsername;
-  String newUsernameError;
-  String newBio;
-  String currentBio;
-  String newBioValidation;
+  String? newUsername;
+  String? newUsernameError;
+  String? newBio;
+  String? currentBio;
+  String? newBioValidation;
 
   void getCurrentBio() async {
     await UserManagement().getUserData().then((doc) async {
       await doc.get().then((snapshot) async {
-        currentBio = snapshot.data()['bio'].toString();
+        currentBio = snapshot.data()?['bio'].toString();
       });
     });
   }
@@ -298,8 +297,8 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
-    String hintBio = 'Enter a short bio...';
-    if(currentBio != null && currentBio.length > 0 && currentBio != 'null') {
+    String? hintBio = 'Enter a short bio...';
+    if(currentBio != null && (currentBio?.length ?? 0) > 0 && currentBio != 'null') {
       print('checked currentBio length');
       hintBio = currentBio;
     }
@@ -360,7 +359,7 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
               setState(() {
                 newBio = value;
                 if (newBio != null) {
-                  newBioValidation = newBio.length > 140
+                  newBioValidation = (newBio?.length ?? 0) > 140
                       ? 'Your Bio must be 140 characters or less'
                       : null;
                 }
@@ -371,16 +370,14 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            FlatButton(
-              child: Text('Cancel'),
-              textColor: Colors.deepPurple,
+            TextButton(
+              child: Text('Cancel', style: TextStyle(color: Colors.deepPurple)),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
-            FlatButton(
-              child: Text('Update'),
-              textColor: Colors.deepPurple,
+            TextButton(
+              child: Text('Update', style: TextStyle(color: Colors.deepPurple)),
               onPressed: () async {
                 Map<String, dynamic> updateData = new Map();
 
@@ -397,7 +394,7 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
                   } else {
                     updateData['username'] = newUsername;
                     updateData['usernameCaseInsensitive'] =
-                        newUsername.toLowerCase();
+                        newUsername?.toLowerCase();
                   }
                 }
 
@@ -420,10 +417,10 @@ class _UpdateProfileDialogState extends State<UpdateProfileDialog> {
 }
 
 class UploadProfilePic extends StatefulWidget {
-  final File picFile;
-  final String userId;
+  final File? picFile;
+  final String? userId;
 
-  UploadProfilePic({Key key, this.picFile, this.userId}) : super(key: key);
+  UploadProfilePic({Key? key, this.picFile, this.userId}) : super(key: key);
 
   @override
   _UploadProfilePicState createState() => new _UploadProfilePicState();
@@ -431,22 +428,26 @@ class UploadProfilePic extends StatefulWidget {
 
 class _UploadProfilePicState extends State<UploadProfilePic> {
   static DateTime date = DateTime.now();
-  UploadTask _uploadTask;
-  String fileUrl;
-  String fileUrlString;
+  UploadTask? _uploadTask;
+  String? fileUrl;
+  String? fileUrlString;
 
   _startUpload() async {
-
-    final Reference storageRef = FirebaseStorage.instance.ref().child(widget.userId).child('profile-pics').child('${date.toString()}-pic.jpg');
-
-    setState(() {
-      _uploadTask = storageRef.putFile(widget.picFile);
-    });
+    if(widget.userId != null) {
+      final Reference storageRef = FirebaseStorage.instance.ref().child(widget.userId ?? '').child('profile-pics').child('${date.toString()}-pic.jpg');
+      setState(() {
+        if(widget.picFile == null) {
+          return;
+        } else {
+          _uploadTask = storageRef.putFile(widget.picFile ?? File(''));
+        }
+      });
+    }
   }
 
   updateUserDoc(BuildContext context) async {
-    await _uploadTask.whenComplete(() => null);
-    fileUrl = await _uploadTask.snapshot.ref.getDownloadURL();
+    await _uploadTask?.whenComplete(() => null);
+    fileUrl = await _uploadTask?.snapshot.ref.getDownloadURL();
     fileUrlString = fileUrl.toString();
 
     await UserManagement().updateUser(context, {'profilePicUrl': fileUrlString}).then((_) {
@@ -459,7 +460,7 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
   Widget build(BuildContext context) {
     if(_uploadTask != null) {
       return StreamBuilder<TaskSnapshot>(
-        stream: _uploadTask.snapshotEvents,
+        stream: _uploadTask?.snapshotEvents,
         builder: (context, AsyncSnapshot<TaskSnapshot> snapshot) {
           if(!snapshot.hasData) {
             return SizedBox(
@@ -470,11 +471,11 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
                 )
             );
           }
-          TaskState event = snapshot.data.state;
+          TaskState? event = snapshot.data?.state;
           if(event == TaskState.success){
             updateUserDoc(context);
           }
-          double progressPercent = snapshot.data != null ? snapshot.data.bytesTransferred / snapshot.data.totalBytes : 0;
+          double progressPercent = snapshot.data != null ? (snapshot.data?.bytesTransferred ?? 0) / (snapshot.data?.totalBytes ?? 1) : 0;
           return SizedBox(
             width: double.infinity,
             child: Padding(
@@ -505,19 +506,19 @@ class _UploadProfilePicState extends State<UploadProfilePic> {
 }
 
 class ProfilePicDialog extends StatefulWidget {
-  final String userId;
+  final String? userId;
 
-  ProfilePicDialog({Key key, this.userId}) : super(key: key);
+  ProfilePicDialog({Key? key, this.userId}) : super(key: key);
 
   @override
   _ProfilePicDialogState createState() => new _ProfilePicDialogState();
 }
 
 class _ProfilePicDialogState extends State<ProfilePicDialog> {
-  File _profilePic;
+  File? _profilePic;
 
   Future<void> getImage(ImageSource source) async {
-    File image = File((await ImagePicker().getImage(source: source)).path);
+    File image = File((await ImagePicker().getImage(source: source))?.path ?? '');
 
     setState(() {
       _profilePic = image;
@@ -525,8 +526,8 @@ class _ProfilePicDialogState extends State<ProfilePicDialog> {
   }
 
   Future<void> cropImage() async {
-    File cropped = await ImageCropper.cropImage(
-      sourcePath: _profilePic.path,
+    File? cropped = await ImageCropper.cropImage(
+      sourcePath: _profilePic?.path ?? '',
       cropStyle: CropStyle.circle,
       aspectRatioPresets: [
         CropAspectRatioPreset.square,
@@ -558,7 +559,7 @@ class _ProfilePicDialogState extends State<ProfilePicDialog> {
                 color: Colors.deepPurpleAccent,
                 image: DecorationImage(
                   fit: BoxFit.cover,
-                  image: FileImage(_profilePic),
+                  image: FileImage(_profilePic ?? File('')),
                 ),
               ),
             ),

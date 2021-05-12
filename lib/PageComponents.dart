@@ -18,7 +18,6 @@ import 'package:wakelock/wakelock.dart';
 
 import 'ProfilePage.dart';
 import 'SearchPage.dart';
-import 'UserList.dart';
 import 'services/UserManagement.dart';
 import 'services/ActivityManagement.dart';
 import 'QueuePage.dart';
@@ -72,16 +71,16 @@ class _RecordButtonState extends State<RecordButton> {
 //New Version
 class TopPanel extends StatelessWidget {
   bool showSearchBar = false;
-  String searchRequestId;
-  String pageTitle;
+  String? searchRequestId;
+  String? pageTitle;
   bool showPostButtons = true;
-  TextEditingController searchController = new TextEditingController();
+  TextEditingController? searchController = new TextEditingController();
 
   TopPanel({
-    this.showSearchBar,
+    this.showSearchBar = false,
     this.searchRequestId,
     this.pageTitle,
-    this.showPostButtons,
+    this.showPostButtons = true,
     this.searchController,
   });
 
@@ -89,21 +88,21 @@ class TopPanel extends StatelessWidget {
   build(BuildContext context) {
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
     MainTemplateProvider templateProvider = Provider.of<MainTemplateProvider>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
     //print('Current Playback State on Build: ${playbackState?.playing}');
     //print('Position in playback state: ${playbackState.currentPosition}');
-    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
+    MediaItem? currentMediaItem = Provider.of<MediaItem?>(context);
     //print('Current Media Item: $currentMediaItem');
-    List<MediaItem> mediaQueue = Provider.of<List<MediaItem>>(context);
+    List<MediaItem>? mediaQueue = Provider.of<List<MediaItem>?>(context);
 
     String playingPostText = '';
     if(currentMediaItem != null) {
       playingPostText = '${currentMediaItem.title} | ${currentMediaItem.artist}';
     }
-    String getDurationString(Duration duration) {
-      int hours = duration.inHours;
-      int minutes = duration.inMinutes.remainder(60);
-      int seconds = duration.inSeconds.remainder(60);
+    String getDurationString(Duration? duration) {
+      int hours = duration?.inHours ?? 0;
+      int minutes = duration?.inMinutes.remainder(60) ?? 0;
+      int seconds = duration?.inSeconds.remainder(60) ?? 0;
       String minutesString = minutes >= 10 ? '$minutes' : '0$minutes';
       String secondsString = seconds >= 10 ? '$seconds' : '0$seconds';
       if(hours > 0)
@@ -156,7 +155,7 @@ class TopPanel extends StatelessWidget {
                                   await FirebaseFirestore.instance.collection('requests').doc(searchRequestId).set({'searchTerm': value, "searchDateTime": date});
                               }
                           )
-                      ) : Center(child: new Text(pageTitle != null ? pageTitle : 'Perkl')),
+                      ) : Center(child: new Text(pageTitle ?? 'Perkl')),
                     ),
                   ]
               ),
@@ -229,7 +228,7 @@ class TopPanel extends StatelessWidget {
                       ) : Container()
                     ),
                     SizedBox(width: 5),
-                    Text('${playbackState == null || playbackState.position == null || playbackState.position.inMilliseconds == 0 ? '' : '${getDurationString(playbackState.position)}/'}${currentMediaItem == null || currentMediaItem.duration == null ? '' : getDurationString(currentMediaItem.duration)}',
+                    Text('${playbackState == null || playbackState.position == null || playbackState.position.inMilliseconds == 0 ? '' : '${getDurationString(playbackState.position)}/'}${currentMediaItem == null || currentMediaItem.duration == null ? '' : getDurationString(currentMediaItem.duration ?? Duration(seconds: 0))}',
                         style: TextStyle(color: Colors.white, fontSize: 16)),
                     //mp.position == null || mp.postLength == null ? Container() : Text('${mp.position.getPostPosition()}/${mp.postLength.getPostDuration()}', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ],
@@ -242,14 +241,14 @@ class TopPanel extends StatelessWidget {
                 DropdownButton(
                   underline: Container(),
                   icon: Text('${playbackState == null ? '' : playbackState.speed}x', style: TextStyle(color: currentMediaItem != null ? Colors.white : Colors.grey)),
-                  items: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0].map((item) {
+                  items: <double>[0.5, 0.8, 1.0, 1.2, 1.5, 2.0].map((double item) {
                     return DropdownMenuItem(
                       child: Text('$item${playbackState != null && playbackState.speed == item ? 'x' : ''}',),
                       value: item
                     );
                   }).toList(),
-                  onChanged: (value) {
-                    mp.setSpeed(value);
+                  onChanged: (double? value) {
+                    mp.setSpeed(value ?? 1.0);
                   },
                 ),
                 IconButton(
@@ -273,8 +272,8 @@ class TopPanel extends StatelessWidget {
                 IconButton(
                     icon: Icon(playbackState != null && playbackState.playing ? Icons.pause : Icons.play_arrow, color: (mediaQueue != null && mediaQueue.length > 0) || currentMediaItem != null ? Colors.white : Colors.grey,),
                     onPressed: () {
-                      print('Button Pressed: Toggling from Current Playback State: ${playbackState.playing}');
-                      if(playbackState.playing) {
+                      //print('Button Pressed: Toggling from Current Playback State: ${playbackState.playing}');
+                      if(playbackState?.playing ?? false) {
                         //print('pausing post');
                         mp.pausePost();
                         return;
@@ -306,11 +305,11 @@ class TopPanel extends StatelessWidget {
                     }
                 ),
                 IconButton(
-                    icon: FaIcon(FontAwesomeIcons.cut, color: currentMediaItem != null && currentMediaItem.extras != null && currentMediaItem.extras['type'] == 'PostType.PODCAST_EPISODE' ? Colors.white : Colors.grey),
+                    icon: FaIcon(FontAwesomeIcons.cut, color: currentMediaItem != null && currentMediaItem.extras != null && currentMediaItem.extras?['type'] == 'PostType.PODCAST_EPISODE' ? Colors.white : Colors.grey),
                     onPressed: () {
-                      if(currentMediaItem.extras['type'] == 'PostType.PODCAST_EPISODE') {
-                        print('Clipping Media Item: ${currentMediaItem.extras}');
-                        if(playbackState.playing) {
+                      if(currentMediaItem?.extras?['type'] == 'PostType.PODCAST_EPISODE') {
+                        print('Clipping Media Item: ${currentMediaItem?.extras}');
+                        if(playbackState?.playing ?? false) {
                           mp.pausePost();
                         }
                         showDialog(
@@ -337,13 +336,13 @@ class TopPanel extends StatelessWidget {
 
 
 class ProfilePic extends StatelessWidget {
-  PerklUser user;
+  PerklUser? user;
 
   ProfilePic(this.user);
 
   @override
   build(BuildContext context) {
-    return user == null || user.profilePicUrl == null ? Container(
+    return user == null || user?.profilePicUrl == null ? Container(
       height: 60.0,
       width: 60.0,
       decoration: BoxDecoration(
@@ -355,7 +354,7 @@ class ProfilePic extends StatelessWidget {
         onTap: () {
           Navigator.push(context, MaterialPageRoute(
             builder: (context) =>
-                ProfilePageMobile(userId: user.uid,),
+                ProfilePageMobile(userId: user?.uid,),
           ));
         },
       ),
@@ -367,7 +366,7 @@ class ProfilePic extends StatelessWidget {
           color: Colors.deepPurple,
           image: DecorationImage(
             fit: BoxFit.cover,
-            image: NetworkImage(user.profilePicUrl),
+            image: NetworkImage(user?.profilePicUrl ?? ''),
           ),
         ),
         child: InkWell(
@@ -375,7 +374,7 @@ class ProfilePic extends StatelessWidget {
           onTap: () {
             Navigator.push(context, MaterialPageRoute(
               builder: (context) =>
-                  ProfilePageMobile(userId: user.uid,),
+                  ProfilePageMobile(userId: user?.uid,),
             ));
           },
         )
@@ -417,10 +416,10 @@ class MainPopMenu extends StatelessWidget {
             }
           },
         ) : StreamBuilder(
-            stream: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser.uid).snapshots(),
+            stream: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).snapshots(),
             builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
               if(snapshot.hasData) {
-                String profilePicUrl = snapshot.data.data()['profilePicUrl'];
+                String? profilePicUrl = snapshot.data?.data()?['profilePicUrl'];
                 if(profilePicUrl != null)
                   return Container(
                     height: 40.0,
@@ -481,50 +480,8 @@ class MainPopMenu extends StatelessWidget {
   }
 }
 
-//Bottom Navigation Bar
-Widget bottomNavBar(Function tapFunc, int selectedIndex, {ActivityManager activityManager, bool noSelection}) {
-  return Container(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.only(topLeft: Radius.elliptical(10, 10), topRight: Radius.elliptical(10, 10)),
-      image: DecorationImage(
-        image: AssetImage('assets/images/mic-stage.jpg'),
-        fit: BoxFit.cover,
-        alignment: Alignment(-.5,-.75)
-      )
-    ),
-    child: BottomNavigationBar(
-      items: <BottomNavigationBarItem> [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          title: Text('Home'),
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.surround_sound),
-          title: Text('Discover'),
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.mail_outline),
-          title: Text('Messages'),
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.account_circle),
-          title: Text('Profile'),
-        ),
-      ],
-      currentIndex: selectedIndex,
-      onTap: (index) {
-        activityManager != null ? tapFunc(index, actManage: activityManager) : tapFunc(index);
-      },
-      fixedColor: noSelection == true ? Colors.white : Colors.deepPurple,
-      unselectedItemColor: Colors.white,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.transparent,
-    )
-  );
-}
-
 //New Bottom Nav Bar
-Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager activityManager, bool noSelection}) {
+Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager? activityManager, bool? noSelection}) {
   return Container(
       decoration: BoxDecoration(
           borderRadius: BorderRadius.only(topLeft: Radius.elliptical(10, 10), topRight: Radius.elliptical(10, 10)),
@@ -538,19 +495,23 @@ Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager 
         items: <BottomNavigationBarItem> [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            title: Text('Home'),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.surround_sound),
-            title: Text('Discover'),
+            label: 'Discover',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.playlist_play),
+            label: 'Playlists'
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.mail_outline),
-            title: Text('Messages'),
+            label: 'Messages'
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_circle),
-            title: Text('Profile'),
+            label: 'Profile'
           ),
         ],
         currentIndex: selectedIndex,
@@ -566,41 +527,43 @@ Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager 
 }
 
 class RecordingPulse extends StatefulWidget {
-  double maxSize;
+  double? maxSize;
 
-  RecordingPulse({Key key, @required this.maxSize}) : super(key: key);
+  RecordingPulse({Key? key, @required this.maxSize}) : super(key: key);
 
   @override
   _RecordingPulseState createState() => new _RecordingPulseState();
 }
 
 class _RecordingPulseState extends State<RecordingPulse> with SingleTickerProviderStateMixin {
-  AnimationController _animationController;
-  Animation _animation;
+  AnimationController? _animationController;
+  Animation? _animation;
 
   @override
   initState() {
     _animationController = AnimationController(duration: Duration(seconds: 2), vsync: this);
-    _animationController.repeat();
-    _animation =  Tween(begin: 2.0, end: widget.maxSize).animate(_animationController)..addListener((){
-      setState(() {
+    _animationController?.repeat();
+    if(_animationController != null) {
+      _animation =  Tween(begin: 2.0, end: widget.maxSize).animate(_animationController ?? AnimationController(vsync: this))..addListener((){
+        setState(() {
 
+        });
       });
-    });
+    }
     super.initState();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _animationController?.dispose();
     super.dispose();
   }
 
   @override
   build(BuildContext context) {
     return Container(
-      height: _animation.value,
-      width: _animation.value,
+      height: _animation?.value,
+      width: _animation?.value,
       decoration: ShapeDecoration(
         shape: CircleBorder(side: BorderSide(color: Colors.red, width: 2)),
       ),

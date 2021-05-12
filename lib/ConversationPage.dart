@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:podcast_search/podcast_search.dart';
 //import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 
 import 'EpisodePage.dart';
 import 'ListTileBubble.dart';
@@ -22,34 +23,34 @@ import 'ProfilePage.dart';
 
 //New Version
 class ConversationPageMobile extends StatelessWidget {
-  String conversationId;
-  String pageTitle;
+  String? conversationId;
+  String? pageTitle;
 
   ConversationPageMobile({this.conversationId, this.pageTitle});
 
   @override
   build(BuildContext context) {
-    User firebaseUser = Provider.of<User>(context);
+    User? firebaseUser = Provider.of<User?>(context);
     MainAppProvider mp = Provider.of<MainAppProvider>(context);
-    PlaybackState playbackState = Provider.of<PlaybackState>(context);
-    MediaItem currentMediaItem = Provider.of<MediaItem>(context);
+    PlaybackState? playbackState = Provider.of<PlaybackState?>(context);
+    MediaItem? currentMediaItem = Provider.of<MediaItem?>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<List<DirectPost>>(create: (_) => DBService().streamDirectPosts(conversationId)),
-        StreamProvider<PerklUser>(create: (_) => UserManagement().streamCurrentUser(firebaseUser))
+        StreamProvider<List<DirectPost>?>(create: (_) => DBService().streamDirectPosts(conversationId), initialData: [],),
+        StreamProvider<PerklUser?>(create: (_) => UserManagement().streamCurrentUser(firebaseUser), initialData: null, )
       ],
-      child: Consumer<List<DirectPost>>(
+      child: Consumer<List<DirectPost>?>(
         builder: (context, postList, _) {
-          PerklUser user = Provider.of<PerklUser>(context);
+          PerklUser? user = Provider.of<PerklUser?>(context);
           List<DayPosts> days = <DayPosts>[];
           if(postList != null) {
             postList.forEach((post) {
-              if(days.where((day) => day.date.year == post.datePosted.year && day.date.month == post.datePosted.month && day.date.day == post.datePosted.day).length > 0) {
-                days.where((day) => day.date.year == post.datePosted.year && day.date.month == post.datePosted.month && day.date.day == post.datePosted.day).first.list.add(post);
+              if(days.where((day) => day.date?.year == post.datePosted?.year && day.date?.month == post.datePosted?.month && day.date?.day == post.datePosted?.day).length > 0) {
+                days.where((day) => day.date?.year == post.datePosted?.year && day.date?.month == post.datePosted?.month && day.date?.day == post.datePosted?.day).first.list?.add(post);
               } else {
                 List posts = [];
                 posts.add(post);
-                days.add(DayPosts(date: DateTime(post.datePosted.year, post.datePosted.month, post.datePosted.day), list: posts));
+                days.add(DayPosts(date: DateTime(post.datePosted?.year ?? 1900, post.datePosted?.month ?? 1, post.datePosted?.day ?? 1), list: posts));
               }
             });
           }
@@ -57,7 +58,7 @@ class ConversationPageMobile extends StatelessWidget {
             isConversation: true,
             conversationId: conversationId,
             bottomNavIndex: 2,
-            pageTitle: pageTitle,
+            pageTitle: pageTitle ?? '',
             body: postList == null ? Center(child: CircularProgressIndicator()) : Stack(
               children: <Widget>[
                 ListView(
@@ -72,20 +73,20 @@ class ConversationPageMobile extends StatelessWidget {
                                     padding: EdgeInsets.only(left: 5),
                                     decoration: BoxDecoration(
                                         border: Border(
-                                            left: BorderSide(color: Colors.deepPurple[500], width: 2)
+                                            left: BorderSide(color: Colors.deepPurple[500] ?? Colors.deepPurple, width: 2)
                                         )
                                     ),
                                     child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: <Widget>[
-                                          Text(day.date.year == DateTime.now().year && day.date.month == DateTime.now().month && day.date.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date).toString(), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]), textAlign: TextAlign.left,),
+                                          Text(day.date?.year == DateTime.now().year && day.date?.month == DateTime.now().month && day.date?.day == DateTime.now().day ? 'Today' : DateFormat('MMMM dd, yyyy').format(day.date ?? DateTime(1900, 1, 1)).toString(), style: TextStyle(fontSize: 16, color: Colors.deepPurple[500]), textAlign: TextAlign.left,),
                                           Column(
-                                            children: day.list.map((post) {
+                                            children: day.list?.map((post) {
                                               DirectPost directPost = post;
                                               return StreamBuilder<PerklUser>(
                                                 stream: UserManagement().streamUserDoc(directPost.senderUID),
                                                 builder: (context, AsyncSnapshot<PerklUser> userSnap) {
-                                                  PerklUser sender = userSnap.data;
+                                                  PerklUser? sender = userSnap.data;
                                                   if(sender == null) {
                                                     return Container();
                                                   }
@@ -94,8 +95,8 @@ class ConversationPageMobile extends StatelessWidget {
                                                   //Create picUrl widget
                                                   Widget picButton = InkWell(
                                                       onTap: () async {
-                                                        Episode episode;
-                                                        Podcast pod;
+                                                        Episode? episode;
+                                                        Podcast? pod;
                                                         if(directPost.podcastUrl != null) {
                                                           showDialog(
                                                             context: context,
@@ -105,7 +106,7 @@ class ConversationPageMobile extends StatelessWidget {
                                                           );
                                                           pod = await Podcast.loadFeed(url: directPost.podcastUrl);
                                                           Navigator.of(context).pop();
-                                                          episode = pod.episodes.firstWhere((element) => element.contentUrl == directPost.audioFileLocation);
+                                                          episode = pod.episodes?.firstWhereOrNull((element) => element.contentUrl == directPost.audioFileLocation);
                                                         }
                                                         Navigator.push(context, MaterialPageRoute(
                                                           builder: (context) =>
@@ -142,24 +143,32 @@ class ConversationPageMobile extends StatelessWidget {
                                                           child: Center(child: FaIcon(currentMediaItem != null && currentMediaItem.id == directPost.audioFileLocation && playbackState != null && playbackState.playing != null && playbackState.playing ? FontAwesomeIcons.pause : FontAwesomeIcons.play, color: Colors.white, size: 16)),
                                                         ),
                                                         onTap: () {
-                                                          playbackState.playing != null && playbackState.playing && currentMediaItem.id == directPost.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));
+                                                          (playbackState?.playing ?? false) && currentMediaItem?.id == directPost.audioFileLocation ? mp.pausePost() : mp.playPost(PostPodItem.fromDirectPost(post));
                                                           mp.notifyListeners();
                                                         },
                                                       ),
                                                       Text(post.getLengthString())
                                                     ],
                                                   );
+                                                  Color? bubbleColor = Colors.deepPurple[50];
+                                                  if (directPost.shared ?? false) {
+                                                    bubbleColor = Colors.pink[50];
+                                                  } else if(user?.uid == sender.uid) {
+                                                    bubbleColor = Colors.blueGrey[50];
+                                                  } else {
+                                                    bubbleColor = Colors.deepPurple[50];
+                                                  }
 
                                                   return ListTileBubble(
                                                     width: MediaQuery.of(context).size.width - 50,
-                                                    alignment: user.uid == sender.uid ? MainAxisAlignment.end : MainAxisAlignment.start,
-                                                    leading: user.uid == sender.uid ? playColumn : picButton,
-                                                    trailing: user.uid == sender.uid ? picButton : playColumn,
-                                                    color: directPost.shared != null && directPost.shared ? Colors.pink[50] : user.uid == sender.uid ? Colors.blueGrey[50] : Colors.deepPurple[50],
-                                                    title: Text(directPost.messageTitle ?? '@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left),
-                                                    subTitle: directPost.podcastTitle != null ? Column(crossAxisAlignment: user.uid == sender.uid ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: <Widget>[Text('${directPost.podcastTitle}'), Text('shared by @${sender.username}', style: TextStyle(color: Colors.grey),)],) : directPost.messageTitle != null ? Text('@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user.uid == sender.uid ? TextAlign.right : TextAlign.left,) : null,
+                                                    alignment: user?.uid == sender.uid ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                                    leading: user?.uid == sender.uid ? playColumn : picButton,
+                                                    trailing: user?.uid == sender.uid ? picButton : playColumn,
+                                                    color:  bubbleColor ?? Colors.deepPurple,
+                                                    title: Text(directPost.messageTitle ?? '@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user?.uid == sender.uid ? TextAlign.right : TextAlign.left),
+                                                    subTitle: directPost.podcastTitle != null ? Column(crossAxisAlignment: user?.uid == sender.uid ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: <Widget>[Text('${directPost.podcastTitle}'), Text('shared by @${sender.username}', style: TextStyle(color: Colors.grey),)],) : directPost.messageTitle != null ? Text('@${directPost.senderUsername}', style: TextStyle(fontSize: 14), textAlign: user?.uid == sender.uid ? TextAlign.right : TextAlign.left,) : Container(),
                                                     onTap: () async {
-                                                      if(playbackState.playing) {
+                                                      if(playbackState?.playing ?? false) {
                                                         mp.stopPost();
                                                       }
                                                       await ActivityManager().sendDirectPostDialog(context, conversationId: conversationId);
@@ -167,7 +176,7 @@ class ConversationPageMobile extends StatelessWidget {
                                                   );
                                                 } ,
                                               );
-                                            }).toList(),
+                                            }).toList() ?? [Container()],
                                           )
                                         ]
                                     ),
@@ -190,7 +199,7 @@ class ConversationPageMobile extends StatelessWidget {
                         ),
                         child: Text('Play Unheard', style: TextStyle(color: Colors.white)),
                         onPressed: () async {
-                          await mp.addUnheardToQueue(conversationId: conversationId, userId: firebaseUser.uid);
+                          await mp.addUnheardToQueue(conversationId: conversationId, userId: firebaseUser?.uid);
                         },
                       ),
                       TextButton(
@@ -200,7 +209,7 @@ class ConversationPageMobile extends StatelessWidget {
                         ),
                         child: Text('Reply', style: TextStyle(color: Colors.white)),
                         onPressed: () async {
-                          if(playbackState.playing) {
+                          if(playbackState?.playing ?? false) {
                             mp.stopPost();
                           }
                           await mp.activityManager.sendDirectPostDialog(context, conversationId: conversationId);

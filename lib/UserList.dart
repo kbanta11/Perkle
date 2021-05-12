@@ -9,8 +9,8 @@ import 'PageComponents.dart';
 import 'ProfilePage.dart';
 
 class UserList extends StatelessWidget {
-  List<String> userIdList;
-  UserListType type;
+  List<String>? userIdList;
+  UserListType? type;
 
   UserList(this.userIdList, this.type);
 
@@ -20,10 +20,10 @@ class UserList extends StatelessWidget {
       bottomNavIndex: 1,
       noBottomNavSelected: true,
       body: ListView(
-        children: userIdList.length > 0 ? userIdList.map((id) => StreamBuilder<PerklUser>(
+        children: userIdList?.map((id) => StreamBuilder<PerklUser>(
           stream: UserManagement().streamUserDoc(id),
           builder: (context, AsyncSnapshot<PerklUser> userSnap) {
-            PerklUser user = userSnap.data;
+            PerklUser? user = userSnap.data;
             print('User Id: $id/User obj: $user');
             return Card(
               margin: EdgeInsets.all(5),
@@ -31,17 +31,17 @@ class UserList extends StatelessWidget {
               child: ListTile(
                 contentPadding: EdgeInsets.all(5),
                 leading: ProfilePic(user),
-                title: Text(user == null ? '' : user.username, style: TextStyle(fontSize: 16)),
+                title: Text(user?.username ?? '', style: TextStyle(fontSize: 16)),
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(
                     builder: (context) =>
-                        ProfilePageMobile(userId: user.uid),
+                        ProfilePageMobile(userId: user?.uid),
                   ));
                 },
               ),
             );
           },
-        )).toList() : [Center(child: Text(type == UserListType.FOLLOWERS ? 'User has no followers 🙁' : 'User is not following anyone yet!'))],
+        )).toList() ?? [Center(child: Text(type == UserListType.FOLLOWERS ? 'User has no followers 🙁' : 'User is not following anyone yet!'))],
       ),
     );
   }
