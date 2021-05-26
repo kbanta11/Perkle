@@ -44,6 +44,10 @@
 	</dict>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>We don't really use this, but its required for our audio libraries.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>We may need to use your bluetooth for you to use a speaker/headphones or a bluetooth microphone for recording</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>We may need to use your bluetooth for you to use a speaker/headphones or a bluetooth microphone for recording</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>We don't really use your calendar, but one of our libraries requires it.</string>
 	<key>NSCameraUsageDescription</key>

@@ -52,7 +52,7 @@ class _ProfilePageMobileState extends State<ProfilePageMobile> {
                           style: TextButton.styleFrom(
                               backgroundColor: !toggleClips ? Colors.deepPurple : Colors.transparent,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15.0),
+                                borderRadius: BorderRadius.circular(25.0),
                                 side: BorderSide(color: Colors.deepPurple),
                               )
                           ),
@@ -69,7 +69,7 @@ class _ProfilePageMobileState extends State<ProfilePageMobile> {
                           style: TextButton.styleFrom(
                               backgroundColor: toggleClips ? Colors.deepPurple : Colors.transparent,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15.0),
+                                borderRadius: BorderRadius.circular(25.0),
                                 side: BorderSide(color: Colors.deepPurple),
                               )
                           ),
@@ -123,7 +123,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
                 child: Text('Message'),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-                  shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                  shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(25.0)),
                   backgroundColor: Colors.deepPurple,
                   primary: Colors.white,
                 ),
@@ -148,7 +148,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
               child: Text('Edit Profile'),
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(25.0)),
                 primary: Colors.deepPurple,
                 side: BorderSide(color: Colors.deepPurple,),
               ),
@@ -176,7 +176,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
               child: Text('Unfollow'),
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+                shape: new RoundedRectangleBorder(borderRadius: new BorderRadius.circular(25.0)),
                 primary: Colors.deepPurple,
                 side: BorderSide(color: Colors.deepPurple,),
               ),
@@ -193,7 +193,7 @@ class _UserInfoSectionState extends State<UserInfoSection> {
           child: Text('Follow'),
           style: TextButton.styleFrom(
             padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
-            shape: RoundedRectangleBorder(borderRadius: new BorderRadius.circular(5.0)),
+            shape: RoundedRectangleBorder(borderRadius: new BorderRadius.circular(25.0)),
             backgroundColor: Colors.deepPurple,
             primary: Colors.white,
           ),

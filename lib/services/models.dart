@@ -672,7 +672,7 @@ class Playlist {
   });
 
   Stream<List<MediaItem>> getItems() {
-    return FirebaseFirestore.instance.collection('playlists').doc(id).collection('items').snapshots().map((qs) {
+    return FirebaseFirestore.instance.collection('playlists').doc(id).collection('items').orderBy('date_added').snapshots().map((qs) {
       return qs.docs.map((doc) {
         MediaItem i = Helper().getMediaItemFromJson(doc.data());
         i.extras?['date_added'] = DateTime.fromMillisecondsSinceEpoch(doc.data()['date_added'].millisecondsSinceEpoch);
@@ -690,10 +690,10 @@ class Playlist {
       title: snap.data()?['title'],
       genre: snap.data()?['genre'],
       private: snap.data()?['private'],
-      tagList: (snap.data()?['tags'] as List).map((item) => item as String).toList(),
+      tagList: (snap.data()?['tags'] as List?)?.map((item) => item as String).toList(),
       createdDatetime: DateTime.fromMillisecondsSinceEpoch(snap.data()?['created_datetime'].millisecondsSinceEpoch),
       lastModified: DateTime.fromMillisecondsSinceEpoch(snap.data()?['last_modified'].millisecondsSinceEpoch),
-      subscribers: snap.data()?['subscribers'],
+      subscribers: (snap.data()?['subscribers'] as List?)?.map((item) => item as String).toList(),
     );
   }
 }
@@ -708,4 +708,19 @@ class DayPosts {
   List? list;
 
   DayPosts({this.date, this.list});
+}
+
+class FeaturedPlaylistCategory {
+  String? name;
+  List<String>? playlists;
+
+  FeaturedPlaylistCategory({this.name, this.playlists});
+
+  factory FeaturedPlaylistCategory.fromFirestore(DocumentSnapshot snap) {
+    print('Feature Playlist Snap: ${snap.data()}');
+    return FeaturedPlaylistCategory(
+      name: snap.data()?['name'],
+      playlists: (snap.data()?['playlists'] as List).map((item) => item as String).toList(),
+    );
+  }
 }

@@ -850,7 +850,7 @@ class Timeline extends StatelessWidget {
                       await DBService().updateTimeline(timelineId: timelineId, reload: false, setLoading: false);
                     }
                   },
-                  child: ListView(
+                  child: days.length == 0  && !isLoading && type == TimelineType.MAINFEED ? DiscoverPlaylists() : ListView(
                     children: currentUser == null || postList == null ? [Center(child: CircularProgressIndicator())] : days.length == 0  && !isLoading ? [Center(child: Text(emptyText))] : days.length == 0 && isLoading ? [Center(child: CircularProgressIndicator())] : itemList,
                   ),
                 );

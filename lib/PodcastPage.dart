@@ -16,6 +16,7 @@ import 'package:flutter_html/flutter_html.dart';
 
 import 'services/ActivityManagement.dart';
 import 'MainPageTemplate.dart';
+import 'Playlist.dart';
 import 'EpisodePage.dart';
 import 'services/models.dart';
 import 'services/local_services.dart';
@@ -201,21 +202,43 @@ class PodcastPage extends StatelessWidget {
                                                           }
                                                       ),
                                                       SizedBox(width: 5),
-                                                      InkWell(
-                                                          child: Container(
-                                                            height: 35,
-                                                            width: 35,
-                                                            decoration: BoxDecoration(
-                                                              shape: BoxShape.circle,
-                                                              color: mediaQueue != null && mediaQueue.where((item) => item.id == ep.contentUrl).length > 0  ? Colors.grey : Colors.deepPurple,
-                                                            ),
-                                                            child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                      PopupMenuButton(
+                                                        child: Container(
+                                                          height: 35,
+                                                          width: 35,
+                                                          decoration: BoxDecoration(
+                                                            shape: BoxShape.circle,
+                                                            color: mediaQueue != null && mediaQueue.where((item) => item.id == ep.contentUrl && item.extras?['clipId'] == null).length > 0  ? Colors.grey : Colors.deepPurple,
                                                           ),
-                                                          onTap: () {
-                                                            if(mediaQueue == null || mediaQueue.where((item) => item.id == ep.contentUrl).length == 0)
+                                                          child: Center(child: FaIcon(FontAwesomeIcons.plus, color: Colors.white, size: 16,)),
+                                                        ),
+                                                        itemBuilder: (context) => [
+                                                          PopupMenuItem(
+                                                            child: Text('Add to Queue'),
+                                                            value: 'queue',
+                                                          ),
+                                                          PopupMenuItem(
+                                                            child: Text('Add to Playlist'),
+                                                            value: 'playlist',
+                                                          )
+                                                        ],
+                                                        onSelected: (value) async  {
+                                                          if(value == 'queue') {
+                                                            if(mediaQueue == null || mediaQueue.where((item) => item.id == ep.contentUrl && item.extras?['clipId'] == null).length == 0) {
                                                               mp.addPostToQueue(PostPodItem.fromEpisode(ep, podcast));
+                                                            }
                                                           }
-                                                      )
+
+                                                          if(value == 'playlist') {
+                                                            await showDialog(
+                                                                context: context,
+                                                                builder: (context) {
+                                                                  return AddToPlaylistDialog(item: PostPodItem.fromEpisode(ep, podcast).toMediaItem());
+                                                                }
+                                                            );
+                                                          }
+                                                        },
+                                                      ),
                                                     ],
                                                   ),
                                                   ep.duration == null ? Text('') : Text(ActivityManager().getDurationString(ep.duration)),

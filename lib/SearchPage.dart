@@ -42,7 +42,7 @@ class SearchPageMobile extends StatelessWidget {
                   children: <Widget>[
                     TextButton(
                       style: TextButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)), side: BorderSide(color: Colors.deepPurple, width: 2)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(25)), side: BorderSide(color: Colors.deepPurple, width: 2)),
                         backgroundColor: spp.type == SearchType.PEOPLE ? Colors.deepPurple : Colors.transparent,
                       ),
                       child: Text('People', style: TextStyle(color: spp.type == SearchType.PEOPLE ? Colors.white : Colors.deepPurple)),
@@ -52,7 +52,7 @@ class SearchPageMobile extends StatelessWidget {
                     ),
                     TextButton(
                       style: TextButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)), side: BorderSide(color: Colors.deepPurple, width: 2)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(25)), side: BorderSide(color: Colors.deepPurple, width: 2)),
                         backgroundColor: spp.type == SearchType.PODCASTS ? Colors.deepPurple : Colors.transparent,
                       ),
                       child: Text('Podcasts', style: TextStyle(color: spp.type == SearchType.PODCASTS ? Colors.white : Colors.deepPurple)),

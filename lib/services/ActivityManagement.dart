@@ -175,7 +175,6 @@ class ActivityManager {
       Navigator.of(context).pop();
     }
   }
-
   Future<void> sendDirectPostDialog(BuildContext context, {String? conversationId, Map<String,dynamic>? memberMap}) async {
     showDialog(
       context: context,

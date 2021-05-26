@@ -452,7 +452,7 @@ class _AddPostDialogState extends State<AddPostDialog> {
                           backgroundColor: Colors.deepPurple,
                           textStyle: TextStyle(color: Colors.white),
                         ),
-                        child: Text('Add Post'),
+                        child: Text('Add Post', style: TextStyle(color: Colors.white)),
                         onPressed: () async {
                           if(_recordingLocation != null) {
                             List<String>? tagList = processTagString(_postTags ?? '');

@@ -15,6 +15,7 @@ import 'ProfilePage.dart';
 import 'ListPage.dart';
 import 'Timeline.dart';
 import 'DiscoverPodcasts.dart';
+import 'Playlist.dart';
 
 import 'main.dart';
 import 'services/UserManagement.dart';
@@ -50,13 +51,28 @@ class DiscoverPageMobile extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: <Widget>[
                         TextButton(
+                          child: Text('Playlists',
+                            style: TextStyle(color: pageProvider.selectedCat == 'Playlists' ? Colors.white : Colors.deepPurple),
+                          ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: pageProvider.selectedCat == 'Playlists' ? Colors.deepPurple : Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25.0),
+                              side: BorderSide(color: Colors.deepPurple),
+                            ),
+                          ),
+                          onPressed: () {
+                            pageProvider.selectCategory('Playlists');
+                          },
+                        ),
+                        TextButton(
                           child: Text('Pods',
                             style: TextStyle(color: pageProvider.selectedCat == 'Pods' ? Colors.white : Colors.deepPurple),
                           ),
                           style: TextButton.styleFrom(
                             backgroundColor: pageProvider.selectedCat == 'Pods' ? Colors.deepPurple : Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15.0),
+                              borderRadius: BorderRadius.circular(25.0),
                               side: BorderSide(color: Colors.deepPurple),
                             ),
                           ),
@@ -71,7 +87,7 @@ class DiscoverPageMobile extends StatelessWidget {
                           style: TextButton.styleFrom(
                             backgroundColor: pageProvider.selectedCat == 'People' ? Colors.deepPurple : Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15.0),
+                              borderRadius: BorderRadius.circular(25.0),
                               side: BorderSide(color: Colors.deepPurple),
                             ),
                           ),
@@ -177,7 +193,7 @@ class DiscoverPageMobile extends StatelessWidget {
                         }
                       )
                     )
-                  ) : Expanded(
+                  ) : pageProvider.selectedCat == 'Playlists' ? Expanded(child: DiscoverPlaylists()) : Expanded(
                     child: DiscoverPodcasts(),
                   ),
                 ],
@@ -190,7 +206,7 @@ class DiscoverPageMobile extends StatelessWidget {
 }
 
 class DiscoverPageMobileProvider extends ChangeNotifier {
-  String selectedCat = 'Pods';
+  String selectedCat = 'Playlists';
   String? selectedTag;
 
   void selectCategory(String value) {

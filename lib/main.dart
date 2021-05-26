@@ -228,6 +228,11 @@ class MainAppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  playPostFromMediaItem(MediaItem item) async {
+    _audioHandler?.playMediaItem(item);
+    notifyListeners();
+  }
+
   playMediaItem(MediaItem mediaItem) async {
     _audioHandler?.playMediaItem(mediaItem);
     notifyListeners();
@@ -278,6 +283,11 @@ class MainAppProvider extends ChangeNotifier {
   addPostToQueue(PostPodItem post) async {
     MediaItem mediaItem = post.toMediaItem(currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '');
     _audioHandler?.addQueueItem(mediaItem);
+    notifyListeners();
+  }
+
+  addMediaItemToQueue(MediaItem item) async {
+    _audioHandler?.addQueueItem(item);
     notifyListeners();
   }
 

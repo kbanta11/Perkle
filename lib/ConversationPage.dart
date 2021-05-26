@@ -57,7 +57,7 @@ class ConversationPageMobile extends StatelessWidget {
           return MainPageTemplate(
             isConversation: true,
             conversationId: conversationId,
-            bottomNavIndex: 2,
+            bottomNavIndex: 3,
             pageTitle: pageTitle ?? '',
             body: postList == null ? Center(child: CircularProgressIndicator()) : Stack(
               children: <Widget>[

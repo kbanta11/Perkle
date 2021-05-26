@@ -163,6 +163,27 @@ class DBService {
     });
   }
 
+  Stream<List<Playlist>> streamSubscribedPlaylists(String? userId) {
+    return _db.collection('playlists').where('subscribers', arrayContains: userId).orderBy('last_modified', descending: true).snapshots().map((qs) {
+      print('Playlist Docs: ${qs.docs}');
+      return qs.docs.map((doc) {
+        print('Playlist item: ${doc.data()}');
+        Playlist playlist = Playlist.fromFirestore(doc);
+        print('Playlist: $playlist');
+        return playlist;
+      }).toList();
+    });
+  }
+
+  Stream<List<FeaturedPlaylistCategory>> streamFeaturedPlaylists() {
+    return _db.collection('featured-playlists').orderBy('rank').snapshots().map((qs) {
+      return qs.docs.map((doc) {
+        print('Featured Playlist Doc: $doc');
+        return FeaturedPlaylistCategory.fromFirestore(doc);
+      }).toList();
+    });
+  }
+
   Future<void> updateTimeline({String? timelineId, PerklUser? user, DateTime? minDate, bool? reload, bool setLoading = true}) async {
     DocumentReference timelineRef = _db.collection('timelines').doc(timelineId);
     DateTime? lastUpdateTime = await timelineRef.get().then((snap) => snap.data()?['last_updated'] == null ? null : DateTime.fromMillisecondsSinceEpoch(snap.data()?['last_updated'].millisecondsSinceEpoch));
@@ -212,7 +233,7 @@ class DBService {
     });
   }
 
-  Future<PerklUser> getPerklUser(String uid) async {
+  Future<PerklUser> getPerklUser(String? uid) async {
     return await _db.collection('users').doc(uid).get().then((snap) => PerklUser.fromFirestore(snap));
   }
 
@@ -701,6 +722,10 @@ class DBService {
     });
   }
 
+  Future<Playlist> getPlaylist(String id) async {
+    return await _db.collection('playlists').doc(id).get().then((snap) => Playlist.fromFirestore(snap));
+  }
+
   //Create Playlist
   Future<void> createPlaylist({String? title, String? genre, String? tags, bool? private}) async {
     //Get current user id and username
@@ -729,9 +754,29 @@ class DBService {
     });
   }
 
+  Future<void> editPlaylist(Playlist? playlist) async {
+    await _db.runTransaction((Transaction t) async {
+      DocumentReference ref = _db.collection('playlists').doc(playlist?.id);
+      t.update(ref, {
+        'genre': playlist?.genre,
+        'title': playlist?.title,
+        'private': playlist?.private,
+        'tags': playlist?.tagList
+      });
+    });
+  }
+
+  Future<void> deletePlaylist(String? playlistId) async {
+    await _db.runTransaction((Transaction t) async {
+      DocumentReference ref = _db.collection('playlists').doc(playlistId);
+      t.delete(ref);
+    });
+  }
+
   //Add Item to Playlist
   Future<void>? addItemToPlaylist({MediaItem? item, List<String>? playlists}) async {
     Map<String, dynamic> data = Helper().mediaItemToJson(item);
+    print('New Item Data: $data');
     data['date_added'] = DateTime.now();
     WriteBatch batch = _db.batch();
     for(String p in (playlists ?? [])) {
@@ -743,5 +788,43 @@ class DBService {
       batch.update(playlistDoc, {'last_modified': DateTime.now(), 'num_items': currentItems + 1});
     }
     await batch.commit();
+  }
+
+  //Remove item from playlist
+  Future<void>? removeFromPlaylist(String? documentId, String? playlistId) async {
+    WriteBatch batch = _db.batch();
+    DocumentReference playlistDoc = _db.collection('playlists').doc(playlistId);
+    DocumentReference itemDoc = playlistDoc.collection('items').doc(documentId);
+    int currentItems = await playlistDoc.get().then((snap) => snap.data()?['num_items'] ?? 0);
+    batch.update(playlistDoc, {'last_modified': DateTime.now(), 'num_items': currentItems + 1});
+    print('Remove item from playlist: ${itemDoc.id}');
+    batch.delete(itemDoc);
+    await batch.commit();
+  }
+
+  //Subscribe to playlist
+  Future<void>? subscribeToPlaylist(String? userId, String? playlistId) async {
+    DocumentReference playlistDoc = _db.collection('playlists').doc(playlistId);
+    Playlist playlist = await playlistDoc.get().then((snap) => Playlist.fromFirestore(snap));
+    List<String?> subscribers = playlist.subscribers ?? [];
+    if(!subscribers.contains(userId)) {
+      subscribers.add(userId);
+    }
+    await _db.runTransaction((t) async {
+      t.update(playlistDoc, {'subscribers': subscribers, 'num_subscribers': subscribers.length});
+    });
+  }
+
+  //Unsubscribe to playlist
+  Future<void>? unsubscribeToPlaylist(String? userId, String? playlistId) async {
+    DocumentReference playlistDoc = _db.collection('playlists').doc(playlistId);
+    Playlist playlist = await playlistDoc.get().then((snap) => Playlist.fromFirestore(snap));
+    List<String?> subscribers = playlist.subscribers ?? [];
+    if(subscribers.contains(userId)) {
+      subscribers.remove(userId);
+    }
+    await _db.runTransaction((t) async {
+      t.update(playlistDoc, {'subscribers': subscribers, 'num_subscribers': subscribers.length});
+    });
   }
 }
