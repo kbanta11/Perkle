@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:launch_review/launch_review.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:feature_discovery/feature_discovery.dart';
 //import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -29,7 +30,6 @@ import 'PlayerAudioHandler.dart';
 
 AudioHandler? _audioHandler;
 FirebaseApp? fbApp;
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -143,52 +143,54 @@ class MainAppState extends State<MainApp> {
                               StreamProvider<List<MediaItem>?>(create: (_) => _audioHandler?.queue, initialData: null),
                               StreamProvider<MediaItem?>(create: (_) => _audioHandler?.mediaItem, initialData: null),
                             ],
-                            child: MaterialApp(
-                              title: 'Perkl',
-                              theme: new ThemeData (
-                                  primarySwatch: Colors.deepPurple
-                              ),
-                              home: promptUpdate == null ?
-                              Center(child: CircularProgressIndicator()) : promptUpdate ? Scaffold(body: Container(
-                                decoration: BoxDecoration(
-                                  image: DecorationImage(
-                                    image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
-                                    fit: BoxFit.cover,
+                            child: FeatureDiscovery(
+                              child: MaterialApp(
+                                title: 'Perkl',
+                                theme: new ThemeData (
+                                    primarySwatch: Colors.deepPurple
+                                ),
+                                home: promptUpdate == null ?
+                                Center(child: CircularProgressIndicator()) : promptUpdate ? Scaffold(body: Container(
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: AssetImage("assets/images/drawable-xxxhdpi/login-bg.png"),
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
-                                ),
-                                child: SimpleDialog(
-                                  contentPadding: EdgeInsets.fromLTRB(10, 15, 10, 5),
-                                  title: Center(child: Text('Update Required!', style: TextStyle(color: Colors.deepPurple),)),
-                                  children: <Widget>[
-                                    Center(child: Text('It looks like you have an outdated version of our app. You\'ll need to upgrade before you can continue.', style: TextStyle(fontSize: 16),)),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: <Widget>[
-                                        TextButton(
-                                            child: Text('Update Now!', style: TextStyle(color: Colors.white),),
-                                            style: TextButton.styleFrom(
-                                              backgroundColor: Colors.deepPurple
-                                            ),
-                                            onPressed: () async {
-                                              if(Platform.isIOS) {
-                                                await canLaunch('https://testflight.apple.com/join/nLLTkbwC') ? await launch('https://testflight.apple.com/join/nLLTkbwC') : throw 'Could not launch https://testflight.apple.com/join/nLLTkbwC';
-                                              } else {
-                                                LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
+                                  child: SimpleDialog(
+                                    contentPadding: EdgeInsets.fromLTRB(10, 15, 10, 5),
+                                    title: Center(child: Text('Update Required!', style: TextStyle(color: Colors.deepPurple),)),
+                                    children: <Widget>[
+                                      Center(child: Text('It looks like you have an outdated version of our app. You\'ll need to upgrade before you can continue.', style: TextStyle(fontSize: 16),)),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: <Widget>[
+                                          TextButton(
+                                              child: Text('Update Now!', style: TextStyle(color: Colors.white),),
+                                              style: TextButton.styleFrom(
+                                                  backgroundColor: Colors.deepPurple
+                                              ),
+                                              onPressed: () async {
+                                                if(Platform.isIOS) {
+                                                  await canLaunch('https://testflight.apple.com/join/nLLTkbwC') ? await launch('https://testflight.apple.com/join/nLLTkbwC') : throw 'Could not launch https://testflight.apple.com/join/nLLTkbwC';
+                                                } else {
+                                                  LaunchReview.launch(androidAppId: 'com.test.perklapp', iOSAppId: '1516543692');
+                                                }
                                               }
-                                            }
-                                        )
-                                      ],
-                                    )
-                                  ],
-                                ),
-                              )) : HomePageMobile(),
-                              routes: <String, WidgetBuilder> {
-                                '/landingpage': (BuildContext context) => new MainApp(),
-                                '/signup': (BuildContext context) => new SignUpPage(),
-                                '/homepage': (BuildContext context) => new HomePageMobile(),
-                                '/searchpage': (BuildContext context) => new SearchPageMobile(),
-                                // '/dashboard': (BuildContext context) => new DashboardPage(),
-                              },
+                                          )
+                                        ],
+                                      )
+                                    ],
+                                  ),
+                                )) : HomePageMobile(),
+                                routes: <String, WidgetBuilder> {
+                                  '/landingpage': (BuildContext context) => new MainApp(),
+                                  '/signup': (BuildContext context) => new SignUpPage(),
+                                  '/homepage': (BuildContext context) => new HomePageMobile(),
+                                  '/searchpage': (BuildContext context) => new SearchPageMobile(),
+                                  // '/dashboard': (BuildContext context) => new DashboardPage(),
+                                },
+                              )
                             ),
                           );
                         }

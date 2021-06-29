@@ -5,6 +5,7 @@ import 'package:Perkl/FeedbackForm.dart';
 import 'package:Perkl/MainPageTemplate.dart';
 import 'package:Perkl/main.dart';
 import 'package:Perkl/services/models.dart';
+import 'package:feature_discovery/feature_discovery.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,6 +24,7 @@ import 'services/ActivityManagement.dart';
 import 'QueuePage.dart';
 import 'Clipping.dart';
 import 'ListeningHistory.dart';
+import 'main.dart';
 
 class RecordButton extends StatefulWidget {
 
@@ -75,6 +77,11 @@ class TopPanel extends StatelessWidget {
   String? pageTitle;
   bool showPostButtons = true;
   TextEditingController? searchController = new TextEditingController();
+  GlobalKey recordKey = new GlobalKey();
+  GlobalKey viewQueueKey = new GlobalKey();
+  GlobalKey createClipKey = new GlobalKey();
+  GlobalKey menuKey = new GlobalKey();
+  GlobalKey searchKey = new GlobalKey();
 
   TopPanel({
     this.showSearchBar = false,
@@ -136,7 +143,26 @@ class TopPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
-                    MainPopMenu(),
+                    DescribedFeatureOverlay(
+                      tapTarget: Container(
+                        height: 40.0,
+                        width: 40.0,
+                        decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            image: DecorationImage(
+                              fit: BoxFit.cover,
+                              image: AssetImage('assets/images/logo.png'),
+                            )
+                        ),
+                      ),
+                      featureId: 'menu-key',
+                      backgroundColor: Colors.deepPurple,
+                      //backgroundOpacity: 0.75,
+                      title: Text('Menu'),
+                      description: Text('Tap to access account settings, send feedback and logout.'),
+                      child: MainPopMenu()
+                    ),
                     Expanded(
                       child: showSearchBar != null && showSearchBar ? Padding(
                           padding: EdgeInsets.only(left: 20.0),
@@ -163,14 +189,22 @@ class TopPanel extends StatelessWidget {
               automaticallyImplyLeading: false,
               titleSpacing: 5.0,
               actions: <Widget>[
-                IconButton(
-                  icon: Icon(showSearchBar != null && showSearchBar ? Icons.cancel : Icons.search),
-                  iconSize: 40.0,
-                  onPressed: () {
-                    showSearchBar != null && showSearchBar ? Navigator.of(context).pop() : Navigator.push(context, MaterialPageRoute(
-                      builder: (context) => SearchPageMobile(),
-                    ));
-                  },
+                DescribedFeatureOverlay(
+                  featureId: 'search-key',
+                  tapTarget: Icon(Icons.search),
+                  title: Text('Search'),
+                  backgroundColor: Colors.deepPurple,
+                  //backgroundOpacity: 0.75,
+                  description: Text('Tap to search for users, podcasts and playlists.'),
+                  child: IconButton(
+                    icon: Icon(showSearchBar != null && showSearchBar ? Icons.cancel : Icons.search),
+                    iconSize: 40.0,
+                    onPressed: () {
+                      showSearchBar != null && showSearchBar ? Navigator.of(context).pop() : Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => SearchPageMobile(),
+                      ));
+                    },
+                  )
                 ),
               ],
             ),
@@ -205,7 +239,15 @@ class TopPanel extends StatelessWidget {
                     ),
                     Column(
                       children: <Widget>[
-                        RecordButton(),
+                        DescribedFeatureOverlay(
+                          featureId: 'record-key',
+                          tapTarget: Icon(Icons.mic),
+                          backgroundColor: Colors.deepPurple,
+                          contentLocation: ContentLocation.below,
+                          title: Text('Record'),
+                          description: Text('Tap here to record a new post!'),
+                          child: RecordButton()
+                        ),
                         mp.isRecording && mp.recordingTime != null ? Text('${getDurationString(mp.recordingTime)}', style: TextStyle(color: Colors.white)) : Container(),
                       ],
                     )
@@ -251,15 +293,24 @@ class TopPanel extends StatelessWidget {
                     mp.setSpeed(value ?? 1.0);
                   },
                 ),
-                IconButton(
-                  icon: Icon(Icons.queue_music, color: mediaQueue != null && mediaQueue.length > 0 ? Colors.white : Colors.grey),
-                  onPressed: () {
-                    //Go to Queue page
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (context) =>
-                          QueuePage(),
-                    ));
-                  }
+                DescribedFeatureOverlay(
+                  tapTarget: Icon(Icons.queue_music),
+                  featureId: 'queue-key',
+                  backgroundColor: Colors.deepPurple,
+                  contentLocation: ContentLocation.below,
+                  overflowMode: OverflowMode.extendBackground,
+                  title: Text('Queue'),
+                  description: Text('Tap to view your queue.'),
+                  child: IconButton(
+                      icon: Icon(Icons.queue_music, color: mediaQueue != null && mediaQueue.length > 0 ? Colors.white : Colors.grey),
+                      onPressed: () {
+                        //Go to Queue page
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (context) =>
+                              QueuePage(),
+                        ));
+                      }
+                  )
                 ),
                 IconButton(
                     icon: Icon(Icons.replay_30, color: currentMediaItem != null ? Colors.white : Colors.grey),
@@ -304,22 +355,29 @@ class TopPanel extends StatelessWidget {
                       }
                     }
                 ),
-                IconButton(
-                    icon: FaIcon(FontAwesomeIcons.cut, color: currentMediaItem != null && currentMediaItem.extras != null && currentMediaItem.extras?['type'] == 'PostType.PODCAST_EPISODE' ? Colors.white : Colors.grey),
-                    onPressed: () {
-                      if(currentMediaItem?.extras?['type'] == 'PostType.PODCAST_EPISODE') {
-                        print('Clipping Media Item: ${currentMediaItem?.extras}');
-                        if(playbackState?.playing ?? false) {
-                          mp.pausePost();
+                DescribedFeatureOverlay(
+                  tapTarget: FaIcon(FontAwesomeIcons.cut),
+                  featureId: 'clip-key',
+                  backgroundColor: Colors.deepPurple,
+                  title: Text('Create a Clip'),
+                  description: Text('Tap to create a clip of what\'s currently playing. You can save clips for later, add them to a playlist or share them with your friends.'),
+                  child: IconButton(
+                      icon: FaIcon(FontAwesomeIcons.cut, color: currentMediaItem != null && currentMediaItem.extras != null && currentMediaItem.extras?['type'] == 'PostType.PODCAST_EPISODE' ? Colors.white : Colors.grey),
+                      onPressed: () {
+                        if(currentMediaItem?.extras?['type'] == 'PostType.PODCAST_EPISODE') {
+                          print('Clipping Media Item: ${currentMediaItem?.extras}');
+                          if(playbackState?.playing ?? false) {
+                            mp.pausePost();
+                          }
+                          showDialog(
+                              context: context,
+                              builder: (context) {
+                                return CreateClipDialog(mediaItem: currentMediaItem, playbackState: playbackState);
+                              }
+                          );
                         }
-                        showDialog(
-                            context: context,
-                            builder: (context) {
-                              return CreateClipDialog(mediaItem: currentMediaItem, playbackState: playbackState);
-                            }
-                        );
                       }
-                    }
+                  )
                 )
               ],
             ),
@@ -405,6 +463,10 @@ class MainPopMenu extends StatelessWidget {
             child: Text('Listening History'),
             value: 4,
           ),
+          PopupMenuItem(
+            child: Text('View Tutorial'),
+            value: 5,
+          )
         ],
         child: Navigator.canPop(context) ? IconButton(
           icon: Icon(Icons.arrow_back),
@@ -445,7 +507,7 @@ class MainPopMenu extends StatelessWidget {
               );
             }
         ),
-        onSelected: (value) {
+        onSelected: (value) async {
           if(value == 1){
             FirebaseAuth.instance.signOut().then((value) {
               Navigator.of(context).pushNamedAndRemoveUntil('/landingpage', (Route<dynamic> route) => false);
@@ -475,6 +537,25 @@ class MainPopMenu extends StatelessWidget {
               builder: (context) => ListeningHistoryPage(),
             ));
           }
+          if(value == 5) {
+            await FeatureDiscovery.clearPreferences(context, <String>{ 'menu-key', 'search-key','clip-key', 'queue-key', 'record-key','discover-key', 'playlists-key', 'messages-key', 'profile-key'});
+            //Navigator.of(context).pop();
+            print('Showing discovery features...');
+            FeatureDiscovery.discoverFeatures(
+              context,
+              const <String>{ // Feature ids for every feature that you want to showcase in order.
+                'menu-key',
+                'search-key',
+                'record-key',
+                'queue-key',
+                'clip-key',
+                'discover-key',
+                'playlists-key',
+                'messages-key',
+                'profile-key'
+              },
+            );
+          }
         }
     );
   }
@@ -498,19 +579,79 @@ Widget bottomNavBarMobile(Function tapFunc, int selectedIndex, {ActivityManager?
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.surround_sound),
+            icon: DescribedFeatureOverlay(
+              tapTarget: ClipRect(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.surround_sound, color: Colors.deepPurple),
+                      Text('Discover', style: TextStyle(color: Colors.deepPurple))
+                    ]
+                )
+              ),
+              featureId: 'discover-key',
+              title: Text('Discover'),
+              description: Text('Discover featured playlists, top podcasts and our most popular users!'),
+              backgroundColor: Colors.deepPurple,
+              child: Icon(Icons.surround_sound)
+            ),
             label: 'Discover',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.playlist_play),
+            icon: DescribedFeatureOverlay(
+              tapTarget: ClipRect(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.playlist_play, color: Colors.deepPurple),
+                      Text('Playlists', style: TextStyle(color: Colors.deepPurple)),
+                    ]
+                )
+              ),
+              featureId: 'playlists-key',
+              title: Text('Playlists'),
+              description: Text('View your playlists and the playlists you\'re subscribed to or create a new playlist! Playlists are your way to organize what you listen to, made up of posts and podcast episodes and clips.'),
+              backgroundColor: Colors.deepPurple,
+              child: Icon(Icons.playlist_play)
+            ),
             label: 'Playlists'
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.mail_outline),
+            icon: DescribedFeatureOverlay(
+              tapTarget: ClipRect(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.mail_outline, color: Colors.deepPurple),
+                      Text('Messages', style: TextStyle(color: Colors.deepPurple))
+                    ]
+                )
+              ),
+              featureId: 'messages-key',
+              title: Text('Messages'),
+              description: Text('Listen to and send direct voice messages to your friends or groups of friends. You can send your own recordings, share playlists, or share podcast clips and episodes!'),
+              backgroundColor: Colors.deepPurple,
+              child: Icon(Icons.mail_outline)
+            ),
             label: 'Messages'
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
+            icon: DescribedFeatureOverlay(
+              tapTarget: ClipRect(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.account_circle, color: Colors.deepPurple),
+                      Text('Profile', style: TextStyle(color: Colors.deepPurple))
+                    ]
+                )
+              ),
+              featureId: 'profile-key',
+              title: Text('Profile'),
+              description: Text('View and edit your profile and see your posts and saved clips.'),
+              backgroundColor: Colors.deepPurple,
+              child: Icon(Icons.account_circle)
+            ),
             label: 'Profile'
           ),
         ],

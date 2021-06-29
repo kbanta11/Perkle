@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share/share.dart';
+import 'package:feature_discovery/feature_discovery.dart';
 import 'dart:io';
 import 'dart:async';
 import 'MainPageTemplate.dart';
@@ -58,39 +59,6 @@ class HomePageMobileState extends State<HomePageMobile> {
     if (userToken != null && uid != null) {
       DBService().updateDeviceToken(userToken, uid);
     }
-  }
-
-  Future<bool> showTutorial() async {
-    LocalService localService = new LocalService();
-    int tutorialComplete = await localService.getData('tutorial_version');
-    if(tutorialComplete == null) {
-      return true;
-    }
-    //change tutorial version
-    if(tutorialComplete >= 1) {
-      return false;
-    }
-    return true;
-    /*
-    List<dynamic> tutorialCompleted = await localService.getData('tutorial_index_complete');
-    print('Tutorials Completed: $tutorialCompleted');
-    if(tutorialCompleted == null) {
-      return currentTutorials;
-    } else {
-      //List<int> tutorialsToComplete = CURRENT_TUTORIAL_INDICES.removeWhere((element) => tutorialCompleted.contains(element));
-      //Get current tutorials whose index is not the index of a completed tutorial
-      if(currentTutorials.where((element) => !tutorialCompleted.map((completed) => completed['index']).toList().contains(element['index'])).length > 0) {
-        print('Already completed index list: ${tutorialCompleted.map((completed) => completed['index']).toList()}');
-        print('Unheard tutorials: ${currentTutorials.where((element) {
-          List<dynamic> completedIndices = tutorialCompleted.map((completed) => completed['index']).toList();
-         return !(completedIndices.contains(element['index']));
-        })}');
-        return currentTutorials.where((element) => !tutorialCompleted.map((completed) => completed['index']).toList().contains(element['index'])).toList();
-      }
-    }
-    //Change to show tutorial screens for production
-    return null; //return tutorialCompleted?
-     */
   }
 
   Future<void> promptShare(BuildContext context) async {
@@ -175,14 +143,26 @@ class HomePageMobileState extends State<HomePageMobile> {
   @override
   void initState() {
     super.initState();
-    promptShare(context).then((_) {
-      showTutorial();
+    promptShare(context);
+    //FeatureDiscovery.clearPreferences(context, <String>{ 'menu-key', 'search-key','clip-key', 'queue-key', 'record-key','discover-key', 'playlists-key', 'messages-key', 'profile-key'});
+    WidgetsBinding.instance!.addPostFrameCallback((Duration duration) {
+
+      FeatureDiscovery.discoverFeatures(
+        context,
+        const <String>{ // Feature ids for every feature that you want to showcase in order.
+          'menu-key',
+          'search-key',
+          'record-key',
+          'queue-key',
+          'clip-key',
+          'discover-key',
+          'playlists-key',
+          'messages-key',
+          'profile-key'
+        },
+      );
     });
 
-    //showTutorial().then((_) {
-    //  promptShare(context);
-    //});
-    //print('Skipping checking username');
     _saveDeviceToken();
   }
 
@@ -211,19 +191,10 @@ class HomePageMobileState extends State<HomePageMobile> {
       );
     }
 
-    return FutureBuilder(
-      future: showTutorial(),
-      builder: (context, AsyncSnapshot<bool> showSnap) {
-        if(showSnap.hasData && (showSnap.data ?? false)) {
-          print('### Snap Data: ${showSnap.data}');
-          return TutorialPage();
-        }
-        return MainPageTemplate(
-            bottomNavIndex: 0,
-            body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
-        );
-      }
-    );
+    return MainPageTemplate(
+        bottomNavIndex: 0,
+        body: Timeline(timelineId: user.mainFeedTimelineId, type: TimelineType.MAINFEED,)
+    );;
   }
 }
 
