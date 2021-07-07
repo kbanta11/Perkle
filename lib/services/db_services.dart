@@ -369,7 +369,7 @@ class DBService {
   }
 
   Future<void> syncConversationPostsHeard() async {
-    Map<String, dynamic> heardPostMap = await LocalService(filename: 'conversations.json').getData('conversation-heard-posts');
+    Map<String, dynamic>? heardPostMap = await LocalService(filename: 'conversations.json').getData('conversation-heard-posts');
     String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if(heardPostMap != null) {
       heardPostMap.forEach((key, val) async {

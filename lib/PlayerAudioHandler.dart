@@ -52,7 +52,7 @@ class PlayerAudioHandler extends BaseAudioHandler
     }
     print('-------------------------------------------------------\nPlaying Item: ${item.title}');
     MediaItem? updateItem;
-    List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
+    List<MediaItem>? listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
       if(itemList == null) {
         return Future.value();
       }
@@ -140,7 +140,7 @@ class PlayerAudioHandler extends BaseAudioHandler
     //player = new AP.AudioPlayer(mode: AP.PlayerMode.MEDIA_PLAYER);
     Duration startDuration = new Duration(milliseconds: 0);
     //Map<String, dynamic> postsInProgress = await _localService.getData('posts_in_progress');
-    List<MediaItem> listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
+    List<MediaItem>? listeningHistory = await _historyLocalService.getData('items').then((dynamic itemList) {
       if(itemList == null) {
         return Future.value();
       }
@@ -177,7 +177,7 @@ class PlayerAudioHandler extends BaseAudioHandler
       //Mark down whether direct post has been listened
       print('marking direct post heard: ${extraData['conversationId']}/${extraData['userId']}/${extraData['postId']}');
       LocalService conversationService = LocalService(filename: 'conversations.json');
-      Map<String, dynamic> heardPostMap = await conversationService.getData('conversation-heard-posts');
+      Map<String, dynamic>? heardPostMap = await conversationService.getData('conversation-heard-posts');
       if(heardPostMap == null) {
         //create heard post map and add this conversation, user and post heard list with this post
         heardPostMap = new Map<String, dynamic>();
